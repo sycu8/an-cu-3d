@@ -1,0 +1,52 @@
+.apartment-viewer-page .view-mode-bar {
+  margin-bottom: var(--space-lg);
+}
+
+.apartment-media {
+  margin-bottom: var(--space-xl);
+}
+
+.apartment-media-note,
+.apartment-lighting-hint {
+  margin: var(--space-sm) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+}
+
+.apartment-auto-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 22rem);
+  gap: var(--space-lg);
+  align-items: start;
+  margin-bottom: var(--space-xl);
+}
+
+.apartment-auto-layout .viewer-canvas-wrap {
+  min-height: min(60vh, 36rem);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.apartment-side-strip {
+  margin: var(--space-xl) 0;
+}
+
+.apartment-side-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.apartment-side-strip-head h2 {
+  margin: 0;
+  font-size: var(--text-h3);
+}
+
+@media (max-width: 900px) {
+  .apartment-auto-layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -128,6 +128,8 @@ export async function getDbProjectBySlug(
       source_class: string;
     }>();
 
+  const media = await listProjectMedia(db, p.id);
+
   return {
     id: p.id,
     slug: p.slug,
@@ -181,6 +183,7 @@ export async function getDbProjectBySlug(
     coverUrl: p.cover_r2_key
       ? `/api/media/${p.cover_r2_key}?v=hero&f=webp`
       : undefined,
+    media,
   };
 }
 
@@ -363,4 +366,45 @@ export async function updateProjectCoverR2Key(
     )
     .bind(coverR2Key, slug)
     .run();
+}
+
+
+type ProjectMediaRow = {
+  id: string;
+  kind: string;
+  url: string | null;
+  r2_key: string | null;
+  alt_text: string | null;
+  sort_order: number | null;
+  source_class: string;
+  provenance: string | null;
+};
+
+export async function listProjectMedia(
+  db: D1Database,
+  projectId: string,
+): Promise<import("../../types").ProjectMediaItem[]> {
+  try {
+    const rows = await db
+      .prepare(
+        `SELECT id, kind, url, r2_key, alt_text, sort_order, source_class, provenance
+         FROM project_media
+         WHERE project_id = ?
+         ORDER BY sort_order ASC, created_at ASC`,
+      )
+      .bind(projectId)
+      .all<ProjectMediaRow>();
+    return (rows.results ?? []).map((row) => ({
+      id: row.id,
+      kind: row.kind as import("../../types").ProjectMediaItem["kind"],
+      url: row.url,
+      r2Key: row.r2_key,
+      altText: row.alt_text,
+      sortOrder: row.sort_order ?? 0,
+      sourceClass: row.source_class,
+      provenance: row.provenance,
+    }));
+  } catch {
+    return [];
+  }
 }

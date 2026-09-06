@@ -46,6 +46,30 @@
   margin-bottom: var(--space-2xl);
 }
 
+.project-gallery-section {
+  margin-bottom: var(--space-2xl);
+}
+
+.project-gallery-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.project-gallery-head h2 {
+  margin: 0 0 var(--space-xs);
+}
+
+.project-gallery-head p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--color-text-secondary);
+  font-size: var(--text-small);
+}
+
 .apartment-type-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
