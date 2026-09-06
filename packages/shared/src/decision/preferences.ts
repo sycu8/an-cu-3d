@@ -26,6 +26,15 @@ export const PREFERENCE_LABELS_VI: Record<PreferenceKey, string> = {
   amenities: "Tiện ích",
 };
 
+/** Short buyer-facing explanations — used instead of opaque numeric weights. */
+export const PREFERENCE_HINTS_VI: Record<PreferenceKey, string> = {
+  budget: "Giá hợp túi tiền hơn so với các dự án khác",
+  space: "Số phòng và diện tích phù hợp hộ gia đình",
+  commute: "Gần nơi bạn thường đến",
+  schools: "Nhiều trường học quanh dự án",
+  amenities: "Tiện ích / điểm quanh dự án phong phú",
+};
+
 export type HouseholdProfile =
   | "solo"
   | "couple"
@@ -47,23 +56,108 @@ export interface LifestylePreferences {
   household: HouseholdProfile;
   wfh: WfhCount;
   vehicle: VehiclePreference;
+  /** Available cash for purchase, in tỷ VND */
+  availableCashTy?: number;
+  /** Expected loan term in years (used with Big-4 average rate) */
+  loanTermYears?: number;
+  /**
+   * Criteria ordered most → least important.
+   * Ranking UX writes this; weights are derived for scoring.
+   */
+  priorityOrder?: PreferenceKey[];
   commuteLabel?: string;
   commuteDestination?: { latitude: number; longitude: number };
   weights: DecisionWeights;
 }
 
-export const DEFAULT_WEIGHTS: DecisionWeights = {
-  budget: 70,
-  space: 80,
-  commute: 60,
-  schools: 50,
-  amenities: 50,
-};
+/** Default order mirrors historical DEFAULT_WEIGHTS relative importance. */
+export const DEFAULT_PRIORITY_ORDER: PreferenceKey[] = [
+  "space",
+  "budget",
+  "commute",
+  "schools",
+  "amenities",
+];
+
+/** Rank → weight mapping (1st most important). Absolute scale is arbitrary; ratios matter. */
+const RANK_WEIGHTS = [100, 70, 45, 25, 15] as const;
+
+export function weightsFromPriorityOrder(
+  order: PreferenceKey[],
+): DecisionWeights {
+  const normalized = normalizePriorityOrder(order);
+  const weights: DecisionWeights = {
+    budget: 0,
+    space: 0,
+    commute: 0,
+    schools: 0,
+    amenities: 0,
+  };
+  normalized.forEach((key, index) => {
+    weights[key] = RANK_WEIGHTS[Math.min(index, RANK_WEIGHTS.length - 1)] ?? 10;
+  });
+  return weights;
+}
+
+export function priorityOrderFromWeights(
+  weights: DecisionWeights,
+): PreferenceKey[] {
+  return [...PREFERENCE_KEYS].sort((a, b) => {
+    const diff = weights[b] - weights[a];
+    if (diff !== 0) return diff;
+    return PREFERENCE_KEYS.indexOf(a) - PREFERENCE_KEYS.indexOf(b);
+  });
+}
+
+export function normalizePriorityOrder(
+  order: PreferenceKey[] | undefined | null,
+): PreferenceKey[] {
+  const seen = new Set<PreferenceKey>();
+  const result: PreferenceKey[] = [];
+  for (const key of order ?? []) {
+    if (PREFERENCE_KEYS.includes(key) && !seen.has(key)) {
+      seen.add(key);
+      result.push(key);
+    }
+  }
+  for (const key of PREFERENCE_KEYS) {
+    if (!seen.has(key)) result.push(key);
+  }
+  return result;
+}
+
+export function resolvePriorityOrder(
+  prefs: Pick<LifestylePreferences, "priorityOrder" | "weights">,
+): PreferenceKey[] {
+  if (prefs.priorityOrder?.length) {
+    return normalizePriorityOrder(prefs.priorityOrder);
+  }
+  return priorityOrderFromWeights(prefs.weights);
+}
+
+export function withDerivedWeights(
+  prefs: LifestylePreferences,
+): LifestylePreferences {
+  const priorityOrder = resolvePriorityOrder(prefs);
+  return {
+    ...prefs,
+    priorityOrder,
+    weights: weightsFromPriorityOrder(priorityOrder),
+  };
+}
+
+export const DEFAULT_WEIGHTS: DecisionWeights =
+  weightsFromPriorityOrder(DEFAULT_PRIORITY_ORDER);
+
+export const DEFAULT_LOAN_TERM_YEARS = 20;
 
 export const DEFAULT_LIFESTYLE: LifestylePreferences = {
   household: "couple",
   wfh: 0,
   vehicle: "no_car",
+  availableCashTy: undefined,
+  loanTermYears: DEFAULT_LOAN_TERM_YEARS,
+  priorityOrder: [...DEFAULT_PRIORITY_ORDER],
   weights: { ...DEFAULT_WEIGHTS },
 };
 
@@ -155,7 +249,7 @@ export function scoreWeightedDecision(
     overall,
     dimensions,
     usedWeightSum,
-    explainVi: `Điểm ${overall}/100 từ ${available.length} tiêu chí có dữ liệu. Nổi bật nhất theo trọng số: ${PREFERENCE_LABELS_VI[top.key]}.`,
+    explainVi: `Điểm ${overall}/100 từ ${available.length} tiêu chí có dữ liệu. Nổi bật nhất theo ưu tiên của bạn: ${PREFERENCE_LABELS_VI[top.key]}.`,
     sufficient: true,
   };
 }
