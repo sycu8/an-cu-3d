@@ -14,7 +14,9 @@ import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { ViewModeBar } from "../components/ViewModeBar";
 import { useProject } from "../hooks/useProjects";
-import { getSampleFloorPlan } from "../data/sample-floorplans";
+import { resolveFloorPlanForUnit } from "../data/sample-floorplans";
+import { DataTrustBadge } from "../components/DataTrustBadge";
+import { floorplanVerificationLabel } from "@ancu/shared";
 import "./ShowroomPage.css";
 
 const FloorPlanViewer = lazy(() =>
@@ -80,11 +82,17 @@ export default function ShowroomPage() {
   }, [paletteLabel, photoMaterial]);
 
   const apt = project?.apartmentTypes.find((a) => a.slug === unit);
-  const floorPlanKey = apt?.floorplanKey ?? unit;
-  const floorPlan = useMemo(
-    () => getSampleFloorPlan(floorPlanKey),
-    [floorPlanKey],
+  const resolved = useMemo(
+    () =>
+      resolveFloorPlanForUnit({
+        floorplanKey: apt?.floorplanKey,
+        unitSlug: unit,
+        bedrooms: apt?.bedrooms,
+      }),
+    [apt?.floorplanKey, apt?.bedrooms, unit],
   );
+  const floorPlan = resolved.document;
+  const verification = apt?.floorplanVerification ?? resolved.verificationStatus;
 
   const media = project?.media ?? [];
   const floorplan2d = useMemo(
@@ -97,6 +105,7 @@ export default function ShowroomPage() {
   );
 
   const hotspots = useMemo(() => {
+    if (!floorPlan) return [];
     const configured = [...(showroom?.hotspots ?? [])].sort(
       (a, b) => a.order - b.order,
     );
@@ -114,7 +123,7 @@ export default function ShowroomPage() {
       label: room.name,
       roomId: room.id,
     }));
-  }, [floorPlan.rooms, showroom?.hotspots]);
+  }, [floorPlan, showroom?.hotspots]);
 
   if (state.status === "loading") return <PageSkeleton />;
 
@@ -176,7 +185,8 @@ export default function ShowroomPage() {
           ? "perspective"
           : "dollhouse";
   const showWebgl =
-    viewMode === "3d" || viewMode === "auto" || viewMode === "2d" || viewMode === "perspective";
+    Boolean(floorPlan) &&
+    (viewMode === "3d" || viewMode === "auto" || viewMode === "2d" || viewMode === "perspective");
 
   return (
     <div className="showroom-page">
@@ -187,8 +197,12 @@ export default function ShowroomPage() {
           </p>
           <h1>Showroom</h1>
           <p>
-            Mặt bằng WebGL (đùn 2D→3D), phối cảnh, đi bộ trong căn, hoặc tự phối ánh sáng & vật liệu.
+            Khám phá không gian đã xác minh: xem 2D, 3D hoặc thử nội thất. Mặt bằng không khớp loại căn sẽ không được hiển thị như thật.
           </p>
+          <DataTrustBadge
+            sourceClass={apt?.sourceClass ?? project.sourceClass}
+            floorplanVerification={verification}
+          />
         </div>
         <div className="showroom-controls">
           <label>
@@ -262,7 +276,19 @@ export default function ShowroomPage() {
         </section>
       ) : null}
 
-      {showWebgl ? (
+      {!floorPlan ? (
+        <section className="container" role="status">
+          <p>
+            {floorplanVerificationLabel(verification)}. Showroom 3D chỉ mở khi có
+            FloorPlanDocument khớp loại căn — AnCư không dùng mặt bằng 2 PN để minh họa căn 3 PN.
+          </p>
+          <Link to={`/projects/${project.slug}`} className="btn btn-secondary">
+            Quay lại dự án
+          </Link>
+        </section>
+      ) : null}
+
+      {showWebgl && floorPlan ? (
         <>
           {viewMode === "3d" ? (
             <div className="showroom-hotspots container">
@@ -295,6 +321,12 @@ export default function ShowroomPage() {
                 : "Phối cảnh WebGL từ mặt bằng 2D đã vector hóa."}
             </p>
           ) : null}
+
+          {(verification === "illustrative" || verification === "estimated") && (
+            <p className="container viewer-hint" role="status">
+              {floorplanVerificationLabel(verification)}
+            </p>
+          )}
 
           <div
             className={

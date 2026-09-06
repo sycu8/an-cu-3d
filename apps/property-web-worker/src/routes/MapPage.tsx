@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { getRoute, type RouteResult } from "@ancu/shared";
 import { getAllNearbyPlaces } from "../data/gamuda-projects";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { useProjectSummaries } from "../hooks/useProjects";
+import {
+  loadLifestylePreferences,
+  saveLifestylePreferences,
+} from "../lib/lifestylePreferences";
 import { AMENITY_CATEGORIES, type AmenityCategory } from "../types/amenity";
 import "./MapPage.css";
 
@@ -10,21 +15,15 @@ const HCMC_CENTER: [number, number] = [106.6297, 10.8231];
 
 type MapLibreModule = typeof import("maplibre-gl");
 
-function haversineKm(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+function parseCategoriesParam(raw: string | null): Set<AmenityCategory> | null {
+  if (!raw?.trim()) return null;
+  const ids = new Set(AMENITY_CATEGORIES.map((c) => c.id));
+  const next = new Set<AmenityCategory>();
+  for (const part of raw.split(",")) {
+    const id = part.trim() as AmenityCategory;
+    if (ids.has(id)) next.add(id);
+  }
+  return next.size ? next : null;
 }
 
 export default function MapPage() {
@@ -33,15 +32,20 @@ export default function MapPage() {
   const maplibreRef = useRef<MapLibreModule | null>(null);
   const markersRef = useRef<import("maplibre-gl").Marker[]>([]);
   const [mapReady, setMapReady] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const selectedProject = searchParams.get("project");
-  const [categories, setCategories] = useState<Set<AmenityCategory>>(
-    new Set(AMENITY_CATEGORIES.map((c) => c.id)),
-  );
-  const [routeDestination, setRouteDestination] = useState<string>("");
+  const destinationId = searchParams.get("destination") ?? "";
+  const [categories, setCategories] = useState<Set<AmenityCategory>>(() => {
+    return (
+      parseCategoriesParam(searchParams.get("categories")) ??
+      new Set(AMENITY_CATEGORIES.map((c) => c.id))
+    );
+  });
+  const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
   const projectState = useProjectSummaries();
 
-  const projects = "data" in projectState && projectState.data ? projectState.data : [];
+  const projects =
+    "data" in projectState && projectState.data ? projectState.data : [];
   const nearbyPlaces = useMemo(() => getAllNearbyPlaces(), []);
 
   useEffect(() => {
@@ -58,7 +62,9 @@ export default function MapPage() {
 
       maplibreRef.current = maplibregl;
 
-      const mapOptions: import("maplibre-gl").MapOptions & { cooperativeGestures?: boolean } = {
+      const mapOptions: import("maplibre-gl").MapOptions & {
+        cooperativeGestures?: boolean;
+      } = {
         container,
         style: {
           version: 8,
@@ -169,6 +175,48 @@ export default function MapPage() {
     }
   }, [projects, nearbyPlaces, categories, selectedProject, mapReady]);
 
+  const routeProject = selectedProject
+    ? projects.find((p) => p.slug === selectedProject)
+    : projects[0];
+
+  const routePlace = destinationId
+    ? nearbyPlaces.find((p) => p.id === destinationId)
+    : undefined;
+
+  useEffect(() => {
+    let cancelled = false;
+    setRouteResult(null);
+    if (
+      !routeProject?.latitude ||
+      !routeProject?.longitude ||
+      !routePlace?.latitude ||
+      !routePlace?.longitude
+    ) {
+      return;
+    }
+    void getRoute({
+      origin: {
+        latitude: routeProject.latitude,
+        longitude: routeProject.longitude,
+      },
+      destination: {
+        latitude: routePlace.latitude,
+        longitude: routePlace.longitude,
+      },
+      mode: "driving",
+    }).then((result) => {
+      if (!cancelled) setRouteResult(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    routeProject?.latitude,
+    routeProject?.longitude,
+    routePlace?.latitude,
+    routePlace?.longitude,
+  ]);
+
   if (projectState.status === "loading") return <PageSkeleton />;
 
   if (projectState.status === "error" && !projects.length) {
@@ -180,36 +228,47 @@ export default function MapPage() {
     );
   }
 
-  const routeProject = selectedProject
-    ? projects.find((p) => p.slug === selectedProject)
-    : projects[0];
+  const syncUrl = (next: {
+    project?: string | null;
+    destination?: string | null;
+    categories?: Set<AmenityCategory>;
+  }) => {
+    const params = new URLSearchParams();
+    const project = next.project === undefined ? selectedProject : next.project;
+    const destination =
+      next.destination === undefined ? destinationId : next.destination;
+    const cats = next.categories ?? categories;
+    if (project) params.set("project", project);
+    if (destination) params.set("destination", destination);
+    const allOn = AMENITY_CATEGORIES.every((c) => cats.has(c.id));
+    if (!allOn && cats.size > 0) {
+      params.set("categories", [...cats].join(","));
+    }
+    setSearchParams(params, { replace: true });
+  };
 
-  const routePlace = routeDestination
-    ? nearbyPlaces.find((p) => p.id === routeDestination)
-    : undefined;
-
-  let straightLineKm: number | null = null;
-  if (
-    routeProject?.latitude &&
-    routeProject?.longitude &&
-    routePlace?.latitude &&
-    routePlace?.longitude
-  ) {
-    straightLineKm = haversineKm(
-      routeProject.latitude,
-      routeProject.longitude,
-      routePlace.latitude,
-      routePlace.longitude,
-    );
-  }
+  const setDestination = (id: string) => {
+    syncUrl({ destination: id || null });
+    const place = nearbyPlaces.find((p) => p.id === id);
+    if (place?.latitude && place?.longitude) {
+      const prefs = loadLifestylePreferences();
+      saveLifestylePreferences({
+        ...prefs,
+        commuteLabel: place.name,
+        commuteDestination: {
+          latitude: place.latitude,
+          longitude: place.longitude,
+        },
+      });
+    }
+  };
 
   const toggleCategory = (cat: AmenityCategory) => {
-    setCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      return next;
-    });
+    const next = new Set(categories);
+    if (next.has(cat)) next.delete(cat);
+    else next.add(cat);
+    setCategories(next);
+    syncUrl({ categories: next });
   };
 
   return (
@@ -219,7 +278,9 @@ export default function MapPage() {
           <h1>Bản đồ kết nối</h1>
           <p>
             Dự án và điểm tiện ích xung quanh TP. Hồ Chí Minh.
-            {projectState.status === "ready" && <> Nguồn dự án: {projectState.source}.</>}
+            {projectState.status === "ready" && (
+              <> Nguồn dự án: {projectState.source}.</>
+            )}
           </p>
         </header>
       </div>
@@ -243,13 +304,14 @@ export default function MapPage() {
 
             <h3>Tuyến đường</h3>
             <p className="map-route-note">
-              Khoảng cách đường thẳng gần đúng khi có tọa độ — không phải thời gian di chuyển thực tế.
+              Dùng động cơ định tuyến dùng chung — hiện chỉ khoảng cách đường chim bay;
+              không bịa thời gian di chuyển.
             </p>
             <label className="route-select">
               Điểm đến
               <select
-                value={routeDestination}
-                onChange={(e) => setRouteDestination(e.target.value)}
+                value={destinationId}
+                onChange={(e) => setDestination(e.target.value)}
               >
                 <option value="">— Chọn —</option>
                 {nearbyPlaces
@@ -261,19 +323,35 @@ export default function MapPage() {
                   ))}
               </select>
             </label>
-            {straightLineKm != null ? (
+            {routeResult ? (
               <p className="route-result">
-                Khoảng cách đường thẳng (gần đúng): <strong>{straightLineKm.toFixed(1)} km</strong>
+                Khoảng cách đường chim bay:{" "}
+                <strong>{routeResult.distanceKm.toFixed(1)} km</strong>
+                <span className="map-route-provider">
+                  {" "}
+                  · {routeResult.provider}
+                </span>
               </p>
-            ) : routeDestination ? (
-              <p className="pending-data">Chờ xác minh</p>
+            ) : destinationId ? (
+              <p className="map-route-note">
+                Chưa đủ tọa độ dự án hoặc điểm đến để tính khoảng cách.
+              </p>
             ) : null}
-            <p className="route-duration pending-data">
-              Thời gian di chuyển: Chờ xác minh
+            <p className="route-duration map-route-note">
+              Thời gian di chuyển:{" "}
+              {routeResult?.durationMinutes != null
+                ? `${routeResult.durationMinutes} phút`
+                : routeResult?.unavailableReason ??
+                  "Chưa cấu hình động cơ định tuyến thời gian thực."}
             </p>
           </div>
         </aside>
-        <div ref={mapContainer} className="map-container" role="application" aria-label="Map of HCMC projects" />
+        <div
+          ref={mapContainer}
+          className="map-container"
+          role="application"
+          aria-label="Map of HCMC projects"
+        />
       </div>
 
       <div className="container map-project-links">
@@ -282,7 +360,7 @@ export default function MapPage() {
           {projects.map((p) => (
             <Link
               key={p.id}
-              to={`/map?project=${p.slug}`}
+              to={`/map?project=${p.slug}${destinationId ? `&destination=${destinationId}` : ""}`}
               className={`chip ${selectedProject === p.slug ? "active" : ""}`}
             >
               {p.name}

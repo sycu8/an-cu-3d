@@ -1,0 +1,111 @@
+.data-trust-badge {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  max-width: 28rem;
+}
+
+.data-trust-badge__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.data-trust-badge__trigger:hover,
+.data-trust-badge__trigger:focus-visible {
+  background: #fff;
+  border-color: var(--color-teal-600);
+  outline: 2px solid transparent;
+}
+
+.data-trust-badge__trigger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(26, 107, 101, 0.25);
+}
+
+.data-trust-badge__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.data-trust-badge--verified .data-trust-badge__dot {
+  background: var(--color-success);
+}
+
+.data-trust-badge--estimated .data-trust-badge__dot,
+.data-trust-badge--pending_verification .data-trust-badge__dot {
+  background: var(--color-warning);
+}
+
+.data-trust-badge--illustrative .data-trust-badge__dot,
+.data-trust-badge--unknown .data-trust-badge__dot {
+  background: var(--color-text-muted);
+}
+
+.data-trust-badge__panel {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.data-trust-badge__panel p {
+  margin: 0 0 var(--space-xs);
+}
+
+.data-trust-badge__panel p:last-child {
+  margin-bottom: 0;
+}
+
+.data-trust-badge__meta {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.data-trust-badge--compact {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.data-trust-badge--compact.data-trust-badge--verified {
+  border-color: rgba(61, 122, 94, 0.35);
+  color: var(--color-success);
+}
+
+/* On dark hero overlays */
+.project-hero .data-trust-badge__trigger {
+  background: rgba(247, 243, 234, 0.12);
+  border-color: rgba(247, 243, 234, 0.28);
+  color: rgba(247, 243, 234, 0.92);
+}
+
+.project-hero .data-trust-badge__panel {
+  background: rgba(13, 61, 58, 0.95);
+  border-color: rgba(247, 243, 234, 0.2);
+  color: rgba(247, 243, 234, 0.9);
+}

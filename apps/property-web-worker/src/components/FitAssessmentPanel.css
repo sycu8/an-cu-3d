@@ -1,0 +1,78 @@
+.fit-assessment {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-top: 2px solid var(--color-teal-700);
+  background: linear-gradient(180deg, rgba(212, 235, 232, 0.35), transparent);
+}
+
+.fit-assessment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.fit-assessment-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.fit-assessment-score {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  color: var(--color-teal-800);
+}
+
+.fit-assessment-score span {
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+}
+
+.fit-assessment-score--muted {
+  color: var(--color-text-muted);
+}
+
+.fit-assessment-explain {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
+  max-width: 60ch;
+}
+
+.fit-assessment-components {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.fit-assessment-components li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--text-small);
+}
+
+.fit-assessment-components p {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-muted);
+}
+
+.fit-assessment-components em {
+  font-style: normal;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+.fit-assessment-recs {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
+}

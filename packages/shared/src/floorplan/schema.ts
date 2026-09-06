@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ObjectConfidenceSchema } from "./object-confidence.js";
 
 export const JobState = z.enum([
   "DISCOVERED",
@@ -88,6 +89,14 @@ export const ValidationResultSchema = z.object({
   checkedAt: z.string().datetime().optional(),
 });
 
+export const FloorplanVerificationStatusSchema = z.enum([
+  "verified",
+  "partially_verified",
+  "estimated",
+  "illustrative",
+  "unknown",
+]);
+
 export const FloorPlanSourceMetadataSchema = z.object({
   sourceClass: SourceClass,
   assetClass: AssetClass,
@@ -101,6 +110,8 @@ export const FloorPlanSourceMetadataSchema = z.object({
   crawledAt: z.string().datetime().optional(),
   provenanceNote: z.string().optional(),
   jobState: JobState.optional(),
+  /** Visitor-facing verification of this geometry vs unit type. */
+  verificationStatus: FloorplanVerificationStatusSchema.optional(),
 });
 
 export const WallSchema = z.object({
@@ -110,6 +121,9 @@ export const WallSchema = z.object({
   thicknessM: z.number().positive().default(0.15),
   heightM: z.number().positive().default(2.8),
   exterior: z.boolean().optional(),
+  /** Defaulted wall height (not measured from source). */
+  heightDefaulted: z.boolean().optional(),
+  confidence: ObjectConfidenceSchema.optional(),
 });
 
 export const DoorSchema = z.object({
@@ -120,6 +134,7 @@ export const DoorSchema = z.object({
   heightM: z.number().positive().default(2.1),
   swing: z.enum(["left", "right", "sliding", "unknown"]).default("unknown"),
   connectsRoomIds: z.array(z.string()).optional(),
+  confidence: ObjectConfidenceSchema.optional(),
 });
 
 export const WindowSchema = z.object({
@@ -129,6 +144,9 @@ export const WindowSchema = z.object({
   widthM: z.number().positive(),
   heightM: z.number().positive().default(1.2),
   sillHeightM: z.number().nonnegative().default(0.9),
+  /** Optional head height when known from source. */
+  headHeightM: z.number().positive().optional(),
+  confidence: ObjectConfidenceSchema.optional(),
 });
 
 export const RoomSchema = z.object({
@@ -146,6 +164,7 @@ export const RoomSchema = z.object({
   ]),
   polygon: z.array(Vec2Schema).min(3),
   areaSqM: z.number().positive().optional(),
+  confidence: ObjectConfidenceSchema.optional(),
 });
 
 export const FixtureSchema = z.object({
@@ -155,6 +174,7 @@ export const FixtureSchema = z.object({
   position: Vec2Schema,
   rotationRad: z.number().default(0),
   sizeM: z.tuple([z.number().positive(), z.number().positive()]).optional(),
+  confidence: ObjectConfidenceSchema.optional(),
 });
 
 export const FurnitureInstanceSchema = z.object({
@@ -164,7 +184,15 @@ export const FurnitureInstanceSchema = z.object({
   position: Vec2Schema,
   rotationRad: z.number().default(0),
   scale: z.number().positive().default(1),
+  confidence: ObjectConfidenceSchema.optional(),
 });
+
+export const PublicationStateSchema = z.enum([
+  "draft",
+  "needs_review",
+  "approved",
+  "published",
+]);
 
 export const FloorPlanDocumentSchema = z.object({
   schemaVersion: z.literal(1),
@@ -187,6 +215,8 @@ export const FloorPlanDocumentSchema = z.object({
   fixtures: z.array(FixtureSchema),
   furniture: z.array(FurnitureInstanceSchema),
   notes: z.string().optional(),
+  /** Publish lifecycle for visitor-facing geometry. */
+  publicationState: PublicationStateSchema.optional(),
 });
 
 export function parseFloorPlanDocument(input: unknown) {

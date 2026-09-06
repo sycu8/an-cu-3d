@@ -85,7 +85,8 @@ export function Layout() {
             </Link>
           </div>
           <p className="footer-note">
-            Dữ liệu chưa xác minh được ghi rõ &ldquo;Chờ xác minh&rdquo;.
+            Explore. Compare. Decide. — Dữ liệu chưa xác minh được ghi rõ hoặc ẩn; không
+            trình bày placeholder như sự thật.
           </p>
         </div>
       </footer>
