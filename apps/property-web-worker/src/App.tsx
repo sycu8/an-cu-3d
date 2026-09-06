@@ -15,6 +15,9 @@ const AdminPage = lazy(() => import("./routes/AdminPage"));
 const BlogPage = lazy(() => import("./routes/BlogPage"));
 const BlogPostPage = lazy(() => import("./routes/BlogPostPage"));
 const ShowroomPage = lazy(() => import("./routes/ShowroomPage"));
+const ToolsPage = lazy(() => import("./routes/ToolsPage"));
+const LoanCalculatorPage = lazy(() => import("./routes/LoanCalculatorPage"));
+const InvestmentToolsPage = lazy(() => import("./routes/InvestmentToolsPage"));
 
 function lazyRoute(Component: ComponentType) {
   return (
@@ -37,6 +40,9 @@ const router = createBrowserRouter([
       { path: "projects/:slug/apartments/:unit", element: lazyRoute(ApartmentViewerPage) },
       { path: "map", element: lazyRoute(MapPage) },
       { path: "compare", element: lazyRoute(ComparePage) },
+      { path: "tools", element: lazyRoute(ToolsPage) },
+      { path: "tools/loan", element: lazyRoute(LoanCalculatorPage) },
+      { path: "tools/investment", element: lazyRoute(InvestmentToolsPage) },
       { path: "admin", element: lazyRoute(AdminPage) },
       { path: "blog", element: lazyRoute(BlogPage) },
       { path: "blog/:slug", element: lazyRoute(BlogPostPage) },

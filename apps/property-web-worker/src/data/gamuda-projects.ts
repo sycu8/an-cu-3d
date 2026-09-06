@@ -271,6 +271,17 @@ export const ALL_SEED_PROJECTS: ProjectDetail[] = [
   ...DATXANH_BLUEMARQ_PROJECTS,
 ].map((p) => applyCrawlMediaHints(applySecondaryMarketPrice(p)));
 
+function bedroomBounds(project: ProjectDetail): {
+  minBedrooms?: number;
+  maxBedrooms?: number;
+} {
+  const beds = project.apartmentTypes
+    .map((a) => a.bedrooms)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  if (!beds.length) return {};
+  return { minBedrooms: Math.min(...beds), maxBedrooms: Math.max(...beds) };
+}
+
 export function getProjectSummaries(): ProjectSummary[] {
   return ALL_SEED_PROJECTS.map((p) => ({
     id: p.id,
@@ -292,6 +303,7 @@ export function getProjectSummaries(): ProjectSummary[] {
     status: "published",
     coverUrl: p.coverUrl,
     coverR2Key: p.coverR2Key,
+    ...bedroomBounds(p),
   }));
 }
 

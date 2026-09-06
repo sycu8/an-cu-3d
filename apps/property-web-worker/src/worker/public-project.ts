@@ -190,6 +190,8 @@ export function toPublicSummary(project: ProjectSummary): ProjectSummary {
     coverR2Key: project.coverR2Key,
     coverUrl: project.coverUrl,
     showroom: project.showroom,
+    minBedrooms: project.minBedrooms,
+    maxBedrooms: project.maxBedrooms,
     // Intentionally omit: confidence, priceProvenance
   };
 }
