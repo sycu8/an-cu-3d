@@ -30,6 +30,23 @@ export interface ProjectSummary {
   sourceClass: string;
   provenance?: string;
   confidence?: number;
+  /** D1/admin status when known */
+  status?: string;
+  updatedAt?: string;
+  showroom?: ProjectShowroomConfig;
+}
+
+export interface ProjectShowroomConfig {
+  lightingDefault?: string;
+  materialPaletteLabel?: string;
+  hotspots?: { roomHint: string; label: string; order: number }[];
+  materialFromPhoto?: {
+    floor: string;
+    wall: string;
+    cabinet: string;
+    accent: string;
+    notes?: string;
+  };
 }
 
 export interface ApartmentTypeSummary {
@@ -53,6 +70,7 @@ export interface ProjectDetail extends ProjectSummary {
   amenities: { category: string; name: string }[];
   apartmentTypes: ApartmentTypeSummary[];
   nearbyPlaces: NearbyPlace[];
+  showroom?: ProjectShowroomConfig;
 }
 
 export interface NearbyPlace {

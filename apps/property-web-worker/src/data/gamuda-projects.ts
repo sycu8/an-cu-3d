@@ -1,7 +1,7 @@
 import type { ProjectDetail, ProjectSummary } from "../types";
 import { DEMO_SCALE_PROJECTS } from "./demo-scale-projects";
 
-const PENDING = "Data pending verification";
+const PENDING = "Chờ xác minh";
 
 export const GAMUDA_DEVELOPER = {
   id: "dev_gamuda_land",
@@ -45,7 +45,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 1,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.3,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -58,7 +58,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 1,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.3,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -71,7 +71,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 2,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.3,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -84,7 +84,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         name: "Ga metro (khu vực Thủ Đức)",
         distanceKm: PENDING,
         travelTime: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
       },
     ],
   },
@@ -120,7 +120,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 1,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.3,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -133,7 +133,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 2,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.3,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -146,7 +146,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         name: "Trường học khu vực Thủ Đức",
         distanceKm: PENDING,
         travelTime: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
       },
     ],
   },
@@ -183,7 +183,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 1,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.35,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -196,7 +196,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 1,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.35,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -209,7 +209,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         bathrooms: 2,
         areaSqm: PENDING,
         price: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
         provenance: "Floor plan pending publication",
         confidence: 0.35,
         validationSummary: "Awaiting published FloorPlanDocument",
@@ -232,7 +232,7 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         name: "Sân bay Tân Sơn Nhất",
         distanceKm: PENDING,
         travelTime: PENDING,
-        sourceClass: "pending_verification",
+        sourceClass: "estimated",
       },
     ],
   },
@@ -261,6 +261,7 @@ export function getProjectSummaries(): ProjectSummary[] {
     sourceClass: p.sourceClass,
     provenance: p.provenance,
     confidence: p.confidence,
+    status: "published",
   }));
 }
 

@@ -23,7 +23,7 @@ export default function ProjectsPage() {
         <h1>Dự án</h1>
         <p>
           Danh sách dự án với nguồn dữ liệu và mức tin cậy được ghi rõ.
-          Thông tin chưa xác minh hiển thị &ldquo;Data pending verification&rdquo;.
+          Thông tin chưa xác minh hiển thị &ldquo;Chờ xác minh&rdquo;.
           {state.status === "ready" && (
             <>
               {" "}

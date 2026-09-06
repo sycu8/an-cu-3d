@@ -113,3 +113,95 @@ export function parseJsonFromLlm(text: string): unknown {
   if (start >= 0 && end > start) return JSON.parse(raw.slice(start, end + 1));
   throw new Error("No JSON object in model response");
 }
+
+
+
+export type ImageResult = {
+  bytes?: Uint8Array;
+  model: string;
+  useCase: AiUseCase;
+  latencyMs: number;
+  source: "ai_gateway" | "workers_ai" | "fallback";
+  note?: string;
+};
+
+/** Generate or edit an image through AI Gateway Workers AI path when configured. */
+export async function imageViaGateway(
+  config: AiGatewayConfig,
+  useCase: "image_gen" | "image_edit",
+  input: { prompt: string; imageBase64?: string },
+  options?: { model?: string },
+): Promise<ImageResult> {
+  const started = Date.now();
+  const model = options?.model ?? DEFAULT_MODELS[useCase];
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (config.token) headers.Authorization = `Bearer ${config.token}`;
+
+  const body: Record<string, unknown> = { prompt: input.prompt };
+  if (useCase === "image_edit" && input.imageBase64) {
+    body.image = input.imageBase64;
+    body.strength = 0.75;
+  }
+
+  const res = await fetch(gatewayChatUrl(config, model), {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`AI Gateway ${useCase} failed (${res.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("image/") || contentType.includes("octet-stream")) {
+    return {
+      bytes: new Uint8Array(await res.arrayBuffer()),
+      model,
+      useCase,
+      latencyMs: Date.now() - started,
+      source: "ai_gateway",
+    };
+  }
+
+  const data = (await res.json()) as { result?: { image?: string }; image?: string };
+  const b64 = data.result?.image ?? data.image;
+  if (b64) {
+    const binary = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return {
+      bytes: binary,
+      model,
+      useCase,
+      latencyMs: Date.now() - started,
+      source: "ai_gateway",
+    };
+  }
+
+  return {
+    model,
+    useCase,
+    latencyMs: Date.now() - started,
+    source: "ai_gateway",
+    note: "No image bytes in gateway response",
+  };
+}
+
+/** Cheap factual QA — flag claims not grounded in provided sources. */
+export async function factualQaViaGateway(
+  config: AiGatewayConfig,
+  claims: string,
+  sources: string,
+): Promise<ChatResult> {
+  return chatViaGateway(config, "qa_factual", [
+    {
+      role: "system",
+      content:
+        "You are a factual QA checker for Vietnamese real-estate copy. Flag any price/area/handover claim not clearly supported by sources. Reply JSON {ok:boolean, issues:string[]}.",
+    },
+    {
+      role: "user",
+      content: `SOURCES:\n${sources}\n\nCLAIMS:\n${claims}`,
+    },
+  ]);
+}

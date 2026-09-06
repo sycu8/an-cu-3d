@@ -10,7 +10,7 @@ Production-like local pass. No production deploy, real PII, or destructive cloud
 | D1 merge | Worker `GET /api/projects` merges D1 over seed by slug |
 | Admin auth | Bearer `ADMIN_SECRET` from `.dev.vars` |
 | AI Gateway | Optional; UI works without tokens |
-| Pricing / area / handover | Always `"Data pending verification"` unless verified + provenance |
+| Pricing / area / handover | Always `"Chờ xác minh"` unless verified + provenance |
 
 ## Roles
 

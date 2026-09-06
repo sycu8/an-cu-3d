@@ -42,3 +42,5 @@ pnpm --filter @ancu/floorplan-engine build
 - `ADMIN_SECRET` on property-web (admin Bearer)
 - `AI_GATEWAY_ACCOUNT_ID`, `AI_GATEWAY_ID`, `AI_GATEWAY_TOKEN` (optional; deterministic fallback without them)
 - `ENGINE_BASE_URL` + `ENGINE_API_SECRET` on property-web for engine crawl enrichment
+
+- Admin + AI Gateway + showroom plan: schema/auth/jobs, admin UI, orchestration, AI Gateway client, blog+cron, image/2D assist, showroom share link, deploy secrets docs.

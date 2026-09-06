@@ -117,5 +117,6 @@ Job create returns quickly; work runs on Queue/Workflow.
 - **Admin UI** (`/admin`): Bearer `ADMIN_SECRET`; add project by name → crawl/synthesize/publish with live stage timing (no rate limit / timeout on this path).
 - **AI Gateway**: multi-model routing in `@ancu/shared` (`research`, `blog`, `image_gen`, `image_edit`, `vision_2d`, `qa_factual`) with Workers AI fallback.
 - **Blog** (`/blog`): weekly draft generation from existing projects; Vietnamese primary.
-- **Showroom** (`/projects/:slug/showroom`): lighting presets, material palettes, room hotspots — sample-home presentation.
+- **Showroom** (`/projects/:slug/showroom`): lighting presets, material palettes (incl. photo-derived), room hotspots, shareable `?unit=&preset=&palette=` link.
+- **Admin tools**: weekly blog draft (cron, never auto-publish), image gen/edit, 2D→3D assist, factual QA on build, `POST /api/admin/projects/approve-all`.
 - **Engine**: `POST /jobs` rate limit bypassed when `X-AnCu-Admin-Build: 1` or `bypassRateLimit: true`.

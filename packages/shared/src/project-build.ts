@@ -37,6 +37,7 @@ export type ProjectBuildJob = {
   error: string | null;
   resultJson: string | null;
   createdAt: string;
+  updatedAt?: string;
   events?: ProjectBuildEvent[];
 };
 

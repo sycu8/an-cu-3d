@@ -1,5 +1,7 @@
 import {
   chatViaGateway,
+  factualQaViaGateway,
+  imageViaGateway,
   parseJsonFromLlm,
   slugifyProjectName,
   type AiGatewayConfig,
@@ -85,7 +87,7 @@ function fallbackSynthesis(name: string, slug: string, snippets: string[]): {
   chat?: ChatResult;
 } {
   const known = KNOWN_SOURCES[slug];
-  const pending = "Data pending verification";
+  const pending = "Chờ xác minh";
   const project: SynthesizedProject = {
     name,
     slug,
@@ -189,7 +191,7 @@ export async function synthesizeProject(
   }
 
   const system = `Bạn là biên tập viên bất động sản AnCư 3D. Tổng hợp thông tin dự án tiếng Việt từ nguồn cung cấp.
-QUAN TRỌNG: Không bịa giá, diện tích, số căn, hoặc thời gian bàn giao. Nếu thiếu, dùng đúng chuỗi "Data pending verification".
+QUAN TRỌNG: Không bịa giá, diện tích, số căn, hoặc thời gian bàn giao. Nếu thiếu, dùng đúng chuỗi "Chờ xác minh".
 Trả về DUY NHẤT một JSON object với các khóa:
 name, tagline, description, city, district, address, latitude, longitude, handover, priceRange, totalUnits,
 amenities (array {category,name}), apartmentTypes (array {slug,name,bedrooms,bathrooms,areaSqm,floorplanKey}),
@@ -213,10 +215,10 @@ floorplanKey chỉ dùng: studio | one-bedroom | two-bedroom.`;
       name: parsed.name ?? name,
       slug,
       sources: crawled.map(({ label, url }) => ({ label, url })),
-      handover: parsed.handover || "Data pending verification",
-      priceRange: parsed.priceRange || "Data pending verification",
-      totalUnits: parsed.totalUnits || "Data pending verification",
-      address: parsed.address || "Data pending verification",
+      handover: parsed.handover || "Chờ xác minh",
+      priceRange: parsed.priceRange || "Chờ xác minh",
+      totalUnits: parsed.totalUnits || "Chờ xác minh",
+      address: parsed.address || "Chờ xác minh",
       amenities: parsed.amenities?.length ? parsed.amenities : base.amenities,
       apartmentTypes: parsed.apartmentTypes?.length
         ? parsed.apartmentTypes
@@ -263,7 +265,7 @@ export async function generateBlogDraft(
         `[Xem showroom](/projects/${p.slug}/showroom)`,
         ``,
       ]),
-      `> Giá / diện tích / bàn giao chưa xác minh được ghi rõ "Data pending verification".`,
+      `> Giá / diện tích / bàn giao chưa xác minh được ghi rõ "Chờ xác minh".`,
     ].join("\n"),
     seoTitle: `Blog AnCư — ${names || "dự án"}`,
     seoDescription: "Tổng hợp hàng tuần về trải nghiệm không gian dự án trên AnCư 3D.",
@@ -291,16 +293,36 @@ export async function generateBlogDraft(
   }
 }
 
-/** Placeholder image metadata — real pixels via Workers AI when bound. */
+/** Image generation via AI Gateway first, Workers AI fallback, else prompt sidecar. */
+/** Image generation via AI Gateway first, Workers AI fallback, else prompt sidecar. */
 export async function generateImageAsset(
   env: Env,
   prompt: string,
   key: string,
 ): Promise<{ r2Key: string; note: string; bytes?: number }> {
   const gateway = getAiGatewayConfig(env);
-  if (env.AI && gateway) {
+
+  if (gateway) {
     try {
-      // Workers AI image models vary; store prompt sidecar when binary unavailable.
+      const img = await imageViaGateway(gateway, "image_gen", { prompt });
+      if (img.bytes?.length) {
+        await env.ASSETS.put(key, img.bytes, {
+          httpMetadata: { contentType: "image/jpeg" },
+          customMetadata: { prompt: prompt.slice(0, 500), model: img.model },
+        });
+        return {
+          r2Key: key,
+          note: `generated_via_ai_gateway:${img.model}`,
+          bytes: img.bytes.byteLength,
+        };
+      }
+    } catch {
+      // try Workers AI next
+    }
+  }
+
+  if (env.AI) {
+    try {
       const result = (await env.AI.run("@cf/black-forest-labs/flux-1-schnell", {
         prompt,
       })) as { image?: string } | ArrayBuffer | ReadableStream;
@@ -314,7 +336,7 @@ export async function generateImageAsset(
         return { r2Key: key, note: "generated_via_workers_ai", bytes: binary.byteLength };
       }
     } catch {
-      // fall through to metadata-only
+      // fall through
     }
   }
 
@@ -328,6 +350,95 @@ export async function generateImageAsset(
     r2Key: `${key}.json`,
     note: "Image model unavailable — stored prompt sidecar for later generation",
   };
+}
+
+/** Image edit via AI Gateway (img2img). Falls back to prompt sidecar. */
+export async function editImageAsset(
+  env: Env,
+  prompt: string,
+  imageBase64: string,
+  key: string,
+): Promise<{ r2Key: string; note: string; bytes?: number }> {
+  const gateway = getAiGatewayConfig(env);
+  if (gateway) {
+    try {
+      const img = await imageViaGateway(gateway, "image_edit", {
+        prompt,
+        imageBase64,
+      });
+      if (img.bytes?.length) {
+        await env.ASSETS.put(key, img.bytes, {
+          httpMetadata: { contentType: "image/jpeg" },
+          customMetadata: { prompt: prompt.slice(0, 500), model: img.model },
+        });
+        return {
+          r2Key: key,
+          note: `edited_via_ai_gateway:${img.model}`,
+          bytes: img.bytes.byteLength,
+        };
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  const meta = new TextEncoder().encode(
+    JSON.stringify({
+      prompt,
+      createdAt: new Date().toISOString(),
+      status: "edit_prompt_only",
+      hasSourceImage: Boolean(imageBase64),
+    }),
+  );
+  await env.ASSETS.put(`${key}.json`, meta, {
+    httpMetadata: { contentType: "application/json" },
+  });
+  return {
+    r2Key: `${key}.json`,
+    note: "Image edit model unavailable — stored edit prompt sidecar",
+  };
+}
+
+/** Factual QA against source snippets — flags unsupported claims. */
+export async function runFactualQa(
+  env: Env,
+  claims: string,
+  sources: string,
+): Promise<{ ok: boolean; issues: string[]; raw?: string; source: string }> {
+  const gateway = getAiGatewayConfig(env);
+  if (!gateway) {
+    return {
+      ok: true,
+      issues: [],
+      source: "fallback",
+      raw: "AI Gateway not configured — skipped factual QA",
+    };
+  }
+  try {
+    const chat = await factualQaViaGateway(gateway, claims, sources);
+    try {
+      const parsed = parseJsonFromLlm(chat.text) as { ok?: boolean; issues?: string[] };
+      return {
+        ok: Boolean(parsed.ok),
+        issues: parsed.issues ?? [],
+        raw: chat.text.slice(0, 1000),
+        source: chat.source,
+      };
+    } catch {
+      return {
+        ok: false,
+        issues: ["Unparseable QA response"],
+        raw: chat.text.slice(0, 1000),
+        source: chat.source,
+      };
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      issues: [err instanceof Error ? err.message : "QA failed"],
+      source: "error",
+    };
+  }
 }
 
 export async function assist2dTo3d(

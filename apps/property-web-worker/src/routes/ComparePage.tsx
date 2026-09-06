@@ -18,7 +18,7 @@ function CompareRow({
     <tr>
       <th>{label}</th>
       {values.map((v, i) => (
-        <td key={i} className={v === "Data pending verification" ? "pending-data" : ""}>
+        <td key={i} className={v === "Chờ xác minh" ? "pending-data" : ""}>
           {v ?? "—"}
         </td>
       ))}

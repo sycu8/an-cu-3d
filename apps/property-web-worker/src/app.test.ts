@@ -45,8 +45,8 @@ describe("demo-scale seed density", () => {
     expect(demos.length).toBeGreaterThanOrEqual(3);
     for (const d of demos) {
       expect(d.provenance?.toLowerCase()).toMatch(/demo|sanitized|fixture/);
-      expect(d.priceRange).toBe("Data pending verification");
-      expect(d.handover).toBe("Data pending verification");
+      expect(d.priceRange).toBe("Chờ xác minh");
+      expect(d.handover).toBe("Chờ xác minh");
     }
   });
 

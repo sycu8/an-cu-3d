@@ -7,7 +7,7 @@ interface ProjectCardProps {
 }
 
 function isPending(value: string) {
-  return value === "Data pending verification";
+  return value === "Chờ xác minh";
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {

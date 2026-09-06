@@ -1,7 +1,13 @@
 import { slugifyProjectName } from "@ancu/shared";
 import { getProjectBySlug, getProjectSummaries } from "../data/gamuda-projects";
 import { verifyAdminBearer } from "./auth";
-import { assist2dTo3d, generateBlogDraft, generateImageAsset } from "./ai/pipeline";
+import {
+  assist2dTo3d,
+  editImageAsset,
+  generateBlogDraft,
+  generateImageAsset,
+  runFactualQa,
+} from "./ai/pipeline";
 import {
   getPostBySlug,
   listAllPosts,
@@ -21,7 +27,7 @@ function securityHeaders(requestId: string): Record<string, string> {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "X-Request-Id": requestId,
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://gateway.ai.cloudflare.com; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://gateway.ai.cloudflare.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
   };
 }
 
@@ -248,6 +254,115 @@ async function handleAdmin(
     return json({ result }, requestId, 200, "no-store");
   }
 
+
+  if (path === "/api/admin/images/generate" && request.method === "POST") {
+    let body: { prompt?: string; key?: string };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    if (!body.prompt?.trim()) {
+      return json({ error: "prompt_required" }, requestId, 400, "no-store");
+    }
+    const key = body.key?.trim() || `media/generated/${crypto.randomUUID()}.jpg`;
+    const result = await generateImageAsset(env, body.prompt.trim(), key);
+    return json({ result }, requestId, 200, "no-store");
+  }
+
+  if (path === "/api/admin/images/edit" && request.method === "POST") {
+    let body: { prompt?: string; imageBase64?: string; key?: string };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    if (!body.prompt?.trim() || !body.imageBase64) {
+      return json({ error: "prompt_and_imageBase64_required" }, requestId, 400, "no-store");
+    }
+    const key = body.key?.trim() || `media/edited/${crypto.randomUUID()}.jpg`;
+    const result = await editImageAsset(env, body.prompt.trim(), body.imageBase64, key);
+    return json({ result }, requestId, 200, "no-store");
+  }
+
+  if (path === "/api/admin/qa/factual" && request.method === "POST") {
+    let body: { claims?: string; sources?: string };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    if (!body.claims?.trim()) {
+      return json({ error: "claims_required" }, requestId, 400, "no-store");
+    }
+    const result = await runFactualQa(env, body.claims, body.sources ?? "");
+    return json({ result }, requestId, 200, "no-store");
+  }
+
+  const adminBlogMatch = path.match(/^\/api\/admin\/blog\/([^/]+)$/);
+  if (adminBlogMatch && request.method === "GET") {
+    const post = await getPostBySlug(env.DB, decodeURIComponent(adminBlogMatch[1]));
+    if (!post) return notFound("post_not_found", requestId);
+    return json({ post }, requestId, 200, "no-store");
+  }
+
+  if (adminBlogMatch && request.method === "POST") {
+    let body: { publish?: boolean };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      body = {};
+    }
+    const slug = decodeURIComponent(adminBlogMatch[1]);
+    const existing = await getPostBySlug(env.DB, slug);
+    if (!existing) return notFound("post_not_found", requestId);
+    if (body.publish) {
+      await upsertBlogPost(env.DB, {
+        id: existing.id,
+        slug: existing.slug,
+        title: existing.title,
+        excerpt: existing.excerpt,
+        bodyMarkdown: existing.bodyMarkdown,
+        projectSlugs: existing.projectSlugs,
+        status: "published",
+        seoTitle: existing.seoTitle ?? undefined,
+        seoDescription: existing.seoDescription ?? undefined,
+        coverR2Key: existing.coverR2Key ?? undefined,
+        publish: true,
+      });
+    }
+    const post = await getPostBySlug(env.DB, slug);
+    return json({ post }, requestId, 200, "no-store");
+  }
+
+  if (path === "/api/admin/projects/approve-all" && request.method === "POST") {
+    const result = await env.DB.batch([
+      env.DB.prepare(
+        `UPDATE apartment_types
+         SET source_class = 'estimated',
+             provenance = COALESCE(provenance, 'Admin approved sample linkage'),
+             validation_summary = 'Đã duyệt hiển thị showroom — số liệu vẫn Chờ xác minh nếu chưa có nguồn'
+         WHERE source_class = 'pending_verification'`,
+      ),
+      env.DB.prepare(
+        `UPDATE projects
+         SET status = 'published', updated_at = datetime('now')
+         WHERE status != 'published'`,
+      ),
+    ]);
+    return json(
+      {
+        ok: true,
+        apartmentUpdates: result[0].meta.changes ?? 0,
+        projectUpdates: result[1].meta.changes ?? 0,
+      },
+      requestId,
+      200,
+      "no-store",
+    );
+  }
+
+
   return notFound("admin_route_not_found", requestId);
 }
 
@@ -319,6 +434,47 @@ async function handleApi(
 }
 
 export default {
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    // Weekly blog draft suggestion — never auto-publishes.
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const merged = await mergeProjects(env);
+          const details = merged.projects.slice(0, 5).map((p) => ({
+            name: p.name,
+            slug: p.slug,
+          }));
+          if (!details.length) return;
+          const draft = await generateBlogDraft(env, details);
+          const slug = `goi-y-tuan-${new Date().toISOString().slice(0, 10)}`;
+          const existing = await getPostBySlug(env.DB, slug).catch(() => null);
+          if (existing) return;
+          const id = crypto.randomUUID();
+          const cover = await generateImageAsset(
+            env,
+            draft.coverPrompt,
+            `blog/${slug}/cover`,
+          );
+          await upsertBlogPost(env.DB, {
+            id,
+            slug,
+            title: `[Gợi ý] ${draft.title}`,
+            excerpt: draft.excerpt,
+            bodyMarkdown: draft.bodyMarkdown,
+            projectSlugs: details.map((p) => p.slug),
+            status: "draft",
+            seoTitle: draft.seoTitle,
+            seoDescription: draft.seoDescription,
+            coverR2Key: cover.r2Key,
+            publish: false,
+          });
+        } catch (err) {
+          console.error("scheduled blog draft failed", err);
+        }
+      })(),
+    );
+  },
+
   async fetch(
     request: Request,
     env: Env,

@@ -22,10 +22,11 @@ type ProjectRow = {
   cover_r2_key: string | null;
   published_at: string | null;
   showroom_json: string | null;
+  updated_at?: string | null;
   developer_name?: string;
 };
 
-const PENDING = "Data pending verification";
+const PENDING = "Chờ xác minh";
 
 export async function ensureGamudaDeveloper(db: D1Database): Promise<string> {
   const id = "dev_gamuda_land";
@@ -66,6 +67,8 @@ export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSum
     sourceClass: p.source_class,
     provenance: p.provenance ?? undefined,
     confidence: p.confidence ?? undefined,
+    status: p.status,
+    updatedAt: p.updated_at ?? undefined,
   }));
 }
 
@@ -167,7 +170,19 @@ export async function getDbProjectBySlug(
       travelTime: n.travel_time ?? PENDING,
       sourceClass: n.source_class,
     })),
+    status: p.status,
+    updatedAt: p.updated_at ?? undefined,
+    showroom: parseShowroomJson(p.showroom_json),
   };
+}
+
+function parseShowroomJson(raw: string | null): ProjectDetail["showroom"] | undefined {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as ProjectDetail["showroom"];
+  } catch {
+    return undefined;
+  }
 }
 
 export type SynthesizedProject = {
@@ -199,6 +214,13 @@ export type SynthesizedProject = {
     lightingDefault: string;
     materialPaletteLabel: string;
     hotspots: { roomHint: string; label: string; order: number }[];
+    materialFromPhoto?: {
+      floor: string;
+      wall: string;
+      cabinet: string;
+      accent: string;
+      notes?: string;
+    };
   };
 };
 

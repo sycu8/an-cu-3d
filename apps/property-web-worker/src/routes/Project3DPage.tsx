@@ -115,7 +115,7 @@ export default function Project3DPage() {
           <h1>Khám phá 3D — {project.name}</h1>
           <p className="project-3d-note">
             Mô hình khối đơn giản từ dữ liệu dự án — không phải hình ảnh thực tế.
-            Chi tiết tòa nhà: Data pending verification.
+            Chi tiết tòa nhà: Chờ xác minh.
           </p>
         </header>
       </div>

@@ -38,7 +38,7 @@ export function Layout() {
           <p>
             {BRAND} — {TAGLINE}
           </p>
-          <p className="footer-note">Dữ liệu chưa xác minh được ghi rõ &ldquo;Data pending verification&rdquo;.</p>
+          <p className="footer-note">Dữ liệu chưa xác minh được ghi rõ &ldquo;Chờ xác minh&rdquo;.</p>
         </div>
       </footer>
     </div>
