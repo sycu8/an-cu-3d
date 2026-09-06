@@ -3,7 +3,8 @@ import { Link, useParams } from "react-router";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { getProjectBySlug } from "../data/gamuda-projects";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProject } from "../hooks/useProjects";
 import "./Project3DPage.css";
 
 function BuildingBlock({
@@ -87,17 +88,21 @@ const LazyCanvas = lazy(() =>
 
 export default function Project3DPage() {
   const { slug } = useParams<{ slug: string }>();
-  const project = slug ? getProjectBySlug(slug) : undefined;
+  const state = useProject(slug);
 
-  if (!project) {
+  if (state.status === "loading") return <PageSkeleton />;
+
+  if (state.status === "error" || !state.data) {
     return (
       <div className="container page-header">
         <h1>Không tìm thấy dự án</h1>
+        <p role="alert">{state.status === "error" ? state.error : "Missing project"}</p>
         <Link to="/projects">← Quay lại</Link>
       </div>
     );
   }
 
+  const project = state.data;
   const buildingCount = Math.min(project.apartmentTypes.length + 1, 4);
 
   return (
@@ -122,6 +127,9 @@ export default function Project3DPage() {
       <div className="container project-3d-actions">
         <Link to={`/projects/${project.slug}/apartments`} className="btn btn-primary">
           Xem căn hộ
+        </Link>
+        <Link to={`/projects/${project.slug}/showroom`} className="btn btn-secondary">
+          Showroom
         </Link>
         <Link to={`/map?project=${project.slug}`} className="btn btn-secondary">
           Vị trí

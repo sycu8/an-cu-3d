@@ -3,7 +3,10 @@ import react from "@vitejs/plugin-react";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
-  plugins: [react(), cloudflare()],
+  plugins: [react(), cloudflare({
+    // Local QA must not require Cloudflare API token / remote AI proxy
+    remoteBindings: false,
+  })],
   build: {
     outDir: "dist",
     emptyOutDir: true,

@@ -5,7 +5,8 @@ import {
   LIGHTING_PRESETS,
   type LightingPreset,
 } from "@ancu/shared";
-import { getProjectBySlug } from "../data/gamuda-projects";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProject } from "../hooks/useProjects";
 import { getSampleFloorPlan } from "../data/sample-floorplans";
 import "./ShowroomPage.css";
 
@@ -16,8 +17,10 @@ const FloorPlanViewer = lazy(() =>
 export default function ShowroomPage() {
   const { slug } = useParams<{ slug: string }>();
   const [params, setParams] = useSearchParams();
-  const project = slug ? getProjectBySlug(slug) : undefined;
+  const state = useProject(slug);
+  const [focusRoomId, setFocusRoomId] = useState<string | undefined>();
 
+  const project = "data" in state ? state.data : undefined;
   const unit =
     params.get("unit") ?? project?.apartmentTypes[0]?.slug ?? "studio-a";
   const lighting = ((params.get("preset") as LightingPreset) || "day") as LightingPreset;
@@ -26,13 +29,17 @@ export default function ShowroomPage() {
     DEFAULT_MATERIAL_PALETTES.find((p) => p.label === paletteLabel) ??
     DEFAULT_MATERIAL_PALETTES[0];
 
-  const floorPlan = useMemo(() => getSampleFloorPlan(unit), [unit]);
-  const [focusRoomId, setFocusRoomId] = useState<string | undefined>();
+  const apt = project?.apartmentTypes.find((a) => a.slug === unit);
+  const floorPlanKey = apt?.floorplanKey ?? unit;
+  const floorPlan = useMemo(() => getSampleFloorPlan(floorPlanKey), [floorPlanKey]);
 
-  if (!project) {
+  if (state.status === "loading") return <PageSkeleton />;
+
+  if (state.status === "error" || !project) {
     return (
       <div className="container page-header">
         <h1>Không tìm thấy dự án</h1>
+        <p role="alert">{state.status === "error" ? state.error : "Missing project"}</p>
         <Link to="/projects">← Dự án</Link>
       </div>
     );

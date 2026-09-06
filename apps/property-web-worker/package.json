@@ -10,7 +10,9 @@
     "test": "vitest run --config vitest.unit.config.ts",
     "lint": "echo \"no lint yet\"",
     "deploy": "wrangler deploy",
-    "test:app": "vitest run"
+    "test:app": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply ancu-property-db --local",
+    "db:seed:local": "wrangler d1 execute ancu-property-db --local --file=scripts/seed-local-demo.sql"
   },
   "dependencies": {
     "@ancu/shared": "workspace:*",

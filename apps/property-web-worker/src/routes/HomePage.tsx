@@ -1,11 +1,24 @@
 import { Link } from "react-router";
 import { BRAND, TAGLINE } from "@ancu/shared";
-import { getProjectSummaries } from "../data/gamuda-projects";
 import { ProjectCard } from "../components/ProjectCard";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProjectSummaries } from "../hooks/useProjects";
 import "./HomePage.css";
 
 export default function HomePage() {
-  const projects = getProjectSummaries().slice(0, 3);
+  const state = useProjectSummaries();
+
+  if (state.status === "loading") return <PageSkeleton />;
+  if (state.status === "error" && !state.data?.length) {
+    return (
+      <div className="container page-header">
+        <h1>Không tải được dự án</h1>
+        <p role="alert">{state.error}</p>
+      </div>
+    );
+  }
+
+  const projects = ("data" in state && state.data ? state.data : []).slice(0, 6);
 
   return (
     <div className="home">
@@ -30,7 +43,9 @@ export default function HomePage() {
 
       <section className="container home-featured">
         <h2>Dự án nổi bật</h2>
-        <p className="section-desc">Gamuda Land — TP. Hồ Chí Minh</p>
+        <p className="section-desc">
+          Gamuda Land &amp; dữ liệu demo QA — nguồn: {state.status === "ready" ? state.source : "…"}
+        </p>
         <div className="grid-projects">
           {projects.map((p) => (
             <ProjectCard key={p.id} project={p} />

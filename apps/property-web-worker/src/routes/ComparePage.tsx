@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { getProjectSummaries, getProjectBySlug } from "../data/gamuda-projects";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProjectSummaries } from "../hooks/useProjects";
 import type { ProjectSummary } from "../types";
 import "./ComparePage.css";
 
@@ -27,7 +28,10 @@ function CompareRow({
 
 export default function ComparePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const allProjects = getProjectSummaries();
+  const state = useProjectSummaries();
+  const [picker, setPicker] = useState("");
+
+  const allProjects = "data" in state && state.data ? state.data : [];
 
   const selectedSlugs = useMemo(() => {
     const fromUrl = [
@@ -39,28 +43,20 @@ export default function ComparePage() {
     return allProjects.slice(0, 2).map((p) => p.slug);
   }, [searchParams, allProjects]);
 
-  const [picker, setPicker] = useState("");
+  if (state.status === "loading") return <PageSkeleton />;
+
+  if (state.status === "error" && !allProjects.length) {
+    return (
+      <div className="container page-header">
+        <h1>So sánh dự án</h1>
+        <p role="alert">{state.error}</p>
+      </div>
+    );
+  }
 
   const compared: ProjectSummary[] = selectedSlugs
-    .map((slug) => getProjectBySlug(slug))
-    .filter(Boolean)
-    .map((p) => ({
-      id: p!.id,
-      slug: p!.slug,
-      name: p!.name,
-      tagline: p!.tagline,
-      city: p!.city,
-      district: p!.district,
-      developerName: p!.developerName,
-      handover: p!.handover,
-      priceRange: p!.priceRange,
-      totalUnits: p!.totalUnits,
-      latitude: p!.latitude,
-      longitude: p!.longitude,
-      sourceClass: p!.sourceClass,
-      provenance: p!.provenance,
-      confidence: p!.confidence,
-    }));
+    .map((slug) => allProjects.find((p) => p.slug === slug))
+    .filter((p): p is ProjectSummary => Boolean(p));
 
   const addProject = (slug: string) => {
     if (!slug || selectedSlugs.includes(slug) || selectedSlugs.length >= MAX_COMPARE) return;

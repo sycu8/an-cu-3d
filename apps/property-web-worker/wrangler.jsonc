@@ -6,7 +6,9 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    // Only invoke the Worker for API; SPA routes are served by assets (local + prod).
+    "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
     {

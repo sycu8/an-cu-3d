@@ -1,4 +1,5 @@
 import type { ProjectDetail, ProjectSummary } from "../types";
+import { DEMO_SCALE_PROJECTS } from "./demo-scale-projects";
 
 const PENDING = "Data pending verification";
 
@@ -237,8 +238,14 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
   },
 ];
 
+/** Seed + sanitized demo inventory for production-like local density. */
+export const ALL_SEED_PROJECTS: ProjectDetail[] = [
+  ...GAMUDA_PROJECTS,
+  ...DEMO_SCALE_PROJECTS,
+];
+
 export function getProjectSummaries(): ProjectSummary[] {
-  return GAMUDA_PROJECTS.map((p) => ({
+  return ALL_SEED_PROJECTS.map((p) => ({
     id: p.id,
     slug: p.slug,
     name: p.name,
@@ -258,11 +265,11 @@ export function getProjectSummaries(): ProjectSummary[] {
 }
 
 export function getProjectBySlug(slug: string): ProjectDetail | undefined {
-  return GAMUDA_PROJECTS.find((p) => p.slug === slug);
+  return ALL_SEED_PROJECTS.find((p) => p.slug === slug);
 }
 
 export function getAllNearbyPlaces() {
-  return GAMUDA_PROJECTS.flatMap((p) =>
+  return ALL_SEED_PROJECTS.flatMap((p) =>
     p.nearbyPlaces.map((place) => ({
       ...place,
       projectSlug: p.slug,

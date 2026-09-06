@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import { Link, useParams } from "react-router";
-import { getProjectBySlug } from "../data/gamuda-projects";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProject } from "../hooks/useProjects";
 import { getSampleFloorPlan } from "../data/sample-floorplans";
 import { qaMetadata } from "../viewer/utils";
 import { QaPanel } from "../viewer/QaPanel";
@@ -14,17 +15,32 @@ const FloorPlanViewerWithControls = lazy(() =>
 
 export default function ApartmentViewerPage() {
   const { slug, unit } = useParams<{ slug: string; unit: string }>();
-  const project = slug ? getProjectBySlug(slug) : undefined;
-  const apt = project?.apartmentTypes.find((a) => a.slug === unit);
-  const floorPlan = unit ? getSampleFloorPlan(unit) : null;
+  const state = useProject(slug);
   const [overlayOpacity, setOverlayOpacity] = useState(0.35);
-  const floorMeta = floorPlan ? qaMetadata(floorPlan) : null;
 
-  if (!project || !apt || !floorPlan) {
+  if (state.status === "loading") return <PageSkeleton />;
+
+  if (state.status === "error" || !state.data) {
     return (
       <div className="container page-header">
         <h1>Không tìm thấy căn hộ</h1>
+        <p role="alert">{state.status === "error" ? state.error : "Missing project"}</p>
         <Link to={slug ? `/projects/${slug}/apartments` : "/projects"}>← Quay lại</Link>
+      </div>
+    );
+  }
+
+  const project = state.data;
+  const apt = project.apartmentTypes.find((a) => a.slug === unit);
+  const floorPlanKey = apt?.floorplanKey ?? unit;
+  const floorPlan = floorPlanKey ? getSampleFloorPlan(floorPlanKey) : null;
+  const floorMeta = floorPlan ? qaMetadata(floorPlan) : null;
+
+  if (!apt || !floorPlan) {
+    return (
+      <div className="container page-header">
+        <h1>Không tìm thấy căn hộ</h1>
+        <Link to={`/projects/${project.slug}/apartments`}>← Quay lại</Link>
       </div>
     );
   }
