@@ -1,0 +1,16 @@
+{
+  "name": "@ancu/floorplan-engine",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"P3/P10: wire wrangler\"",
+    "build": "echo \"P10: build\"",
+    "typecheck": "echo \"P10: typecheck\"",
+    "test": "echo \"no tests yet\"",
+    "lint": "echo \"no lint yet\""
+  },
+  "dependencies": {
+    "@ancu/shared": "workspace:*"
+  }
+}

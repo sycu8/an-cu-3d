@@ -1,0 +1,16 @@
+{
+  "name": "@ancu/property-web-worker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"P6: wire wrangler/vite\"",
+    "build": "echo \"P6: build\"",
+    "typecheck": "echo \"P6: typecheck\"",
+    "test": "echo \"no tests yet\"",
+    "lint": "echo \"no lint yet\""
+  },
+  "dependencies": {
+    "@ancu/shared": "workspace:*"
+  }
+}
