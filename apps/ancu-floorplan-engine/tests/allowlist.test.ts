@@ -19,6 +19,17 @@ describe("allowlist URL validation", () => {
     expect(result).toEqual({ ok: false, reason: "https_only" });
   });
 
+  it("rejects non-http(s) schemes", () => {
+    expect(validateAllowlistedUrl("file:///etc/passwd")).toEqual({
+      ok: false,
+      reason: "invalid_protocol",
+    });
+    expect(validateAllowlistedUrl("ftp://www.gamudaland.com.vn/")).toEqual({
+      ok: false,
+      reason: "invalid_protocol",
+    });
+  });
+
   it("rejects domains outside the allowlist", () => {
     const result = validateAllowlistedUrl("https://evil.example/floorplan.png");
     expect(result).toEqual({ ok: false, reason: "domain_not_allowlisted" });
@@ -30,6 +41,26 @@ describe("allowlist URL validation", () => {
       reason: "private_or_blocked_host",
     });
     expect(validateAllowlistedUrl("https://127.0.0.1/secret")).toEqual({
+      ok: false,
+      reason: "private_or_blocked_host",
+    });
+    expect(validateAllowlistedUrl("https://192.168.1.50/secret")).toEqual({
+      ok: false,
+      reason: "private_or_blocked_host",
+    });
+    expect(validateAllowlistedUrl("https://10.0.0.1/secret")).toEqual({
+      ok: false,
+      reason: "private_or_blocked_host",
+    });
+    expect(
+      validateAllowlistedUrl("https://169.254.169.254/latest/meta-data"),
+    ).toEqual({
+      ok: false,
+      reason: "private_or_blocked_host",
+    });
+    expect(
+      validateAllowlistedUrl("https://metadata.google.internal/computeMetadata"),
+    ).toEqual({
       ok: false,
       reason: "private_or_blocked_host",
     });

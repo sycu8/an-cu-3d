@@ -2,7 +2,7 @@
 
 ## Secrets (GitHub)
 
-Required repository secrets (already noted by product owner):
+Required repository secrets:
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
@@ -11,6 +11,31 @@ Optional later:
 
 - `ENGINE_API_SECRET` (engine Worker secret)
 - Preview/production D1 database IDs if not injected by `wrangler d1 create` output into env-specific config
+
+## CI deploy workflow
+
+`.github/workflows/deploy.yml` runs on `workflow_dispatch` and pushes to `main`:
+
+1. Install, typecheck, test, build (all packages)
+2. Deploy `@ancu/property-web-worker` and `@ancu/floorplan-engine` with `environment: production`
+
+Do not hardcode account IDs or API tokens in the repository.
+
+## Post-deploy smoke checks
+
+From the repo root (after deploy or against local dev servers):
+
+```bash
+# Defaults: WEB_BASE_URL=http://localhost:5173, ENGINE_BASE_URL=http://localhost:8787
+node scripts/smoke.mjs
+
+# Production example
+WEB_BASE_URL=https://ancu-property-web.example.com \
+ENGINE_BASE_URL=https://ancu-floorplan-engine.example.com \
+node scripts/smoke.mjs
+```
+
+Exits non-zero if `/api/health` (web) or `/health` (engine) does not return `{ "status": "ok" }`.
 
 ## Create resources (once per env)
 

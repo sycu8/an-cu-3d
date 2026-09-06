@@ -1,24 +1,11 @@
-import { Hono } from "hono";
-import { verifyBearerToken } from "./auth";
-import { crawl } from "./routes/crawl";
-import { floorplans } from "./routes/floorplans";
-import { jobs } from "./routes/jobs";
+import { app, type Env } from "./app";
+import { assertProductionEnv } from "./env";
 import { logJob } from "./logger";
 import { processCrawlMessage } from "./routes/crawl";
 import type { ConversionWorkflowParams } from "./workflow/ConversionWorkflow";
 
-export type Env = {
-  ENGINE_DB: D1Database;
-  FLOORPLANS: R2Bucket;
-  CONVERSION_QUEUE: Queue<ConversionQueueMessage>;
-  CRAWL_QUEUE: Queue<CrawlQueueMessage>;
-  CONVERSION_WORKFLOW: Workflow;
-  AI: Ai;
-  BROWSER: Fetcher;
-  ENGINE_API_SECRET: string;
-  PUBLISH_CONFIDENCE_HIGH: string;
-  PUBLISH_CONFIDENCE_REVIEW: string;
-};
+export type { Env } from "./app";
+export { app };
 
 type ConversionQueueMessage = {
   jobId: string;
@@ -30,41 +17,6 @@ type CrawlQueueMessage = {
   seedUrl: string;
   projectSlug?: string;
 };
-
-const app = new Hono<{ Bindings: Env }>();
-
-app.get("/health", (c) =>
-  c.json({
-    ok: true,
-    service: "ancu-floorplan-engine",
-    ts: new Date().toISOString(),
-  }),
-);
-
-app.use("*", async (c, next) => {
-  if (c.req.path === "/health") {
-    return next();
-  }
-
-  const authorized = await verifyBearerToken(
-    c.req.header("Authorization"),
-    c.env.ENGINE_API_SECRET,
-  );
-
-  if (!authorized) {
-    return c.json({ error: "unauthorized" }, 401);
-  }
-
-  return next();
-});
-
-app.route("/jobs", jobs);
-app.route("/sources/crawl", crawl);
-app.route("/floorplans", floorplans);
-
-app.notFound((c) => c.json({ error: "not_found" }, 404));
-
-export { app };
 
 export async function handleQueueBatch(
   batch: MessageBatch<ConversionQueueMessage | CrawlQueueMessage>,
@@ -118,6 +70,21 @@ export async function handleQueueBatch(
 export { ConversionWorkflow } from "./workflow/ConversionWorkflow";
 
 export default {
-  fetch: app.fetch,
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname !== "/health") {
+      try {
+        assertProductionEnv(env);
+      } catch {
+        return Response.json({ error: "misconfigured" }, { status: 503 });
+      }
+    }
+
+    return app.fetch(request, env, ctx);
+  },
   queue: handleQueueBatch,
 };

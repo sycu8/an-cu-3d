@@ -43,9 +43,9 @@ Ship an MVP that feels like a trusted property showroom: Gamuda HCMC projects, m
 - [x] P24 Project 3D experience (placeholder site extrusion)
 - [x] P25 Map/location (MapLibre + amenity filters)
 - [x] P26 Comparison/infographics (up to 3 projects)
-- [ ] P27 Mobile/performance
-- [ ] P28 Security/observability
-- [ ] P29 Production validation
+- [x] P27 Mobile/performance
+- [x] P28 Security/observability
+- [x] P29 Production validation
 
 ## MVP acceptance (must demo)
 

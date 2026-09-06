@@ -72,6 +72,10 @@ export function validateAllowlistedUrl(
     return { ok: false, reason: "invalid_url" };
   }
 
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { ok: false, reason: "invalid_protocol" };
+  }
+
   if (parsed.protocol !== "https:") {
     return { ok: false, reason: "https_only" };
   }
