@@ -228,12 +228,20 @@ export type {
 
 export {
   DEFAULT_LIFESTYLE,
+  DEFAULT_LOAN_TERM_YEARS,
+  DEFAULT_PRIORITY_ORDER,
   DEFAULT_WEIGHTS,
+  PREFERENCE_HINTS_VI,
   PREFERENCE_KEYS,
   PREFERENCE_LABELS_VI,
+  normalizePriorityOrder,
   normalizeWeights,
   preferredBedrooms,
+  priorityOrderFromWeights,
+  resolvePriorityOrder,
   scoreWeightedDecision,
+  weightsFromPriorityOrder,
+  withDerivedWeights,
 } from "./decision/preferences.js";
 export type {
   DecisionWeights,
@@ -246,6 +254,20 @@ export type {
   WeightedDecisionResult,
   WfhCount,
 } from "./decision/preferences.js";
+
+export {
+  BIG4_INTEREST_SNAPSHOT,
+  averageBig4AnnualRate,
+  estimateLoanPayment,
+  loanPrincipalFromCash,
+} from "./decision/interestRates.js";
+export type {
+  Big4BankCode,
+  Big4BankRate,
+  LoanEstimate,
+  LoanEstimateInput,
+  MonthlyInterestSnapshot,
+} from "./decision/interestRates.js";
 
 export { assessUnitFit } from "./decision/fit.js";
 export type {

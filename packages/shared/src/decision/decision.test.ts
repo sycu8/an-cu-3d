@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { assessUnitFit } from "./fit.js";
 import {
+  averageBig4AnnualRate,
+  estimateLoanPayment,
+  loanPrincipalFromCash,
+} from "./interestRates.js";
+import {
+  normalizePriorityOrder,
   normalizeWeights,
   preferredBedrooms,
+  priorityOrderFromWeights,
   scoreWeightedDecision,
+  weightsFromPriorityOrder,
+  withDerivedWeights,
 } from "./preferences.js";
 import { parsePriceMidTrieu, rankProjects } from "./rank.js";
 
@@ -37,6 +46,78 @@ describe("decision weights", () => {
     );
     expect(result.sufficient).toBe(false);
     expect(result.overall).toBeNull();
+  });
+
+  it("maps priority order to higher weight for top ranks", () => {
+    const weights = weightsFromPriorityOrder([
+      "commute",
+      "budget",
+      "space",
+      "schools",
+      "amenities",
+    ]);
+    expect(weights.commute).toBeGreaterThan(weights.budget);
+    expect(weights.budget).toBeGreaterThan(weights.space);
+    expect(normalizePriorityOrder(["commute", "budget"])).toEqual([
+      "commute",
+      "budget",
+      "space",
+      "schools",
+      "amenities",
+    ]);
+  });
+
+  it("derives priority order from legacy weights", () => {
+    expect(
+      priorityOrderFromWeights({
+        budget: 70,
+        space: 80,
+        commute: 60,
+        schools: 50,
+        amenities: 40,
+      })[0],
+    ).toBe("space");
+  });
+
+  it("keeps derived weights in sync with priority order", () => {
+    const prefs = withDerivedWeights({
+      household: "couple",
+      wfh: 0,
+      vehicle: "no_car",
+      availableCashTy: 1.2,
+      loanTermYears: 20,
+      priorityOrder: ["schools", "commute", "budget", "space", "amenities"],
+      weights: {
+        budget: 1,
+        space: 1,
+        commute: 1,
+        schools: 1,
+        amenities: 1,
+      },
+    });
+    expect(prefs.priorityOrder?.[0]).toBe("schools");
+    expect(prefs.weights.schools).toBeGreaterThan(prefs.weights.commute);
+  });
+});
+
+describe("big-4 interest estimates", () => {
+  it("averages curated big-4 rates", () => {
+    const avg = averageBig4AnnualRate();
+    expect(avg).toBeGreaterThan(0);
+    expect(avg).toBeLessThan(20);
+  });
+
+  it("estimates amortizing loan payment", () => {
+    const estimate = estimateLoanPayment({
+      principalTy: 2,
+      annualRatePercent: 8,
+      termYears: 20,
+    });
+    expect(estimate).not.toBeNull();
+    expect(estimate!.monthlyPaymentTrieu).toBeGreaterThan(10);
+    expect(estimate!.totalInterestTy).toBeGreaterThan(0);
+    expect(loanPrincipalFromCash(4, 1.5)).toBe(2.5);
+    expect(loanPrincipalFromCash(1, 2)).toBe(0);
   });
 });
 
