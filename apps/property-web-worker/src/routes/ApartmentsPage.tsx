@@ -1,18 +1,24 @@
 import { Link, useParams } from "react-router";
-import { getProjectBySlug } from "../data/gamuda-projects";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProject } from "../hooks/useProjects";
 
 export default function ApartmentsPage() {
   const { slug } = useParams<{ slug: string }>();
-  const project = slug ? getProjectBySlug(slug) : undefined;
+  const state = useProject(slug);
 
-  if (!project) {
+  if (state.status === "loading") return <PageSkeleton />;
+
+  if (state.status === "error" || !state.data) {
     return (
       <div className="container page-header">
         <h1>Không tìm thấy dự án</h1>
+        <p role="alert">{state.status === "error" ? state.error : "Missing project"}</p>
         <Link to="/projects">← Quay lại</Link>
       </div>
     );
   }
+
+  const project = state.data;
 
   return (
     <div className="container">

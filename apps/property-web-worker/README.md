@@ -20,6 +20,21 @@ pnpm install   # from repo root
 pnpm --filter @ancu/property-web-worker dev
 ```
 
+
+
+> Local `pnpm dev` uses `remoteBindings: false` so D1/R2 run locally without a Cloudflare API token. Live Workers AI / remote bindings need a token and are out of scope for the sanitized local QA pass.
+
+## Local production-like data
+
+```bash
+cp .dev.vars.example .dev.vars
+pnpm db:migrate:local
+pnpm db:seed:local   # sanitized D1-only demo project (no real prices)
+pnpm --filter @ancu/property-web-worker dev
+```
+
+Seed inventory also includes in-memory Gamuda stubs + sanitized `demo-*` fixtures (merged by the worker). Do not invent prices/areas/handover dates. Never apply `scripts/seed-local-demo.sql` to remote/production without explicit approval.
+
 ## Build
 
 ```bash
@@ -36,8 +51,11 @@ Output: `dist/` (SPA assets) + Worker bundle via `@cloudflare/vite-plugin`.
 - `/projects/:slug/3d` — Site 3D placeholders
 - `/projects/:slug/apartments` — Unit types
 - `/projects/:slug/apartments/:unit` — Floor plan viewer + QA
+- `/projects/:slug/showroom` — Showroom lighting/materials/hotspots
 - `/map` — MapLibre HCMC map
 - `/compare` — Side-by-side comparison (up to 3)
+- `/blog`, `/blog/:slug` — Public blog
+- `/admin` — Admin build + blog draft (Bearer secret)
 
 ## API
 

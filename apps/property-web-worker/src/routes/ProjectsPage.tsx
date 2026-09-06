@@ -1,8 +1,21 @@
-import { getProjectSummaries } from "../data/gamuda-projects";
 import { ProjectCard } from "../components/ProjectCard";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProjectSummaries } from "../hooks/useProjects";
 
 export default function ProjectsPage() {
-  const projects = getProjectSummaries();
+  const state = useProjectSummaries();
+
+  if (state.status === "loading") return <PageSkeleton />;
+  if (state.status === "error" && !state.data?.length) {
+    return (
+      <div className="container page-header">
+        <h1>Dự án</h1>
+        <p role="alert">{state.error}</p>
+      </div>
+    );
+  }
+
+  const projects = state.data ?? [];
 
   return (
     <div className="container">
@@ -11,13 +24,23 @@ export default function ProjectsPage() {
         <p>
           Danh sách dự án với nguồn dữ liệu và mức tin cậy được ghi rõ.
           Thông tin chưa xác minh hiển thị &ldquo;Data pending verification&rdquo;.
+          {state.status === "ready" && (
+            <>
+              {" "}
+              Nguồn: <strong>{state.source}</strong> · {projects.length} dự án.
+            </>
+          )}
         </p>
       </header>
-      <div className="grid-projects">
-        {projects.map((p) => (
-          <ProjectCard key={p.id} project={p} />
-        ))}
-      </div>
+      {projects.length === 0 ? (
+        <p>Chưa có dự án nào.</p>
+      ) : (
+        <div className="grid-projects">
+          {projects.map((p) => (
+            <ProjectCard key={p.id} project={p} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

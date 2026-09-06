@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router";
-import { getProjectBySlug } from "../data/gamuda-projects";
 import { AMENITY_CATEGORIES } from "../types/amenity";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProject } from "../hooks/useProjects";
 import "./ProjectDetailPage.css";
 
 function isPending(value: string) {
@@ -9,16 +10,21 @@ function isPending(value: string) {
 
 export default function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const project = slug ? getProjectBySlug(slug) : undefined;
+  const state = useProject(slug);
 
-  if (!project) {
+  if (state.status === "loading") return <PageSkeleton />;
+
+  if (state.status === "error" || !state.data) {
     return (
       <div className="container page-header">
         <h1>Không tìm thấy dự án</h1>
+        <p role="alert">{state.status === "error" ? state.error : "Missing project"}</p>
         <Link to="/projects">← Quay lại danh sách</Link>
       </div>
     );
   }
+
+  const project = state.data;
 
   return (
     <div className="container">
@@ -29,6 +35,7 @@ export default function ProjectDetailPage() {
           {project.confidence != null && (
             <span className="tag tag-clay">Tin cậy: {Math.round(project.confidence * 100)}%</span>
           )}
+          {state.source && <span className="tag">src:{state.source}</span>}
         </div>
         <h1>{project.name}</h1>
         {project.tagline && <p>{project.tagline}</p>}
@@ -70,6 +77,9 @@ export default function ProjectDetailPage() {
         </Link>
         <Link to={`/projects/${project.slug}/apartments`} className="btn btn-secondary">
           Căn hộ & mặt bằng
+        </Link>
+        <Link to={`/projects/${project.slug}/showroom`} className="btn btn-secondary">
+          Showroom nhà mẫu
         </Link>
         <Link to={`/map?project=${project.slug}`} className="btn btn-ghost">
           Vị trí trên bản đồ

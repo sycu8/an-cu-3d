@@ -347,6 +347,9 @@ export default {
     } else if (request.method !== "GET" && request.method !== "HEAD") {
       response = new Response("Method Not Allowed", { status: 405 });
     } else {
+      // Non-API GETs are served by Workers Static Assets when
+      // assets.run_worker_first=["/api/*"] (see wrangler.jsonc). This branch is
+      // only reached if the Worker is invoked for a page route incorrectly.
       response = new Response("Not Found", { status: 404 });
     }
 

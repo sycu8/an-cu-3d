@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { getProjectSummaries, getAllNearbyPlaces } from "../data/gamuda-projects";
+import { getAllNearbyPlaces } from "../data/gamuda-projects";
+import { PageSkeleton } from "../components/PageSkeleton";
+import { useProjectSummaries } from "../hooks/useProjects";
 import { AMENITY_CATEGORIES, type AmenityCategory } from "../types/amenity";
 import "./MapPage.css";
 
@@ -37,9 +39,10 @@ export default function MapPage() {
     new Set(AMENITY_CATEGORIES.map((c) => c.id)),
   );
   const [routeDestination, setRouteDestination] = useState<string>("");
+  const projectState = useProjectSummaries();
 
-  const projects = getProjectSummaries();
-  const nearbyPlaces = getAllNearbyPlaces();
+  const projects = "data" in projectState && projectState.data ? projectState.data : [];
+  const nearbyPlaces = useMemo(() => getAllNearbyPlaces(), []);
 
   useEffect(() => {
     const container = mapContainer.current;
@@ -166,6 +169,17 @@ export default function MapPage() {
     }
   }, [projects, nearbyPlaces, categories, selectedProject, mapReady]);
 
+  if (projectState.status === "loading") return <PageSkeleton />;
+
+  if (projectState.status === "error" && !projects.length) {
+    return (
+      <div className="container page-header">
+        <h1>Bản đồ kết nối</h1>
+        <p role="alert">{projectState.error}</p>
+      </div>
+    );
+  }
+
   const routeProject = selectedProject
     ? projects.find((p) => p.slug === selectedProject)
     : projects[0];
@@ -203,7 +217,10 @@ export default function MapPage() {
       <div className="container map-header">
         <header className="page-header">
           <h1>Bản đồ kết nối</h1>
-          <p>Dự án và điểm tiện ích xung quanh TP. Hồ Chí Minh.</p>
+          <p>
+            Dự án và điểm tiện ích xung quanh TP. Hồ Chí Minh.
+            {projectState.status === "ready" && <> Nguồn dự án: {projectState.source}.</>}
+          </p>
         </header>
       </div>
 
