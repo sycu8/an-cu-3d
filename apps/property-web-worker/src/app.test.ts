@@ -116,8 +116,18 @@ describe("project media seeds", () => {
     const celadon = getProjectBySlug("celadon-city");
     expect(celadon?.coverUrl).toContain("celadoncityhcm.com");
     const withUrl = (celadon?.media ?? []).filter((m) => m.url?.includes("celadoncityhcm.com"));
-    expect(withUrl.length).toBeGreaterThanOrEqual(6);
+    expect(withUrl.length).toBeGreaterThanOrEqual(20);
+    expect(withUrl.some((m) => m.kind === "floorplan_2d")).toBe(true);
+    expect(withUrl.some((m) => m.kind === "atlas")).toBe(true);
     expect(withUrl.some((m) => m.kind === "site")).toBe(true);
     expect(withUrl.some((m) => m.kind === "perspective")).toBe(true);
+  });
+
+  it("gives every project amenity site images (park/school/commerce)", () => {
+    for (const summary of getProjectSummaries()) {
+      const detail = getProjectBySlug(summary.slug);
+      const sites = (detail?.media ?? []).filter((m) => m.kind === "site" && m.url);
+      expect(sites.length, summary.slug).toBeGreaterThanOrEqual(4);
+    }
   });
 });
