@@ -58,6 +58,9 @@ export function Layout() {
             <NavLink to="/map" onClick={closeMenu} className={({ isActive }) => (isActive ? "active" : "")}>
               Bản đồ
             </NavLink>
+            <NavLink to="/tools" onClick={closeMenu} className={({ isActive }) => (isActive ? "active" : "")}>
+              Công cụ
+            </NavLink>
             <NavLink to="/compare" onClick={closeMenu} className={({ isActive }) => (isActive ? "active" : "")}>
               So sánh
             </NavLink>
@@ -79,6 +82,7 @@ export function Layout() {
           <div className="footer-links">
             <Link to="/projects">Dự án</Link>
             <Link to="/map">Bản đồ</Link>
+            <Link to="/tools">Công cụ</Link>
             <Link to="/blog">Blog</Link>
             <Link to="/admin" className="footer-admin">
               Admin

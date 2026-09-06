@@ -1,0 +1,147 @@
+.tools-page {
+  padding-bottom: var(--space-3xl);
+}
+
+.tools-list {
+  list-style: none;
+  margin: 0 0 var(--space-xl);
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.tools-item {
+  display: block;
+  padding: var(--space-lg) 0;
+  border-top: 1px solid var(--color-border);
+  text-decoration: none;
+  color: inherit;
+  transition: padding-left var(--dur-fast) var(--ease-out);
+}
+
+.tools-item:hover {
+  padding-left: 0.35rem;
+  text-decoration: none;
+}
+
+.tools-item h2 {
+  margin: 0 0 var(--space-xs);
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  color: var(--color-teal-900);
+}
+
+.tools-item p {
+  margin: 0;
+  max-width: 48rem;
+  color: var(--color-text-secondary);
+  font-size: var(--text-small);
+  line-height: 1.5;
+}
+
+.tools-list li:last-child .tools-item {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tools-note {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  max-width: 44rem;
+  line-height: 1.5;
+}
+
+.loan-page,
+.invest-page {
+  padding-bottom: var(--space-3xl);
+  max-width: 40rem;
+}
+
+.loan-form,
+.invest-form {
+  display: grid;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.loan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.loan-field span {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.loan-field input,
+.loan-field select {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  font: inherit;
+}
+
+.loan-result {
+  padding: var(--space-lg) 0;
+  border-top: 2px solid var(--color-teal-600);
+}
+
+.loan-result h2 {
+  margin: 0 0 var(--space-md);
+  font-size: var(--text-h3);
+  color: var(--color-teal-900);
+}
+
+.loan-result dl {
+  display: grid;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-md);
+}
+
+.loan-result div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: var(--text-small);
+}
+
+.loan-result dt {
+  color: var(--color-text-secondary);
+}
+
+.loan-result dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.loan-source {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+.loan-banks {
+  margin: var(--space-lg) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-xs);
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
+}
+
+.invest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}

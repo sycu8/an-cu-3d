@@ -43,6 +43,10 @@ export interface ProjectSummary {
   /** Public media URL when cover is stored in R2. */
   coverUrl?: string;
   showroom?: ProjectShowroomConfig;
+  /** Min bedrooms across published unit types when known. */
+  minBedrooms?: number;
+  /** Max bedrooms across published unit types when known. */
+  maxBedrooms?: number;
 }
 
 export interface ProjectShowroomConfig {

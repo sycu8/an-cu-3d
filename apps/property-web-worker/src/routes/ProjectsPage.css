@@ -9,3 +9,14 @@
 .projects-empty {
   color: var(--color-text-muted);
 }
+
+.projects-amenity-hint {
+  margin: 0 0 var(--space-lg);
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
+}
+
+.projects-amenity-hint a {
+  color: var(--color-teal-700);
+  font-weight: 600;
+}

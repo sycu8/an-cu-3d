@@ -1,0 +1,140 @@
+.project-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.project-search--hero {
+  padding: var(--space-md);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(13, 61, 58, 0.22);
+  backdrop-filter: blur(10px);
+  color: var(--color-text-primary);
+  animation: search-rise 0.55s var(--ease-out) 0.12s both;
+}
+
+@keyframes search-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.project-search--page {
+  padding: var(--space-md) 0 var(--space-lg);
+  border-bottom: 1px solid var(--color-border-subtle);
+  margin-bottom: var(--space-xl);
+}
+
+.project-search-primary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: stretch;
+}
+
+.project-search-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.project-search-field--grow {
+  flex: 1 1 12rem;
+}
+
+.project-search-field span:not(.sr-only) {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+}
+
+.project-search-field input,
+.project-search-field select {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--text-small);
+}
+
+.project-search--hero .project-search-field input,
+.project-search--hero .project-search-field select {
+  background: #fff;
+  border-color: #d5e0de;
+}
+
+.project-search-field input:focus,
+.project-search-field select:focus {
+  outline: 2px solid var(--color-teal-500);
+  outline-offset: 1px;
+}
+
+.project-search-submit {
+  align-self: stretch;
+  min-height: 2.75rem;
+  white-space: nowrap;
+}
+
+.project-search-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.project-search-advanced-toggle,
+.project-search-reset {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--color-teal-700);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.project-search--hero .project-search-advanced-toggle,
+.project-search--hero .project-search-reset {
+  color: var(--color-teal-800);
+}
+
+.project-search-count {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--color-text-secondary);
+}
+
+.project-search-advanced {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-sm);
+  padding-top: var(--space-xs);
+}
+
+@media (max-width: 640px) {
+  .project-search-primary {
+    flex-direction: column;
+  }
+
+  .project-search-submit {
+    width: 100%;
+  }
+}

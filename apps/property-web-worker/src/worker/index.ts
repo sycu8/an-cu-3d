@@ -113,7 +113,14 @@ async function mergeProjects(env: Env) {
     dbProjects = [];
   }
   const bySlug = new Map(seed.map((p) => [p.slug, p]));
-  for (const p of dbProjects) bySlug.set(p.slug, p);
+  for (const p of dbProjects) {
+    const seedHit = bySlug.get(p.slug);
+    bySlug.set(p.slug, {
+      ...p,
+      minBedrooms: p.minBedrooms ?? seedHit?.minBedrooms,
+      maxBedrooms: p.maxBedrooms ?? seedHit?.maxBedrooms,
+    });
+  }
   return {
     projects: [...bySlug.values()],
     source: dbProjects.length ? "d1+seed" : "seed",
