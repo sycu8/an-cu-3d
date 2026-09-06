@@ -92,3 +92,22 @@ export type ProjectShowroomConfig = {
     notes?: string;
   };
 };
+
+/** Build a shareable showroom URL (sales → buyer). */
+export function buildShowroomSharePath(
+  slug: string,
+  opts: {
+    unit?: string;
+    preset?: LightingPreset | string;
+    palette?: string;
+    view?: string;
+  } = {},
+): string {
+  const params = new URLSearchParams();
+  if (opts.unit) params.set("unit", opts.unit);
+  if (opts.preset) params.set("preset", opts.preset);
+  if (opts.palette) params.set("palette", opts.palette);
+  if (opts.view && opts.view !== "3d") params.set("view", opts.view);
+  const qs = params.toString();
+  return `/projects/${slug}/showroom${qs ? `?${qs}` : ""}`;
+}

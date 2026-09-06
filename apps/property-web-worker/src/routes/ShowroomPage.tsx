@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import {
+  buildShowroomSharePath,
   DEFAULT_MATERIAL_PALETTES,
   filterProjectMedia,
   isUnitViewMode,
@@ -157,13 +158,16 @@ export default function ShowroomPage() {
   }
 
   async function copyShareLink() {
-    const url = new URL(window.location.href);
-    url.searchParams.set("unit", unit);
-    url.searchParams.set("preset", lighting);
-    url.searchParams.set("palette", paletteLabel);
-    if (viewMode !== "3d") url.searchParams.set("view", viewMode);
+    if (!project) return;
+    const path = buildShowroomSharePath(project.slug, {
+      unit,
+      preset: lighting,
+      palette: paletteLabel,
+      view: viewMode,
+    });
+    const url = new URL(path, window.location.origin).toString();
     try {
-      await navigator.clipboard.writeText(url.toString());
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {

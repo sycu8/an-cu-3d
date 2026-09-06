@@ -91,12 +91,13 @@ Active build wave: **Property decision platform** (trust → Grand Park UX → f
 - [x] Commute profile + weighted decision engine (`@ancu/shared` decision + Compare ranking)
 - [x] “Căn này có hợp với tôi?” guided fit (session preferences + FitAssessmentPanel)
 - [x] Map uses shared `getRoute` + durable `?destination=` (distance-only until a real provider is configured)
+- [x] Admin + AI Gateway + showroom plan (schema/auth/jobs, admin UI, orchestration, AI client, blog+cron, image/2D assist, showroom share link, smoke script)
 
 ### Deferred (P3+)
 
 - [ ] Daylight / view simulators (need orientation data)
 - [ ] Real vision extraction (Workers AI) replacing seedDocument requirement
 - [ ] Admin floorplan review UI overlay (`/admin/floorplans/:jobId/review`)
-- [ ] Wire production secrets + deploy smoke for admin/blog
+- [ ] Account-side: wire Cloudflare production secrets + run deploy smoke with `ADMIN_USER`/`ADMIN_PASSWORD`
 
 - Media: R2 object storage (`ASSETS`) + Cloudflare Images resize via `GET /api/media/*`.

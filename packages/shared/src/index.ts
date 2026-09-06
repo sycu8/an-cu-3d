@@ -154,6 +154,7 @@ export type { BlogMedia, BlogPost, BlogPostStatus } from "./blog.js";
 export {
   DEFAULT_MATERIAL_PALETTES,
   LIGHTING_PRESETS,
+  buildShowroomSharePath,
 } from "./showroom.js";
 export type {
   LightingPreset,

@@ -87,22 +87,16 @@ Also set `ENGINE_API_SECRET` on both Workers when the admin build path should ca
 ### Smoke (admin + blog)
 
 ```bash
-# Health
-curl -sS "$WEB_BASE_URL/api/health"
+# Health + blog + admin gate
+WEB_BASE_URL=https://ancu-property-web.example.com \
+ENGINE_BASE_URL=https://ancu-floorplan-engine.example.com \
+node scripts/smoke.mjs
 
-# Admin without session → 401
-curl -sS -o /dev/null -w "%{http_code}\n" "$WEB_BASE_URL/api/admin/projects"
-
-# Login (first time forces password change)
-curl -sS -X POST "$WEB_BASE_URL/api/admin/login" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"Sycule96","password":"admin"}'
-
-# After changing password, call admin APIs with:
-# Authorization: Bearer <session-token>
-
-# Blog public list
-curl -sS "$WEB_BASE_URL/api/blog"
+# Optional authenticated admin check
+ADMIN_USER=Sycule96 ADMIN_PASSWORD='…' \
+WEB_BASE_URL=https://ancu-property-web.example.com \
+ENGINE_BASE_URL=https://ancu-floorplan-engine.example.com \
+node scripts/smoke.mjs
 ```
 
 Weekly cron (`0 1 * * 1`) only creates **draft** blog posts — never auto-publishes.

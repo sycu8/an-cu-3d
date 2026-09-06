@@ -171,4 +171,5 @@ Job create returns quickly; work runs on Queue/Workflow.
 - **Blog** (`/blog`): weekly draft generation from existing projects; Vietnamese primary.
 - **Showroom** (`/projects/:slug/showroom`): lighting presets, material palettes (incl. photo-derived), room hotspots, shareable `?unit=&preset=&palette=` link.
 - **Admin tools**: weekly blog draft (cron, never auto-publish), image gen/edit, 2D→3D assist, factual QA on build, `POST /api/admin/projects/approve-all`.
-- **Engine**: `POST /jobs` rate limit bypassed when `X-AnCu-Admin-Build: 1` or `bypassRateLimit: true`.
+- **Engine**: `POST /jobs` rate limit bypassed when `X-AnCu-Admin-Build: 1` or body `bypassRateLimit: true` (admin project-build path).
+- **Smoke**: `scripts/smoke.mjs` checks health, public blog, admin 401, and optional admin login.
