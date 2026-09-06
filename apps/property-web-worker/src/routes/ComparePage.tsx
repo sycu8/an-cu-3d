@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { CompareInfographic } from "../components/CompareInfographic";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { useProjectSummaries } from "../hooks/useProjects";
 import type { ProjectSummary } from "../types";
@@ -107,6 +108,8 @@ export default function ComparePage() {
       {compared.length < 2 ? (
         <p className="compare-hint">Chọn ít nhất 2 dự án để so sánh.</p>
       ) : (
+        <>
+        <CompareInfographic projects={compared} />
         <div className="compare-table-wrap">
           <table className="compare-table">
             <thead>
@@ -146,6 +149,7 @@ export default function ComparePage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

@@ -27,6 +27,8 @@ export interface ProjectSummary {
   developerName: string;
   handover: string;
   priceRange: string;
+  /** Provenance for priceRange when it is a secondary-market reference (never CĐT sheet). */
+  priceProvenance?: string;
   totalUnits: string;
   latitude?: number;
   longitude?: number;

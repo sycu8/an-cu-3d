@@ -3,6 +3,7 @@ import { filterProjectMedia } from "@ancu/shared";
 import { AMENITY_CATEGORIES } from "../types/amenity";
 import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { ProjectInfographic } from "../components/ProjectInfographic";
 import { useProject } from "../hooks/useProjects";
 import "./ProjectDetailPage.css";
 
@@ -29,6 +30,9 @@ export default function ProjectDetailPage() {
   const project = state.data;
   const perspectives = filterProjectMedia(project.media, "perspective");
   const floorplan2d = filterProjectMedia(project.media, "floorplan_2d");
+  const atlases = filterProjectMedia(project.media, "atlas").filter(
+    (m) => Boolean(m.url?.trim() || m.r2Key?.trim()),
+  );
 
   return (
     <div className="container">
@@ -47,6 +51,8 @@ export default function ProjectDetailPage() {
         {project.provenance && <p className="provenance">Nguồn: {project.provenance}</p>}
       </header>
 
+      <ProjectInfographic project={project} />
+
       <section className="project-facts-grid">
         <div className="card card-body">
           <h3>Thông tin</h3>
@@ -57,6 +63,12 @@ export default function ProjectDetailPage() {
             </dd>
             <dt>Giá</dt>
             <dd className={isPending(project.priceRange) ? "pending-data" : ""}>{project.priceRange}</dd>
+            {project.priceProvenance && (
+              <>
+                <dt>Nguồn giá</dt>
+                <dd className="provenance">{project.priceProvenance}</dd>
+              </>
+            )}
             <dt>Bàn giao</dt>
             <dd className={isPending(project.handover) ? "pending-data" : ""}>{project.handover}</dd>
             <dt>Quy mô</dt>
@@ -96,19 +108,26 @@ export default function ProjectDetailPage() {
         </Link>
       </section>
 
-      {(perspectives.length > 0 || floorplan2d.length > 0) && (
-        <section className="project-gallery-section" aria-label="Hình 2D và phối cảnh">
+      {(perspectives.length > 0 || floorplan2d.length > 0 || atlases.length > 0) && (
+        <section className="project-gallery-section" aria-label="Hình 2D, phối cảnh và atlas">
           <div className="project-gallery-head">
             <div>
-              <h2>Phối cảnh & mặt bằng 2D</h2>
+              <h2>Phối cảnh, mặt bằng & atlas</h2>
               <p>
-                Hình minh họa — chờ bản chính thức. Mở showroom để xem 3D hoặc tự phối ánh sáng.
+                Hình minh họa / atlas quy hoạch — chờ bản chính thức từ CĐT. Mở showroom để xem 3D.
               </p>
             </div>
             <Link to={`/projects/${project.slug}/showroom`} className="btn btn-ghost">
               Mở showroom
             </Link>
           </div>
+          {atlases.length > 0 && (
+            <MediaGallery
+              items={atlases.slice(0, 4)}
+              emptyLabel="Chưa có atlas"
+              variant="card"
+            />
+          )}
           {perspectives.length > 0 ? (
             <MediaGallery
               items={perspectives.slice(0, 6)}

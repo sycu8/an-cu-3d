@@ -1,10 +1,12 @@
-/** Project gallery media kinds for 2D floorplans and perspective renders. */
+/** Project gallery media kinds for 2D floorplans, perspectives, and atlases. */
 
 export const PROJECT_MEDIA_KINDS = [
   "floorplan_2d",
   "perspective",
   "elevation",
   "site",
+  /** Masterplan / tổng mặt bằng / atlas quy hoạch */
+  "atlas",
 ] as const;
 
 export type ProjectMediaKind = (typeof PROJECT_MEDIA_KINDS)[number];

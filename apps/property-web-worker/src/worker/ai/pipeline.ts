@@ -7,6 +7,7 @@ import {
   type AiGatewayConfig,
   type ChatResult,
 } from "@ancu/shared";
+import { crawlSeedForSlug, PROJECT_CRAWL_SEEDS } from "../../data/project-crawl-seeds";
 import type { Env } from "../types";
 import type { SynthesizedProject } from "../db/projects";
 
@@ -48,6 +49,20 @@ const KNOWN_SOURCES: Record<
     },
   },
 };
+
+/** Merge hardcoded Gamuda hints with CĐT crawl seeds (Vinhomes / Ecopark / Đất Xanh…). */
+function sourcesForSlug(slug: string): { label: string; url: string }[] {
+  const known = KNOWN_SOURCES[slug]?.urls ?? [];
+  const seed = crawlSeedForSlug(slug)?.officialUrls ?? [];
+  const seen = new Set<string>();
+  const out: { label: string; url: string }[] = [];
+  for (const s of [...seed, ...known]) {
+    if (seen.has(s.url)) continue;
+    seen.add(s.url);
+    out.push(s);
+  }
+  return out;
+}
 
 export function getAiGatewayConfig(env: Env): AiGatewayConfig | null {
   if (!env.AI_GATEWAY_ACCOUNT_ID || !env.AI_GATEWAY_ID) return null;
@@ -153,13 +168,25 @@ function fallbackSynthesis(name: string, slug: string, snippets: string[]): {
 }
 
 export async function discoverSources(name: string, slug: string) {
-  const known = KNOWN_SOURCES[slug];
-  const sources = known?.urls ?? [
-    { label: "Gamuda Land VN", url: "https://www.gamudaland.com.vn" },
-  ];
+  const seed = crawlSeedForSlug(slug);
+  const sources = sourcesForSlug(slug);
+  const fallback =
+    sources.length > 0
+      ? sources
+      : PROJECT_CRAWL_SEEDS[0]
+        ? PROJECT_CRAWL_SEEDS[0].officialUrls
+        : [{ label: "Gamuda Land VN", url: "https://www.gamudaland.com.vn" }];
+
   return {
-    sources,
-    queryHints: [`${name} Gamuda Land`, `${name} TP.HCM dự án`],
+    sources: sources.length ? sources : fallback,
+    queryHints: [
+      `${name} chủ đầu tư`,
+      `${name} tổng mặt bằng atlas`,
+      ...(seed?.atlasHints.map((h) => `${name} ${h}`) ?? []),
+      `${name} giá thị trường thứ cấp`,
+    ],
+    channel: "developer" as const,
+    atlasHints: seed?.atlasHints ?? [],
   };
 }
 

@@ -1,11 +1,64 @@
-export const DEFAULT_ALLOWLIST_DOMAINS = [
+/** Official developer (CĐT) public sites. */
+export const DEVELOPER_ALLOWLIST_DOMAINS = [
+  // Gamuda Land
   "gamudaland.com.vn",
   "www.gamudaland.com.vn",
   "gamuda.com.vn",
   "www.gamuda.com.vn",
   "gamudacity.com.vn",
   "www.gamudacity.com.vn",
+  // Vinhomes / Vingroup
+  "vinhomes.vn",
+  "www.vinhomes.vn",
+  "vinhomes.com.vn",
+  "www.vinhomes.com.vn",
+  "vingroup.net",
+  "www.vingroup.net",
+  // Ecopark
+  "ecopark.com.vn",
+  "www.ecopark.com.vn",
+  // Đất Xanh / Bluemarq
+  "datxanh.com.vn",
+  "www.datxanh.com.vn",
+  "dxg.com.vn",
+  "www.dxg.com.vn",
+  "bluemarq.vn",
+  "www.bluemarq.vn",
 ] as const;
+
+/**
+ * Reputable VN listing / research sites.
+ * Secondary-market price references only — never official CĐT sheets.
+ */
+export const SECONDARY_MARKET_ALLOWLIST_DOMAINS = [
+  "batdongsan.com.vn",
+  "www.batdongsan.com.vn",
+  "nhadat247.com.vn",
+  "www.nhadat247.com.vn",
+  "mogi.vn",
+  "www.mogi.vn",
+  "homedy.com",
+  "www.homedy.com",
+  "cafeland.vn",
+  "www.cafeland.vn",
+  "vietnambiz.vn",
+  "www.vietnambiz.vn",
+] as const;
+
+export const DEFAULT_ALLOWLIST_DOMAINS = [
+  ...DEVELOPER_ALLOWLIST_DOMAINS,
+  ...SECONDARY_MARKET_ALLOWLIST_DOMAINS,
+] as const;
+
+export function crawlChannelForHost(
+  hostname: string,
+): "developer" | "secondary_market" | null {
+  if (isAllowlistedDomain(hostname, DEVELOPER_ALLOWLIST_DOMAINS)) return "developer";
+  if (isAllowlistedDomain(hostname, SECONDARY_MARKET_ALLOWLIST_DOMAINS)) {
+    return "secondary_market";
+  }
+  return null;
+}
 
 const PRIVATE_IPV4_RANGES = [
   /^127\./,
