@@ -17,6 +17,8 @@ describe("worker security + health", () => {
     expect(response.headers.get("Permissions-Policy")).toContain("camera=()");
     expect(response.headers.get("X-Request-Id")).toBeTruthy();
     expect(response.headers.get("Content-Security-Policy")).toContain("tile.openstreetmap.org");
+    expect(response.headers.get("Content-Security-Policy")).toContain("worker-src 'self' blob:");
+    expect(response.headers.get("Content-Security-Policy")).toContain("wasm-unsafe-eval");
   });
 
   it("includes APP_VERSION in health when set", async () => {
