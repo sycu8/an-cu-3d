@@ -54,12 +54,35 @@ export function LifestylePreferencesForm({
   const [prefs, setPrefs] = useState<LifestylePreferences>(
     () => withDerivedWeights(value ?? loadLifestylePreferences()),
   );
-  const [loanAmountTy, setLoanAmountTy] = useState<number | undefined>(
-    undefined,
+  const [cashDraft, setCashDraft] = useState(() =>
+    prefs.availableCashTy != null ? String(prefs.availableCashTy) : "",
   );
+  const [loanAmountDraft, setLoanAmountDraft] = useState("");
 
   useEffect(() => {
-    if (value) setPrefs(withDerivedWeights(value));
+    if (value) {
+      const next = withDerivedWeights(value);
+      setPrefs(next);
+      setCashDraft((prev) => {
+        const parsed = Number(prev.replace(",", "."));
+        if (
+          next.availableCashTy == null &&
+          prev.trim() === ""
+        ) {
+          return prev;
+        }
+        if (
+          next.availableCashTy != null &&
+          Number.isFinite(parsed) &&
+          parsed === next.availableCashTy
+        ) {
+          return prev;
+        }
+        return next.availableCashTy != null
+          ? String(next.availableCashTy)
+          : "";
+      });
+    }
   }, [value]);
 
   const update = useCallback(
@@ -75,9 +98,15 @@ export function LifestylePreferencesForm({
   const priorityOrder = resolvePriorityOrder(prefs);
   const avgRate = averageBig4AnnualRate();
   const loanTermYears = prefs.loanTermYears ?? DEFAULT_LOAN_TERM_YEARS;
+  const loanAmountTy = (() => {
+    const trimmed = loanAmountDraft.trim();
+    if (!trimmed) return undefined;
+    const n = Number(trimmed.replace(",", "."));
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  })();
 
   const loanEstimate = useMemo(() => {
-    if (loanAmountTy == null || loanAmountTy <= 0) return null;
+    if (loanAmountTy == null) return null;
     return estimateLoanPayment({
       principalTy: loanAmountTy,
       annualRatePercent: avgRate,
@@ -94,24 +123,18 @@ export function LifestylePreferencesForm({
     update({ ...prefs, priorityOrder: next });
   };
 
-  const setCash = (raw: string) => {
+  const commitCashDraft = (raw: string = cashDraft) => {
     if (raw.trim() === "") {
-      update({ ...prefs, availableCashTy: undefined });
+      if (prefs.availableCashTy != null) {
+        update({ ...prefs, availableCashTy: undefined });
+      }
       return;
     }
     const n = Number(raw.replace(",", "."));
     if (!Number.isFinite(n) || n < 0) return;
-    update({ ...prefs, availableCashTy: n });
-  };
-
-  const setLoanAmount = (raw: string) => {
-    if (raw.trim() === "") {
-      setLoanAmountTy(undefined);
-      return;
+    if (prefs.availableCashTy !== n) {
+      update({ ...prefs, availableCashTy: n });
     }
-    const n = Number(raw.replace(",", "."));
-    if (!Number.isFinite(n) || n < 0) return;
-    setLoanAmountTy(n);
   };
 
   const setLoanTerm = (raw: string) => {
@@ -179,16 +202,14 @@ export function LifestylePreferencesForm({
           <span>Số tiền đang có</span>
           <div className="lifestyle-prefs-input-row">
             <input
-              type="number"
-              min={0}
-              step={0.1}
+              type="text"
               inputMode="decimal"
               placeholder="Ví dụ: 1.5"
-              value={prefs.availableCashTy ?? ""}
-              onChange={(e) => setCash(e.target.value)}
+              value={cashDraft}
+              onChange={(e) => setCashDraft(e.target.value)}
+              onBlur={() => commitCashDraft()}
               aria-describedby="cash-hint"
-            />
-            <span className="lifestyle-prefs-suffix">tỷ VND</span>
+            />            <span className="lifestyle-prefs-suffix">tỷ VND</span>
           </div>
         </label>
         <p id="cash-hint" className="lifestyle-prefs-hint">
@@ -238,32 +259,43 @@ export function LifestylePreferencesForm({
           <span>Số tiền dự kiến vay thêm (tùy chọn)</span>
           <div className="lifestyle-prefs-input-row">
             <input
-              type="number"
-              min={0}
-              step={0.1}
+              type="text"
               inputMode="decimal"
               placeholder="Ví dụ: 2"
-              value={loanAmountTy ?? ""}
-              onChange={(e) => setLoanAmount(e.target.value)}
+              value={loanAmountDraft}
+              onChange={(e) => setLoanAmountDraft(e.target.value)}
+              aria-describedby="loan-estimate"
             />
             <span className="lifestyle-prefs-suffix">tỷ VND</span>
           </div>
         </label>
 
-        {loanEstimate && (
-          <p className="lifestyle-prefs-loan-example" role="status">
-            Ước tính với lãi {avgRate}%/năm trong {loanTermYears} năm: khoảng{" "}
-            <strong>
-              {formatTrieu(loanEstimate.monthlyPaymentTrieu)} tr/tháng
-            </strong>
-            , tổng lãi ~{formatTy(loanEstimate.totalInterestTy)} tỷ (gốc vay{" "}
-            {formatTy(loanEstimate.principalTy)} tỷ
-            {prefs.availableCashTy != null
-              ? `, đã có ${formatTy(prefs.availableCashTy)} tỷ sẵn`
-              : ""}
-            ).
-          </p>
-        )}
+        <p
+          id="loan-estimate"
+          className={
+            loanEstimate
+              ? "lifestyle-prefs-loan-example"
+              : "lifestyle-prefs-hint"
+          }
+          role="status"
+        >
+          {loanEstimate ? (
+            <>
+              Ước tính với lãi {avgRate}%/năm trong {loanTermYears} năm: khoảng{" "}
+              <strong>
+                {formatTrieu(loanEstimate.monthlyPaymentTrieu)} tr/tháng
+              </strong>
+              , tổng lãi ~{formatTy(loanEstimate.totalInterestTy)} tỷ (gốc vay{" "}
+              {formatTy(loanEstimate.principalTy)} tỷ
+              {prefs.availableCashTy != null
+                ? `, đã có ${formatTy(prefs.availableCashTy)} tỷ sẵn`
+                : ""}
+              ).
+            </>
+          ) : (
+            "Nhập số tiền vay thêm để xem ước tính trả góp theo lãi suất Big 4."
+          )}
+        </p>
       </fieldset>
 
       <fieldset>
@@ -330,7 +362,8 @@ export function LifestylePreferencesForm({
         type="button"
         className="btn btn-ghost"
         onClick={() => {
-          setLoanAmountTy(undefined);
+          setLoanAmountDraft("");
+          setCashDraft("");
           update({
             ...DEFAULT_LIFESTYLE,
             weights: { ...DEFAULT_LIFESTYLE.weights },
