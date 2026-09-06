@@ -2,59 +2,36 @@
 
 ## Current phase
 
-**P1 Architecture — complete**  
-Next: **P2 Brand/design system**
+**M4 complete** — P0–P29 done (perf, security/observability, production wiring).
 
-## Confirmed architecture
+Branch: `cursor/mvp-build-4bd7` · PR: https://github.com/sycu8/an-cu-3d/pull/2
 
-- Monorepo (`pnpm` workspaces): `apps/*`, `packages/*`
-- Apps:
-  - `apps/property-web-worker` → `@ancu/property-web-worker` (public UI + API)
-  - `apps/ancu-floorplan-engine` → `@ancu/floorplan-engine` (conversion pipeline)
-- Shared: `packages/shared` → `@ancu/shared` (tokens, Zod schema, types)
-- FloorPlanDocument JSON = architectural SoT; GLB optional derived
-- Config: `wrangler.jsonc` per app; envs `local` | `preview` | `production`
-- See `docs/architecture.md`
+## Packages
 
-## Binding names
+- `@ancu/property-web-worker` — showroom UI + Workers API
+- `@ancu/floorplan-engine` — crawl/convert/publish
+- `@ancu/shared` — tokens, FloorPlanDocument, geometry, R2 paths
 
-**property-web:** `DB`, `ASSETS`, optional `ENGINE`  
-**engine:** `ENGINE_DB`, `FLOORPLANS`, `CONVERSION_QUEUE`, `CRAWL_QUEUE`, `CONVERSION_WORKFLOW`, `AI`, `BROWSER`
-
-Logical resources: `ancu-property-db`, `ancu-engine-db`, `ancu-property-assets`, `ancu-floorplans`, `ancu-conversion`, `ancu-crawl`, `ancu-conversion-workflow`
-
-## Important paths
-
-- `/workspace/docs/architecture.md`
-- `/workspace/docs/agent-state.md`
-- `/workspace/apps/property-web-worker/`
-- `/workspace/apps/ancu-floorplan-engine/`
-- `/workspace/packages/shared/`
-
-## Completed decisions
-
-- Greenfield repo; Cloudflare Workers + D1 + R2 primary
-- Separate D1/R2 for product vs engine
-- Queues + Workflows for crawl/conversion durability
-- Workers AI cascade (cheap → stronger); cache by input hash
-- MapLibre + provider abstraction; R3F procedural renderer
-- Initial projects: Eaton Park, Elysian, Celadon City (no fabricated facts)
-- Brand palette locked in master prompt (implement P2)
-
-## Unresolved blockers
-
-- Cloudflare resource IDs not created yet (P3+)
-- Official Gamuda floor-plan source URLs not inventoried (P7–P8)
-- No CI deploy wiring yet (secrets exist in GitHub; wiring later)
-
-## Validation commands
+## Validation (last green)
 
 ```bash
-pnpm install
-# after P3+: wrangler types (per app)
-# after code: pnpm typecheck && pnpm test
+pnpm -r test          # shared 7 · engine 20 · web 8
+pnpm -r typecheck
+pnpm --filter @ancu/property-web-worker build
+pnpm --filter @ancu/floorplan-engine build
 ```
 
-## Model routing default
+## Needs your Cloudflare account (cannot finish without secrets)
 
-T1 (Composer 2.5 / GPT-5.6 Luna) through P11/P13; escalate per matrix for geometry (P14–P18).
+1. Create D1 / R2 / Queues; replace placeholder IDs in wrangler configs
+2. GitHub secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+3. `wrangler secret put ENGINE_API_SECRET` for the engine
+4. Optional repo vars for smoke: `WEB_BASE_URL`, `ENGINE_BASE_URL`
+5. Run Actions → **deploy** workflow (manual dispatch)
+
+## Optional user-facing upgrades (suggestions only)
+
+- Official Gamuda floor-plan URLs → richer crawl → more exact unit geometry
+- Real amenity POI feed (OpenStreetMap Overpass) for denser map detail
+- Further 3D LOD / Draco for lower mobile GPU cost
+- Travel-time via a licensed routing API (never invent times)

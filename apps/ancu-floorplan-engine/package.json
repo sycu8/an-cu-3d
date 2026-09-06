@@ -4,13 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"P3/P10: wire wrangler\"",
-    "build": "echo \"P10: build\"",
-    "typecheck": "echo \"P10: typecheck\"",
-    "test": "echo \"no tests yet\"",
-    "lint": "echo \"no lint yet\""
+    "dev": "wrangler dev",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@ancu/shared": "workspace:*"
+    "@ancu/shared": "workspace:*",
+    "hono": "^4.13.7",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260906.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.129.0"
   }
 }

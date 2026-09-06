@@ -1,0 +1,29 @@
+:root {
+  --color-primary: #285a52;
+  --color-primary-hover: #214b45;
+  --color-accent: #c9825b;
+  --color-background: #f7f3ea;
+  --color-surface: #efe9dd;
+  --color-surface-elevated: #fcfaf6;
+  --color-text: #25312e;
+  --color-text-muted: #65716d;
+  --color-sage: #93a99f;
+  --color-success: #3f7d61;
+  --color-warning: #b87935;
+  --color-error: #b8534f;
+
+  --background: var(--color-background);
+  --surface: var(--color-surface);
+  --surface-elevated: var(--color-surface-elevated);
+  --text-primary: var(--color-text);
+  --text-muted: var(--color-text-muted);
+  --brand-primary: var(--color-primary);
+  --brand-accent: var(--color-accent);
+  --map-passive: var(--color-sage);
+  --map-selected: var(--color-primary);
+  --room-selected: var(--color-accent);
+  --border-subtle: rgba(37, 49, 46, 0.12);
+
+  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", serif;
+  --font-body: "Source Sans 3", "Source Sans Pro", "Segoe UI", sans-serif;
+}

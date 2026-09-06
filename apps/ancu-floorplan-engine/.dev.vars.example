@@ -1,0 +1,2 @@
+# Copy to .dev.vars for local `wrangler dev` (never commit real secrets)
+ENGINE_API_SECRET=

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "id": "eaton-park-studio-s1-est",
+  "label": "Eaton Park — Studio S1 (estimated seed)",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "coordinateUnit": "meter",
+  "netAreaSqM": 32.5,
+  "bedroomCount": 0,
+  "bathroomCount": 1,
+  "source": {
+    "sourceClass": "seed_estimated",
+    "assetClass": "floorplan_raster",
+    "projectSlug": "eaton-park",
+    "projectName": "Eaton Park",
+    "unitTypeCode": "S1",
+    "bedroomLabel": "Studio",
+    "provenanceNote": "Estimated seed for procedural viewer MVP — not an official published plan.",
+    "jobState": "REVIEW_PENDING"
+  },
+  "scale": {
+    "metersPerUnit": 1,
+    "unit": "meter",
+    "method": "estimated",
+    "confidence": 0.55,
+    "estimated": true,
+    "notes": "Seed geometry for demo; replace after official OCR calibration."
+  },
+  "confidence": {
+    "overall": 0.58,
+    "scale": 0.55,
+    "walls": 0.7,
+    "openings": 0.6,
+    "rooms": 0.65,
+    "source": 0.4,
+    "reviewStatus": "unreviewed"
+  },
+  "validation": {
+    "valid": true,
+    "errors": [],
+    "warnings": [
+      {
+        "code": "scale.estimated",
+        "message": "Scale is estimated; not verified against official dimensions.",
+        "severity": "warning"
+      }
+    ],
+    "areaDeviationPercent": 0
+  },
+  "walls": [
+    { "id": "w1", "start": [0, 0], "end": [6.5, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w2", "start": [6.5, 0], "end": [6.5, 5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w3", "start": [6.5, 5], "end": [0, 5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w4", "start": [0, 5], "end": [0, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w5", "start": [4.2, 0], "end": [4.2, 2.2], "thicknessM": 0.1, "heightM": 2.8 }
+  ],
+  "doors": [
+    { "id": "d1", "wallId": "w1", "offsetM": 0.4, "widthM": 0.9, "heightM": 2.1, "swing": "left", "connectsRoomIds": ["living"] },
+    { "id": "d2", "wallId": "w5", "offsetM": 0.3, "widthM": 0.7, "heightM": 2.1, "swing": "right", "connectsRoomIds": ["living", "bath"] }
+  ],
+  "windows": [
+    { "id": "win1", "wallId": "w3", "offsetM": 1.5, "widthM": 2.4, "heightM": 1.4, "sillHeightM": 0.9 }
+  ],
+  "rooms": [
+    {
+      "id": "living",
+      "name": "Living / Sleep",
+      "type": "living",
+      "polygon": [[0, 0], [6.5, 0], [6.5, 5], [0, 5]],
+      "areaSqM": 28.5
+    },
+    {
+      "id": "bath",
+      "name": "Bathroom",
+      "type": "bathroom",
+      "polygon": [[4.2, 0], [6.5, 0], [6.5, 2.2], [4.2, 2.2]],
+      "areaSqM": 4
+    }
+  ],
+  "fixtures": [
+    { "id": "f1", "type": "toilet", "roomId": "bath", "position": [5.8, 0.6], "rotationRad": 0 },
+    { "id": "f2", "type": "sink", "roomId": "bath", "position": [4.7, 0.5], "rotationRad": 0 }
+  ],
+  "furniture": [
+    { "id": "fu1", "catalogId": "sofa-2seat", "roomId": "living", "position": [2.2, 3.5], "rotationRad": 3.14, "scale": 1 },
+    { "id": "fu2", "catalogId": "bed-single", "roomId": "living", "position": [1.5, 1.2], "rotationRad": 0, "scale": 1 }
+  ],
+  "notes": "Demo seed only."
+}
