@@ -77,3 +77,12 @@ Ship an MVP that feels like a trusted property showroom: Gamuda HCMC projects, m
 ## Current execution
 
 Active build wave: **M0 → M4 continuous** (user requested full-feature continuation).
+
+
+## Next: Admin + AI Gateway + Showroom
+
+- [x] Admin page — project list, add-by-name, live process timing (no rate limit/timeout)
+- [x] AI Gateway client (multi-model use-cases) + crawl/synthesize fallback
+- [x] Blog routes + weekly draft generation
+- [x] Showroom lighting / materials / room hotspots
+- [ ] Wire production secrets + deploy smoke for admin/blog

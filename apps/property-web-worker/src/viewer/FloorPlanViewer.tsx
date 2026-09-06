@@ -1,6 +1,11 @@
 import { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import {
+  LIGHTING_PRESETS,
+  type LightingPreset,
+  type MaterialPalette,
+} from "@ancu/shared";
 import type { FloorPlanDocument, ViewerMode } from "../types";
 import { documentBounds, hasWebGL } from "./utils";
 import { FloorPlanScene } from "./FloorPlanScene";
@@ -13,6 +18,8 @@ interface FloorPlanViewerProps {
   showLabels: boolean;
   focusRoomId?: string;
   roomOverlayOpacity: number;
+  lightingPreset?: LightingPreset;
+  materialPalette?: MaterialPalette;
 }
 
 function CameraRig({ mode, bounds }: { mode: ViewerMode; bounds: ReturnType<typeof documentBounds> }) {
@@ -129,6 +136,8 @@ export function FloorPlanViewer({
   showLabels,
   focusRoomId,
   roomOverlayOpacity,
+  lightingPreset = "day",
+  materialPalette,
 }: FloorPlanViewerProps) {
   const bounds = documentBounds(document);
   const webgl = hasWebGL();
@@ -137,6 +146,7 @@ export function FloorPlanViewer({
   const dprMax = isMobile
     ? 1.25
     : Math.min(2, typeof window !== "undefined" ? window.devicePixelRatio : 1);
+  const lighting = LIGHTING_PRESETS[lightingPreset];
 
   if (!webgl) {
     return (
@@ -148,18 +158,26 @@ export function FloorPlanViewer({
   }
 
   return (
-    <div className="viewer-canvas-wrap">
+    <div className="viewer-canvas-wrap" style={{ background: lighting.skyColor }}>
       <Canvas shadows={!isMobile} dpr={[1, dprMax]}>
         <Suspense fallback={null}>
+          <color attach="background" args={[lighting.skyColor]} />
           <CameraRig mode={mode} bounds={bounds} />
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[10, 15, 8]} intensity={0.8} castShadow={!isMobile} />
+          <ambientLight intensity={lighting.ambient} />
+          <directionalLight
+            position={[10, 15, 8]}
+            intensity={lighting.directional}
+            color={lighting.sunColor}
+            castShadow={!isMobile}
+          />
           <FloorPlanScene
             document={document}
             showFurniture={showFurniture}
             showLabels={showLabels}
             focusRoomId={focusRoomId}
             roomOverlayOpacity={roomOverlayOpacity}
+            materialPalette={materialPalette}
+            groundColor={lighting.groundColor}
           />
           <OrbitControls
             target={[bounds.cx, 1, bounds.cz]}

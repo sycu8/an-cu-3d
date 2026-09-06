@@ -1,7 +1,13 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Box, Text } from "@react-three/drei";
-import type { Fixture, FloorPlanDocument, FurnitureInstance, Wall } from "@ancu/shared";
+import type {
+  Fixture,
+  FloorPlanDocument,
+  FurnitureInstance,
+  MaterialPalette,
+  Wall,
+} from "@ancu/shared";
 import {
   catalogSize,
   fixtureColor,
@@ -13,7 +19,7 @@ import {
   wallRotation,
 } from "./utils";
 
-function WallMesh({ wall }: { wall: Wall }) {
+function WallMesh({ wall, color }: { wall: Wall; color: string }) {
   const length = wallLength(wall);
   const [cx, cy, cz] = wallCenter(wall);
   const rotation = wallRotation(wall);
@@ -24,7 +30,7 @@ function WallMesh({ wall }: { wall: Wall }) {
       rotation={[0, -rotation, 0]}
       args={[length, wall.heightM, wall.thicknessM]}
     >
-      <meshStandardMaterial color="#e8e2d8" />
+      <meshStandardMaterial color={color} />
     </Box>
   );
 }
@@ -61,9 +67,11 @@ function FixtureMesh({ item }: { item: Fixture }) {
 function RoomFloor({
   polygon,
   opacity,
+  color = "#d4ebe8",
 }: {
   polygon: [number, number][];
   opacity: number;
+  color?: string;
 }) {
   const shape = useMemo(() => {
     const s = new THREE.Shape();
@@ -81,7 +89,7 @@ function RoomFloor({
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
       <shapeGeometry args={[shape]} />
       <meshStandardMaterial
-        color="#d4ebe8"
+        color={color}
         transparent
         opacity={opacity}
         side={THREE.DoubleSide}
@@ -121,6 +129,8 @@ interface FloorPlanSceneProps {
   showLabels: boolean;
   focusRoomId?: string;
   roomOverlayOpacity: number;
+  materialPalette?: MaterialPalette;
+  groundColor?: string;
 }
 
 export function FloorPlanScene({
@@ -129,7 +139,12 @@ export function FloorPlanScene({
   showLabels,
   focusRoomId,
   roomOverlayOpacity,
+  materialPalette,
+  groundColor = "#f5f0ea",
 }: FloorPlanSceneProps) {
+  const wallColor = materialPalette?.wall ?? "#e8e2d8";
+  const floorColor = materialPalette?.floor ?? "#d4ebe8";
+
   const visibleRooms = focusRoomId
     ? document.rooms.filter((r) => r.id === focusRoomId)
     : document.rooms;
@@ -150,15 +165,20 @@ export function FloorPlanScene({
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color="#f5f0ea" />
+        <meshStandardMaterial color={groundColor} />
       </mesh>
 
       {document.walls.map((wall) => (
-        <WallMesh key={wall.id} wall={wall} />
+        <WallMesh key={wall.id} wall={wall} color={wallColor} />
       ))}
 
       {visibleRooms.map((room) => (
-        <RoomFloor key={room.id} polygon={room.polygon} opacity={roomOverlayOpacity} />
+        <RoomFloor
+          key={room.id}
+          polygon={room.polygon}
+          opacity={roomOverlayOpacity}
+          color={floorColor}
+        />
       ))}
 
       {visibleFurniture.map((item) => (

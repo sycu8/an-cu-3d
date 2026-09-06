@@ -110,3 +110,12 @@ Job create returns quickly; work runs on Queue/Workflow.
 - Engine endpoints are internal (secret / Access / service binding).
 - No unrestricted URL fetcher; domain allowlist + SSRF guards.
 - No public R2 write; no secrets in frontend bundles.
+
+
+## Admin + AI Gateway (P30+)
+
+- **Admin UI** (`/admin`): Bearer `ADMIN_SECRET`; add project by name → crawl/synthesize/publish with live stage timing (no rate limit / timeout on this path).
+- **AI Gateway**: multi-model routing in `@ancu/shared` (`research`, `blog`, `image_gen`, `image_edit`, `vision_2d`, `qa_factual`) with Workers AI fallback.
+- **Blog** (`/blog`): weekly draft generation from existing projects; Vietnamese primary.
+- **Showroom** (`/projects/:slug/showroom`): lighting presets, material palettes, room hotspots — sample-home presentation.
+- **Engine**: `POST /jobs` rate limit bypassed when `X-AnCu-Admin-Build: 1` or `bypassRateLimit: true`.

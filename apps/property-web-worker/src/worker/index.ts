@@ -1,4 +1,16 @@
+import { slugifyProjectName } from "@ancu/shared";
 import { getProjectBySlug, getProjectSummaries } from "../data/gamuda-projects";
+import { verifyAdminBearer } from "./auth";
+import { assist2dTo3d, generateBlogDraft, generateImageAsset } from "./ai/pipeline";
+import {
+  getPostBySlug,
+  listAllPosts,
+  listPublishedPosts,
+  upsertBlogPost,
+} from "./db/blog";
+import { createBuildJob, getBuildJob, listBuildJobs } from "./db/jobs";
+import { getDbProjectBySlug, listDbProjectSummaries } from "./db/projects";
+import { runProjectBuild } from "./project-build";
 import type { Env } from "./types";
 
 function securityHeaders(requestId: string): Record<string, string> {
@@ -9,7 +21,7 @@ function securityHeaders(requestId: string): Record<string, string> {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "X-Request-Id": requestId,
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://gateway.ai.cloudflare.com; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
   };
 }
 
@@ -25,10 +37,15 @@ function withSecurityHeaders(response: Response, requestId: string): Response {
   });
 }
 
-function json(data: unknown, requestId: string, status = 200): Response {
+function json(
+  data: unknown,
+  requestId: string,
+  status = 200,
+  cache = "public, max-age=60",
+): Response {
   const headers = new Headers({
     "Content-Type": "application/json",
-    "Cache-Control": "public, max-age=60",
+    "Cache-Control": cache,
   });
   for (const [key, value] of Object.entries(securityHeaders(requestId))) {
     headers.set(key, value);
@@ -37,11 +54,15 @@ function json(data: unknown, requestId: string, status = 200): Response {
 }
 
 function notFound(message: string, requestId: string): Response {
-  return json({ error: message }, requestId, 404);
+  return json({ error: message }, requestId, 404, "no-store");
 }
 
 function methodNotAllowed(requestId: string): Response {
-  return json({ error: "Method Not Allowed" }, requestId, 405);
+  return json({ error: "Method Not Allowed" }, requestId, 405, "no-store");
+}
+
+function unauthorized(requestId: string): Response {
+  return json({ error: "unauthorized" }, requestId, 401, "no-store");
 }
 
 function logRequest(
@@ -63,11 +84,185 @@ function logRequest(
   );
 }
 
-async function handleApi(request: Request, env: Env, requestId: string): Promise<Response | null> {
-  const url = new URL(request.url);
-  const path = url.pathname;
+async function mergeProjects(env: Env) {
+  const seed = getProjectSummaries();
+  let dbProjects: Awaited<ReturnType<typeof listDbProjectSummaries>> = [];
+  try {
+    dbProjects = await listDbProjectSummaries(env.DB);
+  } catch {
+    dbProjects = [];
+  }
+  const bySlug = new Map(seed.map((p) => [p.slug, p]));
+  for (const p of dbProjects) bySlug.set(p.slug, p);
+  return {
+    projects: [...bySlug.values()],
+    source: dbProjects.length ? "d1+seed" : "seed",
+  };
+}
 
-  if (path === "/api/health") {
+async function resolveProject(env: Env, slug: string) {
+  try {
+    const fromDb = await getDbProjectBySlug(env.DB, slug);
+    if (fromDb) return { project: fromDb, source: "d1" as const };
+  } catch {
+    /* fall through */
+  }
+  const seed = getProjectBySlug(slug);
+  if (seed) return { project: seed, source: "seed" as const };
+  return null;
+}
+
+function schedule(ctx: ExecutionContext | undefined, task: Promise<unknown>): void {
+  if (ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil(task);
+  } else {
+    void task;
+  }
+}
+
+async function handleAdmin(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext | undefined,
+  requestId: string,
+): Promise<Response | null> {
+  const path = new URL(request.url).pathname;
+  if (!path.startsWith("/api/admin")) return null;
+
+  const ok = await verifyAdminBearer(
+    request.headers.get("Authorization"),
+    env.ADMIN_SECRET,
+  );
+  if (!ok) return unauthorized(requestId);
+
+  if (path === "/api/admin/projects" && request.method === "GET") {
+    const merged = await mergeProjects(env);
+    const jobs = await listBuildJobs(env.DB).catch(() => []);
+    return json({ ...merged, jobs }, requestId, 200, "no-store");
+  }
+
+  if (path === "/api/admin/projects" && request.method === "POST") {
+    let body: { name?: string };
+    try {
+      body = (await request.json()) as { name?: string };
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    const name = body.name?.trim();
+    if (!name || name.length < 2) {
+      return json({ error: "name_required" }, requestId, 400, "no-store");
+    }
+    const slug = slugifyProjectName(name);
+    const id = crypto.randomUUID();
+    await createBuildJob(env.DB, { id, name, slug });
+    // No rate limit / timeout for this orchestration
+    schedule(ctx, runProjectBuild(env, { id, name, slug }));
+    const job = await getBuildJob(env.DB, id);
+    return json({ job }, requestId, 202, "no-store");
+  }
+
+  if (path === "/api/admin/jobs" && request.method === "GET") {
+    const jobs = await listBuildJobs(env.DB);
+    return json({ jobs }, requestId, 200, "no-store");
+  }
+
+  const jobMatch = path.match(/^\/api\/admin\/jobs\/([^/]+)$/);
+  if (jobMatch && request.method === "GET") {
+    const job = await getBuildJob(env.DB, decodeURIComponent(jobMatch[1]));
+    if (!job) return notFound("job_not_found", requestId);
+    return json({ job }, requestId, 200, "no-store");
+  }
+
+  if (path === "/api/admin/blog" && request.method === "GET") {
+    const posts = await listAllPosts(env.DB);
+    return json({ posts }, requestId, 200, "no-store");
+  }
+
+  if (path === "/api/admin/blog/generate" && request.method === "POST") {
+    const merged = await mergeProjects(env);
+    let body: { projectSlugs?: string[]; publish?: boolean } = {};
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      body = {};
+    }
+    const selected = body.projectSlugs?.length
+      ? merged.projects.filter((p) => body.projectSlugs!.includes(p.slug))
+      : merged.projects.slice(0, 5);
+
+    const details = [];
+    for (const p of selected) {
+      const full = await resolveProject(env, p.slug);
+      details.push({
+        name: p.name,
+        slug: p.slug,
+        description:
+          full?.project && "description" in full.project
+            ? full.project.description
+            : undefined,
+      });
+    }
+
+    const draft = await generateBlogDraft(env, details);
+    const slug = `tuan-${new Date().toISOString().slice(0, 10)}-${crypto.randomUUID().slice(0, 8)}`;
+    const id = crypto.randomUUID();
+    const cover = await generateImageAsset(
+      env,
+      draft.coverPrompt,
+      `blog/${slug}/cover`,
+    );
+    const status = body.publish ? "published" : "draft";
+    await upsertBlogPost(env.DB, {
+      id,
+      slug,
+      title: draft.title,
+      excerpt: draft.excerpt,
+      bodyMarkdown: draft.bodyMarkdown,
+      projectSlugs: selected.map((p) => p.slug),
+      status,
+      seoTitle: draft.seoTitle,
+      seoDescription: draft.seoDescription,
+      coverR2Key: cover.r2Key,
+      publish: Boolean(body.publish),
+    });
+    const post = await getPostBySlug(env.DB, slug);
+    return json({ post, cover }, requestId, 201, "no-store");
+  }
+
+  if (path === "/api/admin/assist/2d3d" && request.method === "POST") {
+    let body: { projectSlug?: string; imageDescription?: string };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    if (!body.projectSlug || !body.imageDescription) {
+      return json(
+        { error: "projectSlug_and_imageDescription_required" },
+        requestId,
+        400,
+        "no-store",
+      );
+    }
+    const result = await assist2dTo3d(env, body.projectSlug, body.imageDescription);
+    return json({ result }, requestId, 200, "no-store");
+  }
+
+  return notFound("admin_route_not_found", requestId);
+}
+
+async function handleApi(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext | undefined,
+  requestId: string,
+): Promise<Response | null> {
+  const path = new URL(request.url).pathname;
+
+  const admin = await handleAdmin(request, env, ctx, requestId);
+  if (admin) return admin;
+
+  if (path === "/api/health" && request.method === "GET") {
     let dbStatus = "seed";
     try {
       if (env.DB) {
@@ -81,32 +276,54 @@ async function handleApi(request: Request, env: Env, requestId: string): Promise
       status: "ok",
       service: "ancu-property-web",
       db: dbStatus,
+      aiGateway: Boolean(env.AI_GATEWAY_ACCOUNT_ID && env.AI_GATEWAY_ID),
       timestamp: new Date().toISOString(),
     };
-    if (env.APP_VERSION) {
-      body.version = env.APP_VERSION;
-    }
+    if (env.APP_VERSION) body.version = env.APP_VERSION;
     return json(body, requestId);
   }
 
-  if (path === "/api/projects") {
-    const projects = getProjectSummaries();
-    return json({ projects, source: "seed" }, requestId);
+  if (path === "/api/projects" && request.method === "GET") {
+    return json(await mergeProjects(env), requestId);
   }
 
   const projectMatch = path.match(/^\/api\/projects\/([^/]+)$/);
-  if (projectMatch) {
+  if (projectMatch && request.method === "GET") {
     const slug = decodeURIComponent(projectMatch[1]);
-    const project = getProjectBySlug(slug);
-    if (!project) return notFound(`Project not found: ${slug}`, requestId);
-    return json({ project, source: "seed" }, requestId);
+    const resolved = await resolveProject(env, slug);
+    if (!resolved) return notFound(`Project not found: ${slug}`, requestId);
+    return json(resolved, requestId);
+  }
+
+  if (path === "/api/blog" && request.method === "GET") {
+    try {
+      const posts = await listPublishedPosts(env.DB);
+      return json({ posts }, requestId);
+    } catch {
+      return json({ posts: [] }, requestId);
+    }
+  }
+
+  const blogMatch = path.match(/^\/api\/blog\/([^/]+)$/);
+  if (blogMatch && request.method === "GET") {
+    try {
+      const post = await getPostBySlug(env.DB, decodeURIComponent(blogMatch[1]));
+      if (!post || post.status !== "published") return notFound("post_not_found", requestId);
+      return json({ post }, requestId);
+    } catch {
+      return notFound("post_not_found", requestId);
+    }
   }
 
   return null;
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx?: ExecutionContext,
+  ): Promise<Response> {
     const start = Date.now();
     const requestId = crypto.randomUUID();
     const url = new URL(request.url);
@@ -114,17 +331,23 @@ export default {
 
     let response: Response;
 
-    if (path.startsWith("/api/") && request.method !== "GET") {
-      response = methodNotAllowed(requestId);
-    } else if (request.method !== "GET") {
+    if (path.startsWith("/api/")) {
+      const isAdminMutating =
+        path.startsWith("/api/admin") &&
+        request.method !== "GET" &&
+        request.method !== "HEAD";
+      const isPublicGet = request.method === "GET" || request.method === "HEAD";
+
+      if (!isPublicGet && !isAdminMutating) {
+        response = methodNotAllowed(requestId);
+      } else {
+        const apiResponse = await handleApi(request, env, ctx, requestId);
+        response = apiResponse ?? notFound("Not Found", requestId);
+      }
+    } else if (request.method !== "GET" && request.method !== "HEAD") {
       response = new Response("Method Not Allowed", { status: 405 });
     } else {
-      const apiResponse = await handleApi(request, env, requestId);
-      if (apiResponse) {
-        response = apiResponse;
-      } else {
-        response = new Response("Not Found", { status: 404 });
-      }
+      response = new Response("Not Found", { status: 404 });
     }
 
     if (!path.startsWith("/api/") || response.headers.get("X-Request-Id") === null) {

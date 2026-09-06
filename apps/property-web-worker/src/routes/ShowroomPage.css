@@ -1,0 +1,58 @@
+.showroom-page {
+  padding-bottom: var(--space-3xl);
+}
+
+.showroom-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  padding: var(--space-xl) var(--space-lg);
+}
+
+.showroom-eyebrow {
+  font-size: var(--text-small);
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-sm);
+}
+
+.showroom-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.showroom-controls label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+
+.showroom-controls select {
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  min-width: 8rem;
+}
+
+.showroom-hotspots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding-bottom: var(--space-md);
+}
+
+.showroom-hotspots button {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.75rem;
+  font-size: var(--text-small);
+}
+
+.showroom-hotspots button.active {
+  border-color: var(--color-teal-700, #285a52);
+  color: var(--color-teal-700, #285a52);
+  font-weight: 700;
+}
