@@ -12,13 +12,11 @@ export interface TopologyCheckResult {
   issues: TopologyIssue[];
 }
 
-/** Percent deviation between computed and expected area (0–100+). */
 export function areaDeviationPercent(computedArea: number, expectedArea: number): number {
   if (expectedArea <= 0) return computedArea === 0 ? 0 : 100;
   return (Math.abs(computedArea - expectedArea) / expectedArea) * 100;
 }
 
-/** Stub: ensure every room polygon has at least three vertices. */
 export function checkRoomPolygons(
   rooms: Array<{ id: string; polygon: Vec2[] }>,
 ): TopologyCheckResult {
@@ -35,7 +33,6 @@ export function checkRoomPolygons(
   return { ok: issues.length === 0, issues };
 }
 
-/** Stub: flag zero-length wall segments. */
 export function checkWallSegments(
   walls: Array<{ id: string; start: Vec2; end: Vec2 }>,
   minLength = 0.05,
@@ -54,24 +51,21 @@ export function checkWallSegments(
   return { ok: issues.length === 0, issues };
 }
 
-/** Stub: compare summed room area to declared net area. */
 export function checkAreaConsistency(
-  rooms: Array<{ id: string; polygon: Vec2[]; areaSqM?: number }>,
+  rooms: Array<{ id: string; polygon: Vec2[] }>,
   declaredNetAreaSqM?: number,
   tolerancePercent = 8,
 ): TopologyCheckResult {
   const issues: TopologyIssue[] = [];
   const computed = rooms.reduce((sum, room) => sum + polygonArea(room.polygon), 0);
-
   if (declaredNetAreaSqM != null) {
     const deviation = areaDeviationPercent(computed, declaredNetAreaSqM);
     if (deviation > tolerancePercent) {
       issues.push({
         code: "area.net_mismatch",
-        message: `Computed room area ${computed.toFixed(2)}m² deviates ${deviation.toFixed(1)}% from declared ${declaredNetAreaSqM}m²`,
+        message: `Computed ${computed.toFixed(2)}m² vs declared ${declaredNetAreaSqM}m² (${deviation.toFixed(1)}%)`,
       });
     }
   }
-
   return { ok: issues.length === 0, issues };
 }

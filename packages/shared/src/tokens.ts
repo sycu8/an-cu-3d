@@ -37,3 +37,4 @@ export type Palette = typeof palette;
 export type Tokens = typeof tokens;
 
 export const BRAND = "AnCư 3D" as const;
+export const TAGLINE = "Hiểu căn nhà trước khi gọi là nhà." as const;

@@ -18,23 +18,23 @@ Ship an MVP that feels like a trusted property showroom: Gamuda HCMC projects, m
 
 - [x] P0 Repository inspection
 - [x] P1 Architecture
-- [ ] P2 Brand/design system
-- [ ] P3 Cloudflare bindings/config
-- [ ] P4 D1 migrations
-- [ ] P5 R2 conventions
-- [ ] P6 Main app shell/routes
-- [ ] P7 Gamuda data/source registry
-- [ ] P8 Source crawler
-- [ ] P9 Asset classification/dedupe
-- [ ] P10 Conversion job engine
-- [ ] P11 Image normalization
-- [ ] P12 Vision extraction (cascade stubs + cache contract)
-- [ ] P13 FloorPlanDocument
-- [ ] P14 Scale calibration
-- [ ] P15 Wall topology
-- [ ] P16 Doors/windows
-- [ ] P17 Rooms
-- [ ] P18 Geometry validation
+- [x] P2 Brand/design system
+- [x] P3 Cloudflare bindings/config
+- [x] P4 D1 migrations
+- [x] P5 R2 conventions
+- [x] P6 Main app shell/routes
+- [x] P7 Gamuda data/source registry
+- [x] P8 Source crawler
+- [x] P9 Asset classification/dedupe
+- [x] P10 Conversion job engine
+- [x] P11 Image normalization
+- [x] P12 Vision extraction (cascade stubs + cache contract)
+- [x] P13 FloorPlanDocument
+- [x] P14 Scale calibration
+- [x] P15 Wall topology
+- [x] P16 Doors/windows
+- [x] P17 Rooms
+- [x] P18 Geometry validation
 - [ ] P19 Procedural 3D engine
 - [ ] P20 Furniture
 - [ ] P21 Dollhouse/apartment UI

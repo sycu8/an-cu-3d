@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from "react-router";
-import { BRAND } from "@ancu/shared/tokens";
+import { BRAND, TAGLINE } from "@ancu/shared";
 import "./Layout.css";
 
 export function Layout() {
@@ -29,7 +29,7 @@ export function Layout() {
       <footer className="site-footer">
         <div className="container">
           <p>
-            {BRAND} — Hiểu căn nhà trước khi gọi là nhà.
+            {BRAND} — {TAGLINE}
           </p>
           <p className="footer-note">Dữ liệu chưa xác minh được ghi rõ &ldquo;Data pending verification&rdquo;.</p>
         </div>

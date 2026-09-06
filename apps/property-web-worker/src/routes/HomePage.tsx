@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { BRAND } from "@ancu/shared/tokens";
+import { BRAND, TAGLINE } from "@ancu/shared";
 import { getProjectSummaries } from "../data/gamuda-projects";
 import { ProjectCard } from "../components/ProjectCard";
 import "./HomePage.css";
@@ -12,7 +12,7 @@ export default function HomePage() {
       <section className="hero">
         <div className="container hero-inner">
           <h1 className="hero-title">{BRAND}</h1>
-          <p className="hero-tagline">Hiểu căn nhà trước khi gọi là nhà.</p>
+          <p className="hero-tagline">{TAGLINE}</p>
           <p className="hero-desc">
             Khám phá dự án bất động sản theo cách kiến trúc — mặt bằng, không gian 3D,
             và bản đồ kết nối — với nguồn dữ liệu minh bạch.

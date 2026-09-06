@@ -5,7 +5,7 @@
   "createdAt": "2026-09-06T00:00:00.000Z",
   "updatedAt": "2026-09-06T00:00:00.000Z",
   "coordinateUnit": "meter",
-  "netAreaSqM": 28.5,
+  "netAreaSqM": 32.5,
   "bedroomCount": 0,
   "bathroomCount": 1,
   "source": {
@@ -13,28 +13,26 @@
     "assetClass": "floorplan_raster",
     "projectSlug": "eaton-park",
     "projectName": "Eaton Park",
-    "buildingId": "block-a",
     "unitTypeCode": "S1",
     "bedroomLabel": "Studio",
-    "provenanceNote": "Benchmark-shaped seed layout — NOT verified against official Gamuda floor plan. Dimensions estimated from marketing brochure scale.",
+    "provenanceNote": "Estimated seed for procedural viewer MVP — not an official published plan.",
     "jobState": "REVIEW_PENDING"
   },
   "scale": {
     "metersPerUnit": 1,
     "unit": "meter",
     "method": "estimated",
-    "confidence": 0.62,
+    "confidence": 0.55,
     "estimated": true,
-    "notes": "Overall footprint inferred; awaiting official source URL (P7–P8)."
+    "notes": "Seed geometry for demo; replace after official OCR calibration."
   },
   "confidence": {
     "overall": 0.58,
-    "scale": 0.62,
+    "scale": 0.55,
     "walls": 0.7,
-    "openings": 0.55,
+    "openings": 0.6,
     "rooms": 0.65,
-    "fixtures": 0.4,
-    "source": 0.35,
+    "source": 0.4,
     "reviewStatus": "unreviewed"
   },
   "validation": {
@@ -42,59 +40,50 @@
     "errors": [],
     "warnings": [
       {
-        "code": "seed.estimated_layout",
-        "message": "Layout is a procedural seed for MVP benchmarking, not publisher-verified.",
+        "code": "scale.estimated",
+        "message": "Scale is estimated; not verified against official dimensions.",
         "severity": "warning"
       }
     ],
-    "areaDeviationPercent": 2.1
+    "areaDeviationPercent": 0
   },
   "walls": [
-    { "id": "w-n", "start": [0, 0], "end": [5.2, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
-    { "id": "w-e", "start": [5.2, 0], "end": [5.2, 5.5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
-    { "id": "w-s", "start": [5.2, 5.5], "end": [0, 5.5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
-    { "id": "w-w", "start": [0, 5.5], "end": [0, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
-    { "id": "w-bath", "start": [3.6, 0], "end": [3.6, 2.2], "thicknessM": 0.1, "heightM": 2.8 },
-    { "id": "w-kitchen", "start": [0, 3.4], "end": [3.6, 3.4], "thicknessM": 0.1, "heightM": 2.8 }
+    { "id": "w1", "start": [0, 0], "end": [6.5, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w2", "start": [6.5, 0], "end": [6.5, 5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w3", "start": [6.5, 5], "end": [0, 5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w4", "start": [0, 5], "end": [0, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w5", "start": [4.2, 0], "end": [4.2, 2.2], "thicknessM": 0.1, "heightM": 2.8 }
   ],
   "doors": [
-    { "id": "d-entry", "wallId": "w-s", "offsetM": 2.4, "widthM": 0.9, "heightM": 2.1, "swing": "left", "connectsRoomIds": ["room-living", "room-corridor-ext"] },
-    { "id": "d-bath", "wallId": "w-bath", "offsetM": 0.8, "widthM": 0.7, "heightM": 2.05, "swing": "right", "connectsRoomIds": ["room-living", "room-bath"] }
+    { "id": "d1", "wallId": "w1", "offsetM": 0.4, "widthM": 0.9, "heightM": 2.1, "swing": "left", "connectsRoomIds": ["living"] },
+    { "id": "d2", "wallId": "w5", "offsetM": 0.3, "widthM": 0.7, "heightM": 2.1, "swing": "right", "connectsRoomIds": ["living", "bath"] }
   ],
   "windows": [
-    { "id": "win-living", "wallId": "w-e", "offsetM": 2.0, "widthM": 1.6, "heightM": 1.4, "sillHeightM": 0.85 }
+    { "id": "win1", "wallId": "w3", "offsetM": 1.5, "widthM": 2.4, "heightM": 1.4, "sillHeightM": 0.9 }
   ],
   "rooms": [
     {
-      "id": "room-living",
-      "name": "Living / Sleeping",
+      "id": "living",
+      "name": "Living / Sleep",
       "type": "living",
-      "polygon": [[0, 0], [3.6, 0], [3.6, 3.4], [0, 3.4]],
-      "areaSqM": 12.2
+      "polygon": [[0, 0], [6.5, 0], [6.5, 5], [0, 5]],
+      "areaSqM": 28.5
     },
     {
-      "id": "room-kitchen",
-      "name": "Kitchenette",
-      "type": "kitchen",
-      "polygon": [[0, 3.4], [3.6, 3.4], [3.6, 5.5], [0, 5.5]],
-      "areaSqM": 7.6
-    },
-    {
-      "id": "room-bath",
+      "id": "bath",
       "name": "Bathroom",
       "type": "bathroom",
-      "polygon": [[3.6, 0], [5.2, 0], [5.2, 2.2], [3.6, 2.2]],
-      "areaSqM": 3.5
+      "polygon": [[4.2, 0], [6.5, 0], [6.5, 2.2], [4.2, 2.2]],
+      "areaSqM": 4
     }
   ],
   "fixtures": [
-    { "id": "fx-toilet", "type": "toilet", "roomId": "room-bath", "position": [4.5, 0.6], "rotationRad": 0 },
-    { "id": "fx-sink", "type": "sink", "roomId": "room-bath", "position": [4.0, 1.6], "rotationRad": 1.57 },
-    { "id": "fx-stove", "type": "stove", "roomId": "room-kitchen", "position": [0.8, 4.8], "rotationRad": 0 }
+    { "id": "f1", "type": "toilet", "roomId": "bath", "position": [5.8, 0.6], "rotationRad": 0 },
+    { "id": "f2", "type": "sink", "roomId": "bath", "position": [4.7, 0.5], "rotationRad": 0 }
   ],
   "furniture": [
-    { "id": "f-bed", "catalogId": "bed-queen", "roomId": "room-living", "position": [1.0, 1.0], "rotationRad": 0, "scale": 1 },
-    { "id": "f-sofa", "catalogId": "sofa-compact", "roomId": "room-living", "position": [2.5, 2.6], "rotationRad": 1.57, "scale": 1 }
+    { "id": "fu1", "catalogId": "sofa-2seat", "roomId": "living", "position": [2.2, 3.5], "rotationRad": 3.14, "scale": 1 },
+    { "id": "fu2", "catalogId": "bed-single", "roomId": "living", "position": [1.5, 1.2], "rotationRad": 0, "scale": 1 }
   ],
-  "notes": "Studio seed for procedural dollhouse QA — replace after official floor plan ingest."
+  "notes": "Demo seed only."
 }

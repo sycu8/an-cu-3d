@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-/** Conversion / publish pipeline job states (P13). */
 export const JobState = z.enum([
   "DISCOVERED",
   "QUEUED",

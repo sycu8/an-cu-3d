@@ -1,17 +1,17 @@
 import type { z } from "zod";
 import {
-  AssetClass as AssetClassSchema,
+  AssetClass,
   ConfidenceResultSchema,
   DoorSchema,
   FixtureSchema,
   FloorPlanDocumentSchema,
   FloorPlanSourceMetadataSchema,
   FurnitureInstanceSchema,
-  JobState as JobStateSchema,
-  ReviewStatus as ReviewStatusSchema,
+  JobState,
+  ReviewStatus,
   RoomSchema,
   ScaleCalibrationSchema,
-  SourceClass as SourceClassSchema,
+  SourceClass,
   ValidationIssueSchema,
   ValidationResultSchema,
   Vec2Schema,
@@ -20,10 +20,10 @@ import {
 } from "./schema.js";
 
 export type Vec2 = z.infer<typeof Vec2Schema>;
-export type JobState = z.infer<typeof JobStateSchema>;
-export type AssetClass = z.infer<typeof AssetClassSchema>;
-export type SourceClass = z.infer<typeof SourceClassSchema>;
-export type ReviewStatus = z.infer<typeof ReviewStatusSchema>;
+export type JobStateType = z.infer<typeof JobState>;
+export type AssetClassType = z.infer<typeof AssetClass>;
+export type SourceClassType = z.infer<typeof SourceClass>;
+export type ReviewStatusType = z.infer<typeof ReviewStatus>;
 export type ScaleCalibration = z.infer<typeof ScaleCalibrationSchema>;
 export type ConfidenceResult = z.infer<typeof ConfidenceResultSchema>;
 export type ValidationIssue = z.infer<typeof ValidationIssueSchema>;

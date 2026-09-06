@@ -3,9 +3,9 @@
 ## Current phase
 
 **M0–M4 continuous build** (user: roadmap + all features)  
-Completed: P0, P1, **P2/P5/P13/P14–P18 foundation in `@ancu/shared`**  
-In flight (parallel agents): P2–P29 scaffold/MVP toward acceptance  
-Next after merge of agent work: integrate, typecheck, fill gaps, update PR
+Completed: P0–P1, **P2–P18 MVP spine** (`@ancu/shared`, engine worker, property web shell)  
+In flight: P19–P29 experience polish + production validation  
+Next: integrate parallel agent work, deploy preview, fill Gamuda crawl gaps
 
 ## Roadmap
 
@@ -61,10 +61,14 @@ Logical: `ancu-property-db`, `ancu-engine-db`, `ancu-property-assets`, `ancu-flo
 
 ```bash
 pnpm install
-pnpm -r run typecheck
-pnpm -r run test
-pnpm -r run build
+pnpm --filter @ancu/shared typecheck && pnpm --filter @ancu/shared test
+pnpm --filter @ancu/floorplan-engine test
+pnpm --filter @ancu/property-web-worker typecheck
+pnpm --filter @ancu/property-web-worker test
+pnpm --filter @ancu/property-web-worker build
 ```
+
+Last integration pass (cursor/mvp-build-4bd7): all commands above green.
 
 ## Model routing
 

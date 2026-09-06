@@ -1,5 +1,5 @@
 /** Package entry — tokens, schema, geometry, R2 helpers, samples. */
-export { BRAND, palette, tokens } from "./tokens.js";
+export { BRAND, TAGLINE, palette, tokens } from "./tokens.js";
 export type { Palette, Tokens } from "./tokens.js";
 
 export {
@@ -38,18 +38,18 @@ export {
 } from "./floorplan/schema.js";
 
 export type {
-  AssetClass as AssetClassType,
+  AssetClassType,
   ConfidenceResult,
   Door,
   Fixture,
   FloorPlanDocument,
   FloorPlanSourceMetadata,
   FurnitureInstance,
-  JobState as JobStateType,
-  ReviewStatus as ReviewStatusType,
+  JobStateType,
+  ReviewStatusType,
   Room,
   ScaleCalibration,
-  SourceClass as SourceClassType,
+  SourceClassType,
   ValidationIssue,
   ValidationResult,
   Vec2,
