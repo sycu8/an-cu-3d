@@ -32,10 +32,10 @@ export const UNIT_VIEW_MODES = ["2d", "perspective", "3d", "auto"] as const;
 export type UnitViewMode = (typeof UNIT_VIEW_MODES)[number];
 
 export const UNIT_VIEW_MODE_LABELS: Record<UnitViewMode, string> = {
-  "2d": "Mặt bằng WebGL",
-  perspective: "Phối cảnh 3D",
+  "2d": "Xem 2D",
+  perspective: "Phối cảnh",
   "3d": "Xem 3D",
-  auto: "Tự phối cảnh",
+  auto: "Thử nội thất",
 };
 
 export function isUnitViewMode(value: string | null | undefined): value is UnitViewMode {

@@ -2,7 +2,7 @@
   "name": "ancu-3d",
   "private": true,
   "version": "0.0.0",
-  "description": "AnCư 3D — trusted digital property showroom + architectural explorer",
+  "description": "AnCư 3D — trust-first property decision platform (explore · compare · decide)",
   "packageManager": "pnpm@10.33.3",
   "engines": {
     "node": ">=22"

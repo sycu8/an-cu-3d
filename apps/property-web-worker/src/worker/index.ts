@@ -1,6 +1,10 @@
 import { slugifyProjectName } from "@ancu/shared";
 import { getProjectBySlug, getProjectSummaries } from "../data/gamuda-projects";
-import { verifyAdminBearer } from "./auth";
+import {
+  extractBearerToken,
+  hashPassword,
+  validateNewPassword,
+} from "./auth";
 import {
   assist2dTo3d,
   editImageAsset,
@@ -8,6 +12,14 @@ import {
   generateImageAsset,
   runFactualQa,
 } from "./ai/pipeline";
+import {
+  changeAdminPassword,
+  createAdminSession,
+  deleteAdminSession,
+  loginAdmin,
+  resolveAdminSession,
+  type AdminAuthContext,
+} from "./db/admin";
 import {
   getPostBySlug,
   listAllPosts,
@@ -150,6 +162,14 @@ function schedule(ctx: ExecutionContext | undefined, task: Promise<unknown>): vo
   }
 }
 
+function mustChangePasswordBlocked(path: string): boolean {
+  return (
+    path !== "/api/admin/me" &&
+    path !== "/api/admin/logout" &&
+    path !== "/api/admin/change-password"
+  );
+}
+
 async function handleAdmin(
   request: Request,
   env: Env,
@@ -159,11 +179,122 @@ async function handleAdmin(
   const path = new URL(request.url).pathname;
   if (!path.startsWith("/api/admin")) return null;
 
-  const ok = await verifyAdminBearer(
-    request.headers.get("Authorization"),
-    env.ADMIN_SECRET,
-  );
-  if (!ok) return unauthorized(requestId);
+  // Public auth endpoints (no session yet)
+  if (path === "/api/admin/login" && request.method === "POST") {
+    let body: { username?: string; password?: string };
+    try {
+      body = (await request.json()) as { username?: string; password?: string };
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    const username = body.username?.trim() ?? "";
+    const password = body.password ?? "";
+    if (!username || !password) {
+      return json({ error: "credentials_required" }, requestId, 400, "no-store");
+    }
+    try {
+      const result = await loginAdmin(env.DB, username, password);
+      if (!result.ok) {
+        return json({ error: result.error }, requestId, 401, "no-store");
+      }
+      return json(
+        {
+          token: result.token,
+          username: result.username,
+          mustChangePassword: result.mustChangePassword,
+        },
+        requestId,
+        200,
+        "no-store",
+      );
+    } catch (err) {
+      console.error("admin login failed", err);
+      return json({ error: "auth_unavailable" }, requestId, 503, "no-store");
+    }
+  }
+
+  const bearer = extractBearerToken(request.headers.get("Authorization"));
+  if (!bearer) return unauthorized(requestId);
+
+  let auth: AdminAuthContext | null = null;
+  try {
+    auth = await resolveAdminSession(env.DB, bearer);
+  } catch (err) {
+    console.error("admin session resolve failed", err);
+    return json({ error: "auth_unavailable" }, requestId, 503, "no-store");
+  }
+  if (!auth) return unauthorized(requestId);
+
+  const mustChange = auth.user.must_change_password === 1;
+
+  if (path === "/api/admin/me" && request.method === "GET") {
+    return json(
+      {
+        username: auth.user.username,
+        mustChangePassword: mustChange,
+      },
+      requestId,
+      200,
+      "no-store",
+    );
+  }
+
+  if (path === "/api/admin/logout" && request.method === "POST") {
+    await deleteAdminSession(env.DB, auth.session.id);
+    return json({ ok: true }, requestId, 200, "no-store");
+  }
+
+  if (path === "/api/admin/change-password" && request.method === "POST") {
+    let body: { currentPassword?: string; newPassword?: string };
+    try {
+      body = (await request.json()) as {
+        currentPassword?: string;
+        newPassword?: string;
+      };
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    const currentPassword = body.currentPassword ?? "";
+    const newPassword = body.newPassword ?? "";
+    if (!currentPassword || !newPassword) {
+      return json({ error: "password_required" }, requestId, 400, "no-store");
+    }
+    const validationError = validateNewPassword(newPassword, auth.user.username);
+    if (validationError) {
+      return json({ error: validationError }, requestId, 400, "no-store");
+    }
+    const newHash = await hashPassword(newPassword);
+    const result = await changeAdminPassword(
+      env.DB,
+      auth.user,
+      currentPassword,
+      newHash,
+    );
+    if (!result.ok) {
+      return json({ error: result.error }, requestId, 401, "no-store");
+    }
+    const { token } = await createAdminSession(env.DB, auth.user.id);
+    return json(
+      {
+        ok: true,
+        token,
+        username: auth.user.username,
+        mustChangePassword: false,
+      },
+      requestId,
+      200,
+      "no-store",
+    );
+  }
+
+  if (mustChange && mustChangePasswordBlocked(path)) {
+    return json(
+      { error: "password_change_required", mustChangePassword: true },
+      requestId,
+      403,
+      "no-store",
+    );
+  }
 
   if (path === "/api/admin/projects" && request.method === "GET") {
     const merged = await mergeProjects(env);

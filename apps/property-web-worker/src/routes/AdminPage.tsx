@@ -4,7 +4,9 @@ import type { BlogPost, ProjectBuildJob } from "@ancu/shared";
 import type { ProjectSummary } from "../types";
 import "./AdminPage.css";
 
-const SECRET_KEY = "ancu-admin-secret";
+const TOKEN_KEY = "ancu-admin-token";
+/** Clear legacy ADMIN_SECRET storage from older builds. */
+const LEGACY_SECRET_KEY = "ancu-admin-secret";
 
 type AdminTab = "projects" | "blog" | "tools" | "jobs";
 
@@ -28,8 +30,39 @@ function formatUpdated(iso?: string): string {
   }
 }
 
+function authErrorMessage(code: string | undefined): string {
+  switch (code) {
+    case "invalid_credentials":
+      return "Sai username hoặc password";
+    case "password_change_required":
+      return "Bạn phải đổi mật khẩu trước khi tiếp tục";
+    case "password_too_short":
+      return "Mật khẩu mới tối thiểu 8 ký tự";
+    case "password_is_default":
+      return "Không được dùng mật khẩu mặc định admin";
+    case "password_matches_username":
+      return "Mật khẩu không được trùng username";
+    case "invalid_current_password":
+      return "Mật khẩu hiện tại không đúng";
+    case "auth_unavailable":
+      return "Auth chưa sẵn sàng (kiểm tra D1 migration)";
+    default:
+      return "Đăng nhập thất bại";
+  }
+}
+
 export default function AdminPage() {
-  const [secret, setSecret] = useState(() => localStorage.getItem(SECRET_KEY) ?? "");
+  const [token, setToken] = useState(() => {
+    localStorage.removeItem(LEGACY_SECRET_KEY);
+    return localStorage.getItem(TOKEN_KEY) ?? "";
+  });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [adminUsername, setAdminUsername] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [authed, setAuthed] = useState(false);
   const [tab, setTab] = useState<AdminTab>("projects");
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -58,19 +91,62 @@ export default function AdminPage() {
 
   const headers = useMemo(
     () => ({
-      Authorization: `Bearer ${secret}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     }),
-    [secret],
+    [token],
   );
 
+  const persistSession = useCallback(
+    (nextToken: string, nextUsername: string, nextMustChange: boolean) => {
+      setToken(nextToken);
+      setAdminUsername(nextUsername);
+      setMustChangePassword(nextMustChange);
+      localStorage.setItem(TOKEN_KEY, nextToken);
+      setAuthed(!nextMustChange);
+      if (nextMustChange) {
+        setProjects([]);
+        setJobs([]);
+        setPosts([]);
+      }
+    },
+    [],
+  );
+
+  const clearSession = useCallback(() => {
+    setToken("");
+    setAdminUsername(null);
+    setMustChangePassword(false);
+    setAuthed(false);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(LEGACY_SECRET_KEY);
+    setProjects([]);
+    setJobs([]);
+    setPosts([]);
+    setActiveJob(null);
+    setActiveJobId(null);
+  }, []);
+
   const load = useCallback(async () => {
+    if (!token || mustChangePassword) return;
     setError(null);
     const res = await fetch("/api/admin/projects", { headers });
     if (res.status === 401) {
-      setAuthed(false);
-      setError("Unauthorized — kiểm tra ADMIN_SECRET");
+      clearSession();
+      setError("Phiên đăng nhập hết hạn — đăng nhập lại");
       return;
+    }
+    if (res.status === 403) {
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        mustChangePassword?: boolean;
+      };
+      if (body.mustChangePassword || body.error === "password_change_required") {
+        setMustChangePassword(true);
+        setAuthed(false);
+        setError(authErrorMessage("password_change_required"));
+        return;
+      }
     }
     if (!res.ok) throw new Error("Không tải được dữ liệu admin");
     const data = (await res.json()) as {
@@ -80,7 +156,6 @@ export default function AdminPage() {
     setProjects(data.projects);
     setJobs(data.jobs);
     setAuthed(true);
-    localStorage.setItem(SECRET_KEY, secret);
     setAssistSlug((prev) => prev || data.projects[0]?.slug || "");
 
     const blogRes = await fetch("/api/admin/blog", { headers });
@@ -88,12 +163,126 @@ export default function AdminPage() {
       const blogData = (await blogRes.json()) as { posts: BlogPost[] };
       setPosts(blogData.posts);
     }
-  }, [headers, secret]);
+  }, [clearSession, headers, mustChangePassword, token]);
 
   useEffect(() => {
-    if (!secret) return;
-    void load().catch((e) => setError(e instanceof Error ? e.message : "Load failed"));
-  }, [load, secret]);
+    if (!token) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (cancelled) return;
+        if (res.status === 401) {
+          clearSession();
+          return;
+        }
+        if (!res.ok) {
+          setError("Không kiểm tra được phiên đăng nhập");
+          return;
+        }
+        const me = (await res.json()) as {
+          username: string;
+          mustChangePassword: boolean;
+        };
+        if (cancelled) return;
+        setAdminUsername(me.username);
+        setMustChangePassword(me.mustChangePassword);
+        if (me.mustChangePassword) {
+          setAuthed(false);
+          return;
+        }
+        await load();
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Session restore failed");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Re-check session when the bearer token changes (login / password change / restore).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid re-entry when mustChangePassword flips load identity
+  }, [token]);
+
+  async function onLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        token?: string;
+        username?: string;
+        mustChangePassword?: boolean;
+      };
+      if (!res.ok || !body.token || !body.username) {
+        setError(authErrorMessage(body.error));
+        return;
+      }
+      setPassword("");
+      persistSession(body.token, body.username, Boolean(body.mustChangePassword));
+      if (!body.mustChangePassword) {
+        // load triggered via token effect + restoreSession
+      } else {
+        setCurrentPassword("admin");
+        setStatus("Lần đăng nhập đầu — hãy đổi mật khẩu mặc định.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError("Xác nhận mật khẩu không khớp");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        token?: string;
+        username?: string;
+        mustChangePassword?: boolean;
+      };
+      if (!res.ok || !body.token || !body.username) {
+        setError(authErrorMessage(body.error));
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setStatus("Đã đổi mật khẩu.");
+      persistSession(body.token, body.username, false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Change password failed");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!activeJobId) return;
@@ -300,15 +489,20 @@ export default function AdminPage() {
     }
   }
 
-  function onDisconnect() {
-    setAuthed(false);
-    setSecret("");
-    localStorage.removeItem(SECRET_KEY);
-    setProjects([]);
-    setJobs([]);
-    setPosts([]);
-    setActiveJob(null);
-    setActiveJobId(null);
+  async function onDisconnect() {
+    if (token) {
+      try {
+        await fetch("/api/admin/logout", { method: "POST", headers });
+      } catch {
+        /* ignore */
+      }
+    }
+    clearSession();
+    setUsername("");
+    setPassword("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
     setStatus(null);
     setError(null);
   }
@@ -358,10 +552,10 @@ export default function AdminPage() {
             {authed ? (
               <>
                 <span className="admin-connected" aria-live="polite">
-                  Connected
+                  {adminUsername ?? "Connected"}
                 </span>
-                <button type="button" className="btn btn-ghost" onClick={onDisconnect}>
-                  Disconnect
+                <button type="button" className="btn btn-ghost" onClick={() => void onDisconnect()}>
+                  Đăng xuất
                 </button>
                 <button
                   type="button"
@@ -372,30 +566,7 @@ export default function AdminPage() {
                   Duyệt tất cả pending
                 </button>
               </>
-            ) : (
-              <form
-                className="admin-auth-compact"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void load();
-                }}
-              >
-                <label htmlFor="admin-secret" className="visually-hidden">
-                  ADMIN_SECRET
-                </label>
-                <input
-                  id="admin-secret"
-                  type="password"
-                  value={secret}
-                  onChange={(e) => setSecret(e.target.value)}
-                  placeholder="ADMIN_SECRET"
-                  autoComplete="off"
-                />
-                <button type="submit" className="btn btn-primary" disabled={!secret}>
-                  Kết nối
-                </button>
-              </form>
-            )}
+            ) : null}
           </div>
         </header>
 
@@ -406,10 +577,103 @@ export default function AdminPage() {
         )}
         {status && <p className="admin-status">{status}</p>}
 
-        {!authed && (
+        {!authed && !mustChangePassword && (
           <section className="admin-gate">
             <h2>Đăng nhập operator</h2>
-            <p>Nhập ADMIN_SECRET để mở bảng điều khiển crawl, blog và công cụ AI.</p>
+            <p>Chỉ tài khoản admin. Lần đầu dùng mật khẩu mặc định rồi đổi ngay.</p>
+            <form className="admin-stack admin-login-form" onSubmit={(e) => void onLogin(e)}>
+              <label htmlFor="admin-username">
+                Username
+                <input
+                  id="admin-username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  required
+                />
+              </label>
+              <label htmlFor="admin-password">
+                Password
+                <input
+                  id="admin-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={busy || !username || !password}
+              >
+                Đăng nhập
+              </button>
+            </form>
+          </section>
+        )}
+
+        {mustChangePassword && (
+          <section className="admin-gate">
+            <h2>Đổi mật khẩu bắt buộc</h2>
+            <p>
+              Tài khoản <strong>{adminUsername}</strong> đang dùng mật khẩu mặc định. Đặt mật khẩu
+              mới (tối thiểu 8 ký tự) trước khi vào bảng điều khiển.
+            </p>
+            <form
+              className="admin-stack admin-login-form"
+              onSubmit={(e) => void onChangePassword(e)}
+            >
+              <label htmlFor="admin-current-password">
+                Mật khẩu hiện tại
+                <input
+                  id="admin-current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <label htmlFor="admin-new-password">
+                Mật khẩu mới
+                <input
+                  id="admin-new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+              <label htmlFor="admin-confirm-password">
+                Xác nhận mật khẩu mới
+                <input
+                  id="admin-confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+              <div className="admin-row-actions">
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={busy || !currentPassword || !newPassword || !confirmPassword}
+                >
+                  Lưu mật khẩu
+                </button>
+                <button type="button" className="btn btn-ghost" onClick={() => void onDisconnect()}>
+                  Đăng xuất
+                </button>
+              </div>
+            </form>
           </section>
         )}
 

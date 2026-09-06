@@ -58,6 +58,13 @@ export interface ProjectShowroomConfig {
   };
 }
 
+export type FloorplanVerificationStatus =
+  | "verified"
+  | "partially_verified"
+  | "estimated"
+  | "illustrative"
+  | "unknown";
+
 export interface ApartmentTypeSummary {
   id: string;
   slug: string;
@@ -67,10 +74,14 @@ export interface ApartmentTypeSummary {
   areaSqm: string;
   price: string;
   floorplanKey?: string;
+  /** Explicit floorplan trust — never imply verified when illustrative/unknown. */
+  floorplanVerification?: FloorplanVerificationStatus;
   sourceClass: string;
   provenance?: string;
   confidence?: number;
   validationSummary?: string;
+  /** Last verification timestamp when known (ISO or display string). */
+  verifiedAt?: string;
 }
 
 /** Legal / sales documents tracked per project (verified public only). */

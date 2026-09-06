@@ -29,7 +29,7 @@ export const SECONDARY_MARKET_PRICE_REFS: SecondaryMarketPriceRef[] = [
     priceRangeLabel: `${PREFIX}: phổ biến khoảng 45–75 tr/m² tùy phân khu — cần xác minh từng căn`,
     provenance:
       "Tổng hợp giao dịch thứ cấp công bố trên Batdongsan / báo cáo môi giới Q4/2025–Q1/2026 (không phải bảng giá Vinhomes)",
-    sourceDomains: ["batdongsan.com.vn", "cafeland.vn"],
+    sourceDomains: ["batdongsan.com.vn", "onehousing.vn", "cafeland.vn"],
     asOf: "2026-03-01",
     confidence: 0.55,
   },
@@ -38,7 +38,7 @@ export const SECONDARY_MARKET_PRICE_REFS: SecondaryMarketPriceRef[] = [
     priceRangeLabel: `${PREFIX}: phổ biến khoảng 35–55 tr/m² tùy phân khu — cần xác minh từng căn`,
     provenance:
       "Tham chiếu giao dịch thứ cấp Ocean Park trên Batdongsan / CafeLand (không phải bảng giá CĐT)",
-    sourceDomains: ["batdongsan.com.vn", "cafeland.vn"],
+    sourceDomains: ["batdongsan.com.vn", "onehousing.vn", "cafeland.vn"],
     asOf: "2026-03-01",
     confidence: 0.52,
   },
@@ -47,7 +47,7 @@ export const SECONDARY_MARKET_PRICE_REFS: SecondaryMarketPriceRef[] = [
     priceRangeLabel: `${PREFIX}: phổ biến khoảng 90–140 tr/m² tùy phân khu — cần xác minh trước giao dịch`,
     provenance:
       "Vinhomes Smart City public identity; secondary ranges from trade roundups Q1/2026 (not CĐT price list)",
-    sourceDomains: ["batdongsan.com.vn", "mogi.vn"],
+    sourceDomains: ["batdongsan.com.vn", "onehousing.vn", "mogi.vn"],
     asOf: "2026-03-01",
     confidence: 0.55,
   },
@@ -56,7 +56,7 @@ export const SECONDARY_MARKET_PRICE_REFS: SecondaryMarketPriceRef[] = [
     priceRangeLabel: `${PREFIX}: phổ biến khoảng 55–65 tr/m² — cần xác minh từng căn`,
     provenance:
       "Ecopark Aqua Bay secondary market roundups (handed-over towers); not CĐT list price",
-    sourceDomains: ["batdongsan.com.vn", "homedy.com"],
+    sourceDomains: ["batdongsan.com.vn", "onehousing.vn", "homedy.com"],
     asOf: "2026-02-15",
     confidence: 0.58,
   },
@@ -65,7 +65,7 @@ export const SECONDARY_MARKET_PRICE_REFS: SecondaryMarketPriceRef[] = [
     priceRangeLabel: `${PREFIX}: thấp tầng / shophouse biến động mạnh theo vị trí — cần xác minh từng căn`,
     provenance:
       "Ecopark township secondary listings (low-rise / shophouse); ranges vary widely by street — not CĐT sheet",
-    sourceDomains: ["batdongsan.com.vn", "cafeland.vn"],
+    sourceDomains: ["batdongsan.com.vn", "onehousing.vn", "cafeland.vn"],
     asOf: "2026-02-15",
     confidence: 0.45,
   },
@@ -74,7 +74,7 @@ export const SECONDARY_MARKET_PRICE_REFS: SecondaryMarketPriceRef[] = [
     priceRangeLabel: `${PREFIX}: phổ biến khoảng 40–55 tr/m² (đã bàn giao) — cần xác minh từng căn`,
     provenance:
       "Opal Boulevard secondary trade notes on Batdongsan / Homedy (not Đất Xanh official list)",
-    sourceDomains: ["batdongsan.com.vn", "homedy.com"],
+    sourceDomains: ["batdongsan.com.vn", "onehousing.vn", "homedy.com"],
     asOf: "2026-02-01",
     confidence: 0.5,
   },

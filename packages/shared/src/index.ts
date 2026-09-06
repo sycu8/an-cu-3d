@@ -1,4 +1,4 @@
-/** Package entry — tokens, schema, geometry, R2 helpers, samples, AI, blog, showroom. */
+/** Package entry — tokens, schema, geometry, R2 helpers, samples, AI, blog, showroom, trust. */
 export { BRAND, TAGLINE, palette, tokens } from "./tokens.js";
 export type { Palette, Tokens } from "./tokens.js";
 
@@ -32,8 +32,10 @@ export {
   FixtureSchema,
   FloorPlanDocumentSchema,
   FloorPlanSourceMetadataSchema,
+  FloorplanVerificationStatusSchema,
   FurnitureInstanceSchema,
   JobState,
+  PublicationStateSchema,
   ReviewStatus,
   RoomSchema,
   ScaleCalibrationSchema,
@@ -47,6 +49,17 @@ export {
   safeParseFloorPlanDocument,
 } from "./floorplan/schema.js";
 
+export { ObjectConfidenceSchema } from "./floorplan/object-confidence.js";
+export type { ObjectConfidence } from "./floorplan/object-confidence.js";
+
+export {
+  CONFIDENCE_THRESHOLDS,
+  OBJECT_SEVERITY,
+  dispositionForConfidence,
+  documentNeedsHumanReview,
+} from "./floorplan/thresholds.js";
+export type { ObjectSeverity, ReviewDisposition } from "./floorplan/thresholds.js";
+
 export type {
   AssetClassType,
   ConfidenceResult,
@@ -54,8 +67,10 @@ export type {
   Fixture,
   FloorPlanDocument,
   FloorPlanSourceMetadata,
+  FloorplanVerificationStatus as FloorplanVerificationStatusField,
   FurnitureInstance,
   JobStateType,
+  PublicationState,
   ReviewStatusType,
   Room,
   ScaleCalibration,
@@ -90,8 +105,17 @@ export {
   checkAreaConsistency,
   checkRoomPolygons,
   checkWallSegments,
+  validateFloorPlanTopology,
 } from "./geometry/validation.js";
 export type { TopologyCheckResult, TopologyIssue } from "./geometry/validation.js";
+
+export {
+  checkDuplicateWalls,
+  checkOpeningAttachment,
+  checkRoomSelfIntersection,
+  checkZeroAreaRooms,
+  constrainWallNetwork,
+} from "./geometry/constraints.js";
 
 export { sampleFloorPlans } from "./floorplan/samples/index.js";
 export type { SampleFloorPlanKey } from "./floorplan/samples/index.js";
@@ -151,3 +175,92 @@ export type {
   UnitViewMode,
 } from "./project-media.js";
 
+export {
+  FloorplanVerificationStatus,
+  DataTrustState,
+  sourceClassToTrustState,
+  floorplanVerificationLabel,
+  dataTrustLabel,
+  dataTrustShortLabel,
+  buildDataTrustInfo,
+  resolveFloorplanVerification,
+  canShowPreciseMeasurements,
+} from "./trust.js";
+export type {
+  FloorplanVerificationStatusType,
+  DataTrustStateType,
+  DataTrustInfo,
+} from "./trust.js";
+
+export {
+  FURNITURE_DEFINITIONS,
+  getFurnitureDefinition,
+} from "./furniture/definitions.js";
+export type { FurnitureCategory, FurnitureDefinition } from "./furniture/definitions.js";
+
+export {
+  evaluateFurnitureFit,
+  evaluateCommonBedroomFits,
+  evaluateCommonLivingFits,
+} from "./furniture/fit.js";
+export type { FurnitureFitResult, FurnitureFitVerdict } from "./furniture/fit.js";
+
+export { computeSpatialMetrics, computeSpaceScore } from "./spatial/metrics.js";
+export type {
+  RoomAreaMetric,
+  SpatialMetrics,
+  SpaceScoreBreakdown,
+} from "./spatial/metrics.js";
+
+export {
+  DistanceOnlyRoutingProvider,
+  getRoute,
+  getRoutingProvider,
+  haversineKm,
+  setRoutingProvider,
+} from "./routing.js";
+export type {
+  RouteRequest,
+  RouteResult,
+  RoutingProvider,
+  TravelMode,
+} from "./routing.js";
+
+export {
+  DEFAULT_LIFESTYLE,
+  DEFAULT_WEIGHTS,
+  PREFERENCE_KEYS,
+  PREFERENCE_LABELS_VI,
+  normalizeWeights,
+  preferredBedrooms,
+  scoreWeightedDecision,
+} from "./decision/preferences.js";
+export type {
+  DecisionWeights,
+  DimensionScore,
+  HouseholdProfile,
+  LifestylePreferences,
+  MetricScoreInput,
+  PreferenceKey,
+  VehiclePreference,
+  WeightedDecisionResult,
+  WfhCount,
+} from "./decision/preferences.js";
+
+export { assessUnitFit } from "./decision/fit.js";
+export type {
+  FitComponent,
+  FitComponentKey,
+  UnitFitAssessment,
+  UnitFitInput,
+} from "./decision/fit.js";
+
+export {
+  buildRelativeMetrics,
+  parsePriceMidTrieu,
+  rankProjects,
+} from "./decision/rank.js";
+export type {
+  ProjectScoreCandidate,
+  RankedProject,
+} from "./decision/rank.js";

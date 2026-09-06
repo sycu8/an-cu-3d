@@ -1,8 +1,8 @@
 ENGINE_API_SECRET=
-# Local-only admin Bearer secret (never commit real production secrets)
-ADMIN_SECRET=replace-with-openssl-rand-or-wrangler-secret
 # Optional AI Gateway — leave blank for local UI without live model calls
 # AI_GATEWAY_ACCOUNT_ID=
 # AI_GATEWAY_ID=
 # AI_GATEWAY_TOKEN=
 # ENGINE_BASE_URL=
+# Admin auth is username/password in D1 (default user bootstrapped on first login).
+# No ADMIN_SECRET — use /admin login, then change the default password.

@@ -1,10 +1,17 @@
 import type { Vec2 } from "./vec2.js";
 import { polygonArea } from "./vec2.js";
+import {
+  checkDuplicateWalls,
+  checkOpeningAttachment,
+  checkRoomSelfIntersection,
+  checkZeroAreaRooms,
+} from "./constraints.js";
 
 export interface TopologyIssue {
   code: string;
   message: string;
   entityIds?: string[];
+  severity?: "error" | "warning" | "info";
 }
 
 export interface TopologyCheckResult {
@@ -27,10 +34,14 @@ export function checkRoomPolygons(
         code: "room.polygon.too_few_vertices",
         message: `Room ${room.id} needs at least 3 polygon vertices`,
         entityIds: [room.id],
+        severity: "error",
       });
     }
   }
-  return { ok: issues.length === 0, issues };
+  const selfIx = checkRoomSelfIntersection(rooms);
+  const zero = checkZeroAreaRooms(rooms);
+  const merged = [...issues, ...selfIx.issues, ...zero.issues];
+  return { ok: merged.every((i) => i.severity !== "error"), issues: merged };
 }
 
 export function checkWallSegments(
@@ -45,10 +56,55 @@ export function checkWallSegments(
         code: "wall.segment.too_short",
         message: `Wall ${wall.id} is shorter than ${minLength}m`,
         entityIds: [wall.id],
+        severity: "error",
       });
     }
   }
-  return { ok: issues.length === 0, issues };
+  const dupes = checkDuplicateWalls(walls);
+  const merged = [...issues, ...dupes.issues];
+  return { ok: merged.every((i) => i.severity !== "error"), issues: merged };
+}
+
+/** Full pre-publish topology validation for a FloorPlanDocument-like structure. */
+export function validateFloorPlanTopology(doc: {
+  walls: Array<{ id: string; start: Vec2; end: Vec2 }>;
+  doors: Array<{ id: string; wallId: string; offsetM: number; widthM: number }>;
+  windows: Array<{ id: string; wallId: string; offsetM: number; widthM: number }>;
+  rooms: Array<{ id: string; polygon: Vec2[]; areaSqM?: number }>;
+  scale?: { confidence: number; estimated: boolean } | null;
+  netAreaSqM?: number;
+}): TopologyCheckResult {
+  const issues: TopologyIssue[] = [];
+
+  if (!doc.scale) {
+    issues.push({
+      code: "scale.missing",
+      message: "Scale is missing or unknown",
+      severity: "warning",
+    });
+  } else if (doc.scale.estimated || doc.scale.confidence < 0.8) {
+    issues.push({
+      code: "scale.low_confidence",
+      message: "Scale confidence insufficient for precise measurements",
+      severity: "warning",
+    });
+  }
+
+  const walls = checkWallSegments(doc.walls);
+  const rooms = checkRoomPolygons(doc.rooms);
+  const openings = checkOpeningAttachment({
+    walls: doc.walls,
+    doors: doc.doors,
+    windows: doc.windows,
+  });
+  const area = checkAreaConsistency(doc.rooms, doc.netAreaSqM);
+
+  issues.push(...walls.issues, ...rooms.issues, ...openings.issues, ...area.issues);
+
+  return {
+    ok: issues.every((i) => i.severity !== "error"),
+    issues,
+  };
 }
 
 export function checkAreaConsistency(

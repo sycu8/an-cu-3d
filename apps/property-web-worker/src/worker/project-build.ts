@@ -77,7 +77,7 @@ export async function runProjectBuild(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            seedUrl: discovered.sources[0]?.url,
+            url: discovered.sources[0]?.url,
             projectSlug: job.slug,
           }),
         });

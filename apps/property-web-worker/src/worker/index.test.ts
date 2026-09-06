@@ -78,7 +78,16 @@ describe("worker security + health", () => {
     // Buyer API: secondary-market research and confidence are not exposed
     expect(body.project.priceRange ?? "").not.toMatch(/thứ cấp/i);
     expect(body.project.confidence).toBeUndefined();
-    expect(body.project.provenance).toBeUndefined();
+    expect(body.project.provenance).toMatch(/xác minh|tham khảo|dữ liệu/i);
+  });
+
+  it("rejects admin routes without a session bearer", async () => {
+    const response = await worker.fetch(
+      new Request("http://localhost/api/admin/projects"),
+      env,
+    );
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "unauthorized" });
   });
 
 });

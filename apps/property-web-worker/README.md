@@ -55,7 +55,7 @@ Output: `dist/` (SPA assets) + Worker bundle via `@cloudflare/vite-plugin`.
 - `/map` — MapLibre HCMC map
 - `/compare` — Side-by-side comparison (up to 3)
 - `/blog`, `/blog/:slug` — Public blog
-- `/admin` — Admin build + blog draft (Bearer secret)
+- `/admin` — Admin build + blog draft (username/password; force change on first login)
 
 ## API
 

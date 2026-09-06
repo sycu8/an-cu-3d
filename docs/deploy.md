@@ -67,22 +67,20 @@ pnpm --filter @ancu/floorplan-engine exec wrangler types
 - R2 published floor plans: never overwrite; publish new version key and point D1 meta at it
 
 
-## Admin + AI Gateway secrets (property-web)
+## Admin auth + AI Gateway secrets (property-web)
 
-Set Worker secrets (production / preview) — never commit real values:
+Admin UI uses **username/password** stored in D1 (`admin_users` / `admin_sessions`). The default operator account is bootstrapped on first login and **must change password** before other admin APIs work.
+
+No `ADMIN_SECRET` Worker secret is required for admin UI auth.
 
 ```bash
-# Local .dev.vars (gitignored)
-node scripts/generate-admin-secret.mjs
-
-# Production / preview Worker secret
-openssl rand -base64 32
-pnpm --filter @ancu/property-web-worker exec wrangler secret put ADMIN_SECRET
 # Optional AI Gateway (research / blog / image / QA). Without these, pipelines use deterministic fallbacks.
 pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_TOKEN
 pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ACCOUNT_ID
 pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ID
 ```
+
+Apply D1 migrations (includes `0004_admin_auth.sql`) before using `/admin`.
 
 Also set `ENGINE_API_SECRET` on both Workers when the admin build path should call the floorplan engine.
 
@@ -92,11 +90,16 @@ Also set `ENGINE_API_SECRET` on both Workers when the admin build path should ca
 # Health
 curl -sS "$WEB_BASE_URL/api/health"
 
-# Admin without secret → 401
+# Admin without session → 401
 curl -sS -o /dev/null -w "%{http_code}\n" "$WEB_BASE_URL/api/admin/projects"
 
-# Admin with secret → 200
-curl -sS -H "Authorization: Bearer $ADMIN_SECRET" "$WEB_BASE_URL/api/admin/projects" | head
+# Login (first time forces password change)
+curl -sS -X POST "$WEB_BASE_URL/api/admin/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"Sycule96","password":"admin"}'
+
+# After changing password, call admin APIs with:
+# Authorization: Bearer <session-token>
 
 # Blog public list
 curl -sS "$WEB_BASE_URL/api/blog"

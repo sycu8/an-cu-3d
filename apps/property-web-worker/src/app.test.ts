@@ -34,6 +34,21 @@ describe("project seed inventory", () => {
     expect(p?.documents?.length).toBeGreaterThan(0);
     expect(p?.priceRange).toMatch(/thứ cấp/i);
     expect(p?.priceProvenance).toBeTruthy();
+    const threeBr = p?.apartmentTypes.find((a) => a.bedrooms === 3);
+    expect(threeBr?.floorplanKey).toBeUndefined();
+    expect(threeBr?.floorplanVerification).toBe("unknown");
+  });
+
+  it("does not map 3BR Grand Park units onto 2BR sample keys", () => {
+    const p = getProjectBySlug("vinhomes-grand-park");
+    for (const apt of p?.apartmentTypes ?? []) {
+      if (apt.bedrooms === 3) {
+        expect(apt.floorplanKey).toBeFalsy();
+      }
+      if (apt.floorplanKey === "2br-c") {
+        expect(apt.bedrooms).toBe(2);
+      }
+    }
   });
 
   it("includes Opal Boulevard as handed-over Đất Xanh inventory", () => {
@@ -61,6 +76,16 @@ describe("floor plan samples", () => {
     const doc = getSampleFloorPlan("studio-a");
     const len = wallLength(doc.walls[0]);
     expect(len).toBeGreaterThan(0);
+  });
+
+  it("refuses mismatched bedroom geometry via resolveFloorPlanForUnit", async () => {
+    const { resolveFloorPlanForUnit } = await import("./data/sample-floorplans");
+    const bad = resolveFloorPlanForUnit({
+      floorplanKey: "2br-c",
+      bedrooms: 3,
+    });
+    expect(bad.document).toBeNull();
+    expect(bad.verificationStatus).toBe("illustrative");
   });
 });
 
