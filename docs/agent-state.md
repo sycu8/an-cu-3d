@@ -2,7 +2,7 @@
 
 ## Current phase
 
-**Property decision platform** — P0 trust + Grand Park UX + floorplan fidelity foundations.
+**Property decision platform** — P0 trust + Grand Park UX + floorplan fidelity + **P2 decision/fit/commute**.
 
 Branch: `cursor/property-decision-platform-e176`
 
@@ -10,16 +10,24 @@ Branch: `cursor/property-decision-platform-e176`
 
 - `@ancu/property-web-worker` — showroom UI + Workers API
 - `@ancu/floorplan-engine` — crawl/convert/publish
-- `@ancu/shared` — tokens, FloorPlanDocument, geometry, trust, furniture fit, spatial metrics
+- `@ancu/shared` — tokens, FloorPlanDocument, geometry, trust, furniture fit, spatial metrics, **decision/routing**
 
 ## Validation (last green)
 
 ```bash
 pnpm typecheck
-pnpm test          # shared 18 · engine 32 · web 36
+pnpm test          # shared 26 · web 36 (+ engine suite)
 pnpm build
 pnpm lint
 ```
+
+## Shipped this wave (P2)
+
+- Shared decision engine: weights, unit fit, relative project ranking
+- Session lifestyle preferences (localStorage, no account)
+- Compare: `?unit=` + weighted ranking sidebar
+- Map: shared `getRoute` + `?destination=` / category URL sync; no fabricated travel times
+- Project detail + apartment viewer: “Căn này có hợp với bạn?” panel
 
 ## Needs your Cloudflare account (cannot finish without secrets)
 

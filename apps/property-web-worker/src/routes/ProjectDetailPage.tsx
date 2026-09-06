@@ -1,13 +1,19 @@
+import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import {
   filterProjectMedia,
   floorplanVerificationLabel,
   type FloorplanVerificationStatusType,
+  type LifestylePreferences,
 } from "@ancu/shared";
 import { DataTrustBadge } from "../components/DataTrustBadge";
+import { FitAssessmentPanel } from "../components/FitAssessmentPanel";
+import { LifestylePreferencesForm } from "../components/LifestylePreferencesForm";
 import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { resolveFloorPlanForUnit } from "../data/sample-floorplans";
 import { useProject } from "../hooks/useProjects";
+import { loadLifestylePreferences } from "../lib/lifestylePreferences";
 import { projectCoverUrl } from "../lib/projectVisuals";
 import { AMENITY_CATEGORIES } from "../types/amenity";
 import "./ProjectDetailPage.css";
@@ -29,6 +35,9 @@ export default function ProjectDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const [params, setParams] = useSearchParams();
   const state = useProject(slug);
+  const [prefs, setPrefs] = useState<LifestylePreferences>(() =>
+    loadLifestylePreferences(),
+  );
 
   if (state.status === "loading") return <PageSkeleton />;
 
@@ -321,21 +330,46 @@ export default function ProjectDetailPage() {
           <header className="project-section-head">
             <p className="project-section-kicker">04 · Căn này có hợp với bạn?</p>
             <h2>Đánh giá không gian</h2>
-            <p>Chỉ tính toán khi mặt bằng và tỷ lệ đã đủ tin cậy.</p>
+            <p>
+              Điểm dựa trên hộ gia đình bạn chọn và dữ liệu loại căn — bố trí nội thất
+              chỉ khi mặt bằng đã xác minh.
+            </p>
           </header>
-          <div className="space-insights-placeholder" role="status">
-            {selectedApt?.floorplanVerification === "verified" ? (
-              <p>
-                Mặt bằng đã xác minh — mở{" "}
-                <Link to={`/projects/${project.slug}/apartments/${selectedApt.slug}`}>
-                  xem không gian
-                </Link>{" "}
-                để xem diện tích phòng và khả năng bố trí nội thất.
-              </p>
-            ) : (
-              <p>Chưa đủ dữ liệu để đánh giá không gian.</p>
-            )}
-          </div>
+          {selectedApt ? (
+            <div className="project-fit-grid">
+              <FitAssessmentPanel
+                preferences={prefs}
+                bedrooms={selectedApt.bedrooms}
+                bathrooms={selectedApt.bathrooms}
+                rooms={(() => {
+                  const resolved = resolveFloorPlanForUnit({
+                    floorplanKey: selectedApt.floorplanKey,
+                    unitSlug: selectedApt.slug,
+                    bedrooms: selectedApt.bedrooms,
+                  });
+                  return resolved.document?.rooms.map((r) => ({
+                    id: r.id,
+                    type: r.type,
+                    name: r.name,
+                    polygon: r.polygon as [number, number][],
+                    areaSqM: r.areaSqM,
+                  }));
+                })()}
+                floorplanVerified={
+                  selectedApt.floorplanVerification === "verified"
+                }
+              />
+              <LifestylePreferencesForm
+                value={prefs}
+                onChange={setPrefs}
+                compact
+              />
+            </div>
+          ) : (
+            <p className="project-empty-note" role="status">
+              Chọn loại căn ở trên để đánh giá mức phù hợp.
+            </p>
+          )}
         </section>
 
         {/* SECTION 05 — Location */}

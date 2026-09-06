@@ -225,3 +225,42 @@ export type {
   RoutingProvider,
   TravelMode,
 } from "./routing.js";
+
+export {
+  DEFAULT_LIFESTYLE,
+  DEFAULT_WEIGHTS,
+  PREFERENCE_KEYS,
+  PREFERENCE_LABELS_VI,
+  normalizeWeights,
+  preferredBedrooms,
+  scoreWeightedDecision,
+} from "./decision/preferences.js";
+export type {
+  DecisionWeights,
+  DimensionScore,
+  HouseholdProfile,
+  LifestylePreferences,
+  MetricScoreInput,
+  PreferenceKey,
+  VehiclePreference,
+  WeightedDecisionResult,
+  WfhCount,
+} from "./decision/preferences.js";
+
+export { assessUnitFit } from "./decision/fit.js";
+export type {
+  FitComponent,
+  FitComponentKey,
+  UnitFitAssessment,
+  UnitFitInput,
+} from "./decision/fit.js";
+
+export {
+  buildRelativeMetrics,
+  parsePriceMidTrieu,
+  rankProjects,
+} from "./decision/rank.js";
+export type {
+  ProjectScoreCandidate,
+  RankedProject,
+} from "./decision/rank.js";

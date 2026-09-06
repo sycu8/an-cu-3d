@@ -5,18 +5,21 @@ import {
   filterProjectMedia,
   floorplanVerificationLabel,
   isUnitViewMode,
+  type LifestylePreferences,
   type LightingPreset,
   type MaterialPalette,
   type UnitViewMode,
 } from "@ancu/shared";
 import { AutoComposePanel } from "../components/AutoComposePanel";
 import { DataTrustBadge } from "../components/DataTrustBadge";
+import { FitAssessmentPanel } from "../components/FitAssessmentPanel";
 import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { SpaceInsights } from "../components/SpaceInsights";
 import { ViewModeBar } from "../components/ViewModeBar";
 import { useProject } from "../hooks/useProjects";
 import { resolveFloorPlanForUnit } from "../data/sample-floorplans";
+import { loadLifestylePreferences } from "../lib/lifestylePreferences";
 import { QaPanel } from "../viewer/QaPanel";
 import "../viewer/QaPanel.css";
 import "./ApartmentViewerPage.css";
@@ -39,6 +42,7 @@ export default function ApartmentViewerPage() {
   const [autoCycling, setAutoCycling] = useState(true);
   const [lighting, setLighting] = useState<LightingPreset>("day");
   const [paletteLabel, setPaletteLabel] = useState(DEFAULT_MATERIAL_PALETTES[0]!.label);
+  const [prefs] = useState<LifestylePreferences>(() => loadLifestylePreferences());
 
   const viewMode: UnitViewMode = useMemo(() => {
     const raw = params.get("view");
@@ -254,6 +258,21 @@ export default function ApartmentViewerPage() {
       ) : null}
 
       <SpaceInsights document={floorPlan} verification={verification} />
+
+      <FitAssessmentPanel
+        preferences={prefs}
+        bedrooms={apt.bedrooms}
+        bathrooms={apt.bathrooms}
+        rooms={floorPlan.rooms.map((r) => ({
+          id: r.id,
+          type: r.type,
+          name: r.name,
+          polygon: r.polygon as [number, number][],
+          areaSqM: r.areaSqM,
+        }))}
+        floorplanVerified={verification === "verified"}
+        title="Căn này có hợp với bạn?"
+      />
     </div>
   );
 }

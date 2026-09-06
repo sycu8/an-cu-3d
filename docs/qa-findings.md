@@ -71,7 +71,7 @@
 | ID | Note |
 | --- | --- |
 | LIM-001 | Blog body often raw markdown (no full MD renderer) |
-| LIM-002 | Map travel time always pending (no routing engine) — `DistanceOnlyRoutingProvider` ready |
+| LIM-002 | Map/Compare commute shows distance-only via shared `getRoute` until a licensed routing provider is configured — never fabricates travel time |
 | LIM-003 | Project 3D is schematic blocks, not BIM |
 | LIM-004 | Nearby POIs for D1-only projects need D1 nearby rows (map still uses seed nearby) |
 | LIM-005 | `POST /api/admin/assist/2d3d` is API-only (no admin UI control yet) |

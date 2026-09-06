@@ -88,11 +88,12 @@ Active build wave: **Property decision platform** (trust → Grand Park UX → f
 - [x] CTA cleanup (Khám phá căn hộ / toàn khu / Xem 2D / 3D / Thử nội thất)
 - [x] Shared furniture fit + spatial metrics + topology validation
 - [x] Engine adopts shared FloorPlanDocument when present; legacy docs force review
+- [x] Commute profile + weighted decision engine (`@ancu/shared` decision + Compare ranking)
+- [x] “Căn này có hợp với tôi?” guided fit (session preferences + FitAssessmentPanel)
+- [x] Map uses shared `getRoute` + durable `?destination=` (distance-only until a real provider is configured)
 
-### Deferred (P2/P3)
+### Deferred (P3+)
 
-- [ ] Commute profile + weighted decision engine
-- [ ] “Căn này có hợp với tôi?” guided fit (session preferences)
 - [ ] Daylight / view simulators (need orientation data)
 - [ ] Real vision extraction (Workers AI) replacing seedDocument requirement
 - [ ] Admin floorplan review UI overlay (`/admin/floorplans/:jobId/review`)

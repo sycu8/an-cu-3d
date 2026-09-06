@@ -53,7 +53,8 @@ export class DistanceOnlyRoutingProvider implements RoutingProvider {
       durationMinutes: null,
       provider: this.id,
       mode: request.mode,
-      unavailableReason: "Chưa cấu hình động cơ định tuyến — chỉ hiển thị khoảng cách đường chim bay.",
+      unavailableReason:
+        "Chưa cấu hình động cơ định tuyến — chỉ hiển thị khoảng cách đường chim bay.",
     };
   }
 }
