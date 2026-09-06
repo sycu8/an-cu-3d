@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import type { BlogPost } from "@ancu/shared";
+import { mediaUrl, type BlogPost } from "@ancu/shared";
 import "./BlogPage.css";
 
 export default function BlogPage() {
@@ -35,6 +35,14 @@ export default function BlogPage() {
         {posts.map((post) => (
           <li key={post.id}>
             <Link to={`/blog/${post.slug}`} className="blog-card">
+              {(post.coverUrl || post.coverR2Key) && (
+                <img
+                  className="blog-card-cover"
+                  src={post.coverUrl ?? mediaUrl(post.coverR2Key!, { variant: "blog", format: "webp" })}
+                  alt=""
+                  loading="lazy"
+                />
+              )}
               <h2>{post.title}</h2>
               <p>{post.excerpt}</p>
               <span className="blog-card-cta">Đọc bài</span>

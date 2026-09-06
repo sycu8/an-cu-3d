@@ -69,6 +69,10 @@ export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSum
     confidence: p.confidence ?? undefined,
     status: p.status,
     updatedAt: p.updated_at ?? undefined,
+    coverR2Key: p.cover_r2_key ?? undefined,
+    coverUrl: p.cover_r2_key
+      ? `/api/media/${p.cover_r2_key}?v=card&f=webp`
+      : undefined,
   }));
 }
 
@@ -173,6 +177,10 @@ export async function getDbProjectBySlug(
     status: p.status,
     updatedAt: p.updated_at ?? undefined,
     showroom: parseShowroomJson(p.showroom_json),
+    coverR2Key: p.cover_r2_key ?? undefined,
+    coverUrl: p.cover_r2_key
+      ? `/api/media/${p.cover_r2_key}?v=hero&f=webp`
+      : undefined,
   };
 }
 
@@ -339,4 +347,20 @@ export async function upsertSynthesizedProject(
   }
 
   return projectId;
+}
+
+
+export async function updateProjectCoverR2Key(
+  db: D1Database,
+  slug: string,
+  coverR2Key: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE projects
+       SET cover_r2_key = ?, updated_at = datetime('now')
+       WHERE slug = ?`,
+    )
+    .bind(coverR2Key, slug)
+    .run();
 }

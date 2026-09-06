@@ -392,3 +392,12 @@
   white-space: nowrap;
   border: 0;
 }
+
+
+.admin-media-preview {
+  display: block;
+  max-width: 320px;
+  width: 100%;
+  margin-top: 0.75rem;
+  border-radius: 4px;
+}

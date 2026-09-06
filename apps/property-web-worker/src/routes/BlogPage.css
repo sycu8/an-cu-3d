@@ -76,3 +76,17 @@
   line-height: 1.75;
   color: var(--color-text-primary);
 }
+
+
+.blog-card-cover,
+.blog-cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin-bottom: 0.75rem;
+}
+
+.blog-cover {
+  margin-bottom: 1.25rem;
+}

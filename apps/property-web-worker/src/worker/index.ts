@@ -17,6 +17,7 @@ import {
 import { createBuildJob, getBuildJob, listBuildJobs } from "./db/jobs";
 import { getDbProjectBySlug, listDbProjectSummaries } from "./db/projects";
 import { runProjectBuild } from "./project-build";
+import { serveMedia, withMediaUrl } from "./media";
 import type { Env } from "./types";
 
 function securityHeaders(requestId: string): Record<string, string> {
@@ -27,7 +28,7 @@ function securityHeaders(requestId: string): Record<string, string> {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "X-Request-Id": requestId,
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://gateway.ai.cloudflare.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://images.unsplash.com https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://gateway.ai.cloudflare.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
   };
 }
 
@@ -267,7 +268,7 @@ async function handleAdmin(
     }
     const key = body.key?.trim() || `media/generated/${crypto.randomUUID()}.jpg`;
     const result = await generateImageAsset(env, body.prompt.trim(), key);
-    return json({ result }, requestId, 200, "no-store");
+    return json({ result: withMediaUrl(result) }, requestId, 200, "no-store");
   }
 
   if (path === "/api/admin/images/edit" && request.method === "POST") {
@@ -282,7 +283,7 @@ async function handleAdmin(
     }
     const key = body.key?.trim() || `media/edited/${crypto.randomUUID()}.jpg`;
     const result = await editImageAsset(env, body.prompt.trim(), body.imageBase64, key);
-    return json({ result }, requestId, 200, "no-store");
+    return json({ result: withMediaUrl(result) }, requestId, 200, "no-store");
   }
 
   if (path === "/api/admin/qa/factual" && request.method === "POST") {
@@ -403,6 +404,8 @@ async function handleApi(
       service: "ancu-property-web",
       db: dbStatus,
       aiGateway: Boolean(env.AI_GATEWAY_ACCOUNT_ID && env.AI_GATEWAY_ID),
+      r2: Boolean(env.ASSETS),
+      images: Boolean(env.IMAGES),
       timestamp: new Date().toISOString(),
     };
     if (env.APP_VERSION) body.version = env.APP_VERSION;
@@ -439,6 +442,10 @@ async function handleApi(
     } catch {
       return notFound("post_not_found", requestId);
     }
+  }
+
+  if (path.startsWith("/api/media/") && (request.method === "GET" || request.method === "HEAD")) {
+    return serveMedia(request, env, requestId);
   }
 
   return null;

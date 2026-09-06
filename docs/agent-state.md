@@ -44,3 +44,5 @@ pnpm --filter @ancu/floorplan-engine build
 - `ENGINE_BASE_URL` + `ENGINE_API_SECRET` on property-web for engine crawl enrichment
 
 - Admin + AI Gateway + showroom plan: schema/auth/jobs, admin UI, orchestration, AI Gateway client, blog+cron, image/2D assist, showroom share link, deploy secrets docs.
+
+- Media: R2 object storage (`ASSETS`) + Cloudflare Images resize via `GET /api/media/*`.

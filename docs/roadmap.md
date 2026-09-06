@@ -86,3 +86,5 @@ Active build wave: **M0 → M4 continuous** (user requested full-feature continu
 - [x] Blog routes + weekly draft generation
 - [x] Showroom lighting / materials / room hotspots
 - [ ] Wire production secrets + deploy smoke for admin/blog
+
+- Media: R2 object storage (`ASSETS`) + Cloudflare Images resize via `GET /api/media/*`.

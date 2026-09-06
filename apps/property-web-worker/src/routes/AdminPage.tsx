@@ -242,8 +242,8 @@ export default function AdminPage() {
         body: JSON.stringify({ prompt: imagePrompt }),
       });
       if (!res.ok) throw new Error("Image generate thất bại");
-      const data = (await res.json()) as { result: { r2Key?: string; note?: string } };
-      setImageResult(`${data.result.r2Key ?? "—"} · ${data.result.note ?? ""}`);
+      const data = (await res.json()) as { result: { r2Key?: string; note?: string; url?: string } };
+      setImageResult(`${data.result.url ?? data.result.r2Key ?? "—"} · ${data.result.note ?? ""}`);
       setStatus("Đã generate ảnh");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Image generate failed");
@@ -264,8 +264,8 @@ export default function AdminPage() {
         body: JSON.stringify({ prompt: editPrompt, imageBase64: editBase64 }),
       });
       if (!res.ok) throw new Error("Image edit thất bại");
-      const data = (await res.json()) as { result: { r2Key?: string; note?: string } };
-      setEditResult(`${data.result.r2Key ?? "—"} · ${data.result.note ?? ""}`);
+      const data = (await res.json()) as { result: { r2Key?: string; note?: string; url?: string } };
+      setEditResult(`${data.result.url ?? data.result.r2Key ?? "—"} · ${data.result.note ?? ""}`);
       setStatus("Đã edit ảnh");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Image edit failed");
@@ -643,7 +643,14 @@ export default function AdminPage() {
                       Generate
                     </button>
                   </form>
-                  {imageResult && <p className="admin-muted">{imageResult}</p>}
+                  {imageResult && (
+                    <>
+                      <p className="admin-muted">{imageResult}</p>
+                      {imageResult.startsWith("/api/media/") && (
+                        <img src={imageResult.split(" · ")[0]} alt="" className="admin-media-preview" />
+                      )}
+                    </>
+                  )}
 
                   <h3>Sửa ảnh</h3>
                   <form className="admin-stack" onSubmit={(e) => void onEditImage(e)}>

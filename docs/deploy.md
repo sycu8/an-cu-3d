@@ -103,3 +103,17 @@ curl -sS "$WEB_BASE_URL/api/blog"
 ```
 
 Weekly cron (`0 1 * * 1`) only creates **draft** blog posts — never auto-publishes.
+
+
+## Media (R2 + Images)
+
+Property media is stored in R2 (`ASSETS` → `ancu-property-assets`) and served at:
+
+```text
+GET /api/media/<r2-key>?v=card|thumb|blog|hero
+GET /api/media/<r2-key>?w=800&h=600&fit=cover&f=webp&q=85
+```
+
+The Worker reads the object from R2 and, when the `IMAGES` binding is available, resizes/encodes via Cloudflare Images. Responses are Cache-API cached.
+
+No public R2 write. Admin image generate/edit endpoints return `{ r2Key, url, note }`.
