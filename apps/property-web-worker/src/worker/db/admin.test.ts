@@ -57,7 +57,7 @@ function createMemoryDb() {
       },
       async first<T>() {
         const normalized = sql.replace(/\s+/g, " ").trim();
-        if (/SELECT \* FROM admin_users WHERE username/i.test(normalized)) {
+        if (/SELECT \* FROM admin_users WHERE (?:lower\(username\)|username)/i.test(normalized)) {
           const username = String(binds[0] ?? "");
           for (const row of users.values()) {
             if (String(row.username).toLowerCase() === username.toLowerCase()) {
@@ -112,7 +112,7 @@ function createMemoryDb() {
           const row = users.get(String(id));
           if (row) {
             row.password_hash = password_hash;
-            row.must_change_password = 0;
+            row.must_change_password = /must_change_password\s*=\s*1/i.test(normalized) ? 1 : 0;
             row.updated_at = "now";
           }
           return { success: true };
@@ -182,4 +182,21 @@ describe("admin db auth flow", () => {
     if (!again.ok) return;
     expect(again.mustChangePassword).toBe(false);
   });
+
+  it("repairs corrupt default password hash on default login", async () => {
+    const user = await ensureDefaultAdmin(db);
+    // Corrupt stored hash
+    await db
+      .prepare(
+        `UPDATE admin_users SET password_hash = ?, must_change_password = 1 WHERE id = ?`,
+      )
+      .bind("not-a-valid-hash", user.id)
+      .run();
+
+    const login = await loginAdmin(db, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
+    expect(login.ok).toBe(true);
+    if (!login.ok) return;
+    expect(login.mustChangePassword).toBe(true);
+  });
+
 });

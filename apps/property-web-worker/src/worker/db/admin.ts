@@ -31,22 +31,37 @@ export type AdminAuthContext = {
   token: string;
 };
 
+function usernameLookupSql(): string {
+  // lower() avoids D1/SQLite quirks with `= ? COLLATE NOCASE` precedence
+  return `SELECT * FROM admin_users WHERE lower(username) = lower(?) LIMIT 1`;
+}
+
 export async function ensureDefaultAdmin(db: D1Database): Promise<AdminUserRow> {
   const existing = await db
-    .prepare(`SELECT * FROM admin_users WHERE username = ? COLLATE NOCASE LIMIT 1`)
+    .prepare(usernameLookupSql())
     .bind(DEFAULT_ADMIN_USERNAME)
     .first<AdminUserRow>();
   if (existing) return existing;
 
   const id = crypto.randomUUID();
   const passwordHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
-  await db
-    .prepare(
-      `INSERT INTO admin_users (id, username, password_hash, must_change_password)
-       VALUES (?, ?, ?, 1)`,
-    )
-    .bind(id, DEFAULT_ADMIN_USERNAME, passwordHash)
-    .run();
+  try {
+    await db
+      .prepare(
+        `INSERT INTO admin_users (id, username, password_hash, must_change_password)
+         VALUES (?, ?, ?, 1)`,
+      )
+      .bind(id, DEFAULT_ADMIN_USERNAME, passwordHash)
+      .run();
+  } catch (err) {
+    // Race: another request inserted first — load that row
+    const raced = await db
+      .prepare(usernameLookupSql())
+      .bind(DEFAULT_ADMIN_USERNAME)
+      .first<AdminUserRow>();
+    if (raced) return raced;
+    throw err;
+  }
 
   const created = await db
     .prepare(`SELECT * FROM admin_users WHERE id = ?`)
@@ -61,12 +76,7 @@ export async function findAdminByUsername(
   username: string,
 ): Promise<AdminUserRow | null> {
   await ensureDefaultAdmin(db);
-  return (
-    (await db
-      .prepare(`SELECT * FROM admin_users WHERE username = ? COLLATE NOCASE LIMIT 1`)
-      .bind(username.trim())
-      .first<AdminUserRow>()) ?? null
-  );
+  return (await db.prepare(usernameLookupSql()).bind(username.trim()).first<AdminUserRow>()) ?? null;
 }
 
 export async function createAdminSession(
@@ -125,6 +135,38 @@ export async function deleteAdminSessionsForUser(db: D1Database, userId: string)
   await db.prepare(`DELETE FROM admin_sessions WHERE user_id = ?`).bind(userId).run();
 }
 
+/**
+ * If the default operator row exists but its hash cannot verify the default
+ * password (corrupt/partial bootstrap), re-seed the default hash and force
+ * password change again.
+ */
+async function repairDefaultAdminPassword(
+  db: D1Database,
+  user: AdminUserRow,
+  password: string,
+): Promise<AdminUserRow | null> {
+  const isDefaultUser =
+    user.username.toLowerCase() === DEFAULT_ADMIN_USERNAME.toLowerCase();
+  if (!isDefaultUser || password !== DEFAULT_ADMIN_PASSWORD) return null;
+
+  const passwordHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
+  await db
+    .prepare(
+      `UPDATE admin_users
+       SET password_hash = ?, must_change_password = 1, updated_at = datetime('now')
+       WHERE id = ?`,
+    )
+    .bind(passwordHash, user.id)
+    .run();
+
+  return (
+    (await db
+      .prepare(`SELECT * FROM admin_users WHERE id = ?`)
+      .bind(user.id)
+      .first<AdminUserRow>()) ?? null
+  );
+}
+
 export async function loginAdmin(
   db: D1Database,
   username: string,
@@ -133,9 +175,17 @@ export async function loginAdmin(
   | { ok: true; token: string; username: string; mustChangePassword: boolean }
   | { ok: false; error: "invalid_credentials" }
 > {
-  const user = await findAdminByUsername(db, username);
+  let user = await findAdminByUsername(db, username);
   if (!user) return { ok: false, error: "invalid_credentials" };
-  const valid = await verifyPassword(password, user.password_hash);
+
+  let valid = await verifyPassword(password, user.password_hash);
+  if (!valid) {
+    const repaired = await repairDefaultAdminPassword(db, user, password);
+    if (repaired) {
+      user = repaired;
+      valid = await verifyPassword(password, user.password_hash);
+    }
+  }
   if (!valid) return { ok: false, error: "invalid_credentials" };
 
   const { token } = await createAdminSession(db, user.id);
