@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "id": "celadon-city-2br-b1-est",
+  "label": "Celadon City — 2BR Type B1 (estimated seed)",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "coordinateUnit": "meter",
+  "netAreaSqM": 72.0,
+  "bedroomCount": 2,
+  "bathroomCount": 2,
+  "source": {
+    "sourceClass": "seed_estimated",
+    "assetClass": "brochure_page",
+    "projectSlug": "celadon-city",
+    "projectName": "Celadon City",
+    "buildingId": "garden-residence",
+    "unitTypeCode": "B1",
+    "bedroomLabel": "2 Bedroom",
+    "provenanceNote": "Two-bedroom benchmark seed for geometry/3D pipeline — NOT sourced from verified crawl.",
+    "jobState": "REVIEW_PENDING"
+  },
+  "scale": {
+    "metersPerUnit": 1,
+    "unit": "meter",
+    "referenceLengthM": 4.0,
+    "method": "dimension_label",
+    "confidence": 0.68,
+    "estimated": true,
+    "notes": "Living width label approximated from brochure annotation (low OCR confidence)."
+  },
+  "confidence": {
+    "overall": 0.63,
+    "scale": 0.68,
+    "walls": 0.72,
+    "openings": 0.58,
+    "rooms": 0.7,
+    "fixtures": 0.45,
+    "source": 0.38,
+    "reviewStatus": "unreviewed"
+  },
+  "validation": {
+    "valid": true,
+    "errors": [],
+    "warnings": [
+      {
+        "code": "seed.estimated_layout",
+        "message": "Secondary bath placement estimated; master ensuite opening unconfirmed.",
+        "severity": "warning"
+      },
+      {
+        "code": "area.net_mismatch",
+        "message": "Summed room polygons within 5% of declared net area — acceptable for seed.",
+        "severity": "info"
+      }
+    ],
+    "areaDeviationPercent": 4.8
+  },
+  "walls": [
+    { "id": "w-n", "start": [0, 0], "end": [10.5, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-e", "start": [10.5, 0], "end": [10.5, 7.8], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-s", "start": [10.5, 7.8], "end": [0, 7.8], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-w", "start": [0, 7.8], "end": [0, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-master", "start": [6.5, 0], "end": [6.5, 4.0], "thicknessM": 0.1, "heightM": 2.8 },
+    { "id": "w-bed2", "start": [6.5, 4.0], "end": [10.5, 4.0], "thicknessM": 0.1, "heightM": 2.8 },
+    { "id": "w-living-kit", "start": [0, 4.5], "end": [6.5, 4.5], "thicknessM": 0.1, "heightM": 2.8 },
+    { "id": "w-bath-common", "start": [4.5, 0], "end": [4.5, 2.5], "thicknessM": 0.1, "heightM": 2.8 }
+  ],
+  "doors": [
+    { "id": "d-entry", "wallId": "w-s", "offsetM": 1.5, "widthM": 1.0, "heightM": 2.1, "swing": "left" },
+    { "id": "d-master", "wallId": "w-master", "offsetM": 2.0, "widthM": 0.85, "heightM": 2.05, "swing": "right" },
+    { "id": "d-bed2", "wallId": "w-bed2", "offsetM": 1.5, "widthM": 0.8, "heightM": 2.05, "swing": "left" },
+    { "id": "d-common-bath", "wallId": "w-bath-common", "offsetM": 0.5, "widthM": 0.7, "heightM": 2.05, "swing": "right" },
+    { "id": "d-master-bath", "wallId": "w-master", "offsetM": 0.3, "widthM": 0.7, "heightM": 2.05, "swing": "sliding" }
+  ],
+  "windows": [
+    { "id": "win-living", "wallId": "w-s", "offsetM": 5.5, "widthM": 2.4, "heightM": 1.6, "sillHeightM": 0.85 },
+    { "id": "win-master", "wallId": "w-n", "offsetM": 7.5, "widthM": 1.8, "heightM": 1.4, "sillHeightM": 0.9 },
+    { "id": "win-bed2", "wallId": "w-e", "offsetM": 5.5, "widthM": 1.6, "heightM": 1.4, "sillHeightM": 0.9 }
+  ],
+  "rooms": [
+    {
+      "id": "room-living",
+      "name": "Living / Dining",
+      "type": "living",
+      "polygon": [[0, 4.5], [6.5, 4.5], [6.5, 7.8], [0, 7.8]],
+      "areaSqM": 21.5
+    },
+    {
+      "id": "room-kitchen",
+      "name": "Kitchen",
+      "type": "kitchen",
+      "polygon": [[0, 0], [4.5, 0], [4.5, 4.5], [0, 4.5]],
+      "areaSqM": 20.3
+    },
+    {
+      "id": "room-master",
+      "name": "Master Bedroom",
+      "type": "bedroom",
+      "polygon": [[6.5, 0], [10.5, 0], [10.5, 4.0], [6.5, 4.0]],
+      "areaSqM": 16.0
+    },
+    {
+      "id": "room-bed2",
+      "name": "Bedroom 2",
+      "type": "bedroom",
+      "polygon": [[6.5, 4.0], [10.5, 4.0], [10.5, 7.8], [6.5, 7.8]],
+      "areaSqM": 15.2
+    },
+    {
+      "id": "room-bath-common",
+      "name": "Common Bathroom",
+      "type": "bathroom",
+      "polygon": [[4.5, 0], [6.5, 0], [6.5, 2.5], [4.5, 2.5]],
+      "areaSqM": 5.0
+    },
+    {
+      "id": "room-master-bath",
+      "name": "Master Bathroom",
+      "type": "bathroom",
+      "polygon": [[6.5, 0], [8.5, 0], [8.5, 2.0], [6.5, 2.0]],
+      "areaSqM": 4.0
+    }
+  ],
+  "fixtures": [
+    { "id": "fx-master-toilet", "type": "toilet", "roomId": "room-master-bath", "position": [7.2, 0.5], "rotationRad": 0 },
+    { "id": "fx-common-shower", "type": "shower", "roomId": "room-bath-common", "position": [5.8, 1.8], "rotationRad": 0 },
+    { "id": "fx-stove", "type": "stove", "roomId": "room-kitchen", "position": [1.2, 1.0], "rotationRad": 0 }
+  ],
+  "furniture": [
+    { "id": "f-sofa", "catalogId": "sofa-3seat", "roomId": "room-living", "position": [2.0, 6.0], "rotationRad": 0, "scale": 1 },
+    { "id": "f-master-bed", "catalogId": "bed-king", "roomId": "room-master", "position": [8.0, 1.5], "rotationRad": 0, "scale": 1 },
+    { "id": "f-bed2", "catalogId": "bed-single", "roomId": "room-bed2", "position": [8.5, 5.5], "rotationRad": 1.57, "scale": 1 }
+  ],
+  "notes": "2BR seed spanning living + dual bath topology for P14–P18 validation stubs."
+}

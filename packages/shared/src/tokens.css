@@ -1,0 +1,43 @@
+/**
+ * AnCư 3D design tokens (P2)
+ * Typography: import expressive fonts in consuming apps, e.g.
+ * @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;600&family=Source+Sans+3:wght@400;500;600&display=swap');
+ */
+
+:root {
+  /* Raw palette */
+  --ancu-primary: #285a52;
+  --ancu-primary-hover: #214b45;
+  --ancu-accent: #c9825b;
+  --ancu-background: #f7f3ea;
+  --ancu-surface: #efe9dd;
+  --ancu-surface-elevated: #fcfaf6;
+  --ancu-text: #25312e;
+  --ancu-text-muted: #65716d;
+  --ancu-sage: #93a99f;
+  --ancu-success: #3f7d61;
+  --ancu-warning: #b87935;
+  --ancu-error: #b8534f;
+
+  /* Semantic aliases */
+  --ancu-color-background: var(--ancu-background);
+  --ancu-color-surface: var(--ancu-surface);
+  --ancu-color-surface-elevated: var(--ancu-surface-elevated);
+  --ancu-color-text-primary: var(--ancu-text);
+  --ancu-color-text-muted: var(--ancu-text-muted);
+  --ancu-color-brand-primary: var(--ancu-primary);
+  --ancu-color-brand-primary-hover: var(--ancu-primary-hover);
+  --ancu-color-brand-accent: var(--ancu-accent);
+  --ancu-color-map-passive: var(--ancu-sage);
+  --ancu-color-map-selected: var(--ancu-primary);
+  --ancu-color-room-selected: var(--ancu-accent);
+  --ancu-color-border-subtle: rgba(37, 49, 46, 0.12);
+  --ancu-color-success: var(--ancu-success);
+  --ancu-color-warning: var(--ancu-warning);
+  --ancu-color-error: var(--ancu-error);
+
+  /* Typography — expressive, not system UI defaults */
+  --ancu-font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", serif;
+  --ancu-font-body: "Source Sans 3", "Segoe UI", sans-serif;
+  --ancu-font-mono: "IBM Plex Mono", "Consolas", monospace;
+}

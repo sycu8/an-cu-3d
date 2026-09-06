@@ -7,12 +7,21 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./tokens": "./src/tokens.ts"
+    "./tokens": "./src/tokens.ts",
+    "./tokens.css": "./src/tokens.css"
   },
   "scripts": {
-    "typecheck": "echo \"P2/P13: typecheck\"",
-    "test": "echo \"no tests yet\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "echo \"no lint yet\"",
     "build": "echo \"noop\""
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
   }
 }
