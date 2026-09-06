@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**M3→M4** — P0–P18 spine landed; next **P19–P29** polish (3D/furniture/QA/map/compare/perf/security/prod).
+**M4 wrap-up** — P0–P26 MVP features landed; next **P27–P29** (mobile/perf, security/observability, production validation).
 
-Branch: `cursor/mvp-build-4bd7`
+Branch: `cursor/mvp-build-4bd7` · PR: https://github.com/sycu8/an-cu-3d/pull/2
 
 ## Roadmap
 
