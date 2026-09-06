@@ -44,68 +44,71 @@ export default function MapPage() {
   const projects = "data" in projectState && projectState.data ? projectState.data : [];
   const nearbyPlaces = useMemo(() => getAllNearbyPlaces(), []);
 
+  // Wait until project loading finishes so the map container is actually mounted.
+  // Returning <PageSkeleton /> while loading leaves mapContainer.current null; an
+  // empty-deps effect would init once, bail out, and never retry.
+  const projectsLoading = projectState.status === "loading";
+
   useEffect(() => {
+    if (projectsLoading) return;
+
     const container = mapContainer.current;
     if (!container || mapRef.current) return;
 
-    let observer: IntersectionObserver | null = null;
     let cancelled = false;
 
     const initMap = async () => {
-      const maplibregl = await import("maplibre-gl");
-      await import("maplibre-gl/dist/maplibre-gl.css");
-      if (cancelled || !container || mapRef.current) return;
+      try {
+        const maplibregl = await import("maplibre-gl");
+        await import("maplibre-gl/dist/maplibre-gl.css");
+        if (cancelled || !container.isConnected || mapRef.current) return;
 
-      maplibreRef.current = maplibregl;
+        maplibreRef.current = maplibregl;
 
-      const mapOptions: import("maplibre-gl").MapOptions & { cooperativeGestures?: boolean } = {
-        container,
-        style: {
-          version: 8,
-          sources: {
-            osm: {
-              type: "raster",
-              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-              tileSize: 256,
-              attribution: "© OpenStreetMap contributors",
+        const mapOptions: import("maplibre-gl").MapOptions & { cooperativeGestures?: boolean } = {
+          container,
+          style: {
+            version: 8,
+            sources: {
+              osm: {
+                type: "raster",
+                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                tileSize: 256,
+                attribution: "© OpenStreetMap contributors",
+              },
             },
+            layers: [
+              {
+                id: "osm",
+                type: "raster",
+                source: "osm",
+              },
+            ],
           },
-          layers: [
-            {
-              id: "osm",
-              type: "raster",
-              source: "osm",
-            },
-          ],
-        },
-        center: HCMC_CENTER,
-        zoom: 11,
-      };
+          center: HCMC_CENTER,
+          zoom: 11,
+        };
 
-      if ("cooperativeGestures" in maplibregl.Map.prototype) {
-        mapOptions.cooperativeGestures = true;
+        if ("cooperativeGestures" in maplibregl.Map.prototype) {
+          mapOptions.cooperativeGestures = true;
+        }
+
+        const map = new maplibregl.Map(mapOptions);
+        map.addControl(new maplibregl.NavigationControl(), "top-right");
+        map.on("load", () => {
+          map.resize();
+        });
+        mapRef.current = map;
+        setMapReady(true);
+      } catch (err) {
+        console.error("Failed to initialize map", err);
       }
-
-      const map = new maplibregl.Map(mapOptions);
-      map.addControl(new maplibregl.NavigationControl(), "top-right");
-      mapRef.current = map;
-      setMapReady(true);
     };
 
-    observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          observer?.disconnect();
-          void initMap();
-        }
-      },
-      { rootMargin: "100px" },
-    );
-    observer.observe(container);
+    void initMap();
 
     return () => {
       cancelled = true;
-      observer?.disconnect();
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
       mapRef.current?.remove();
@@ -113,7 +116,7 @@ export default function MapPage() {
       maplibreRef.current = null;
       setMapReady(false);
     };
-  }, []);
+  }, [projectsLoading]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -273,7 +276,19 @@ export default function MapPage() {
             </p>
           </div>
         </aside>
-        <div ref={mapContainer} className="map-container" role="application" aria-label="Map of HCMC projects" />
+        <div className="map-stage">
+          <div
+            ref={mapContainer}
+            className="map-container"
+            role="application"
+            aria-label="Map of HCMC projects"
+          />
+          {!mapReady ? (
+            <p className="map-loading" aria-live="polite">
+              Đang tải bản đồ…
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="container map-project-links">
