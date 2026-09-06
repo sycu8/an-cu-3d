@@ -18,6 +18,7 @@ import { createBuildJob, getBuildJob, listBuildJobs } from "./db/jobs";
 import { getDbProjectBySlug, listDbProjectSummaries } from "./db/projects";
 import { runProjectBuild } from "./project-build";
 import { serveMedia, withMediaUrl } from "./media";
+import { toPublicDetail, toPublicSummary } from "./public-project";
 import type { Env } from "./types";
 
 function securityHeaders(requestId: string): Record<string, string> {
@@ -107,6 +108,15 @@ async function mergeProjects(env: Env) {
   };
 }
 
+/** Buyer-facing list: pending / secondary research / provenance stripped. */
+async function mergePublicProjects(env: Env) {
+  const merged = await mergeProjects(env);
+  return {
+    projects: merged.projects.map(toPublicSummary),
+    source: merged.source,
+  };
+}
+
 async function resolveProject(env: Env, slug: string) {
   try {
     const fromDb = await getDbProjectBySlug(env.DB, slug);
@@ -121,6 +131,15 @@ async function resolveProject(env: Env, slug: string) {
     return { project: seed, source: "seed" as const };
   }
   return null;
+}
+
+async function resolvePublicProject(env: Env, slug: string) {
+  const resolved = await resolveProject(env, slug);
+  if (!resolved) return null;
+  return {
+    project: toPublicDetail(resolved.project),
+    source: resolved.source,
+  };
 }
 
 function schedule(ctx: ExecutionContext | undefined, task: Promise<unknown>): void {
@@ -417,13 +436,13 @@ async function handleApi(
   }
 
   if (path === "/api/projects" && request.method === "GET") {
-    return json(await mergeProjects(env), requestId);
+    return json(await mergePublicProjects(env), requestId);
   }
 
   const projectMatch = path.match(/^\/api\/projects\/([^/]+)$/);
   if (projectMatch && request.method === "GET") {
     const slug = decodeURIComponent(projectMatch[1]);
-    const resolved = await resolveProject(env, slug);
+    const resolved = await resolvePublicProject(env, slug);
     if (!resolved) return notFound(`Project not found: ${slug}`, requestId);
     return json(resolved, requestId);
   }

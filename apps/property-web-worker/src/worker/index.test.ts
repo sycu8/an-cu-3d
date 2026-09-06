@@ -60,12 +60,23 @@ describe("worker security + health", () => {
       env,
     );
     const body = (await response.json()) as {
-      project: { slug: string; name: string; handoverUnits?: unknown[] };
+      project: {
+        slug: string;
+        name: string;
+        priceRange?: string;
+        confidence?: number;
+        provenance?: string;
+        handoverUnits?: unknown[];
+      };
     };
     expect(response.status).toBe(200);
     expect(body.project.slug).toBe("vinhomes-grand-park");
     expect(body.project.name).toContain("Vinhomes");
     expect((body.project.handoverUnits ?? []).length).toBeGreaterThan(0);
+    // Buyer API: secondary-market research and confidence are not exposed
+    expect(body.project.priceRange ?? "").not.toMatch(/thứ cấp/i);
+    expect(body.project.confidence).toBeUndefined();
+    expect(body.project.provenance).toBeUndefined();
   });
 
 });

@@ -41,12 +41,8 @@ export default function ApartmentsPage() {
               {apt.bedrooms != null ? `${apt.bedrooms} phòng ngủ` : "—"}
               {apt.bathrooms != null ? ` · ${apt.bathrooms} phòng tắm` : ""}
             </p>
-            <p className={apt.areaSqm === "Chờ xác minh" ? "pending-data" : ""}>
-              {apt.areaSqm} m²
-            </p>
-            {apt.confidence != null && (
-              <span className="tag tag-clay">Tin cậy: {Math.round(apt.confidence * 100)}%</span>
-            )}
+            {apt.areaSqm?.trim() && <p>{apt.areaSqm}</p>}
+            {apt.price?.trim() && <p>Giá: {apt.price}</p>}
           </Link>
         ))}
       </div>

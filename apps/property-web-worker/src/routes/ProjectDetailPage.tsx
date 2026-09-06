@@ -3,13 +3,14 @@ import { filterProjectMedia } from "@ancu/shared";
 import { AMENITY_CATEGORIES } from "../types/amenity";
 import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
-import { ProjectInfographic } from "../components/ProjectInfographic";
 import { useProject } from "../hooks/useProjects";
 import { projectCoverUrl } from "../lib/projectVisuals";
 import "./ProjectDetailPage.css";
 
-function isPending(value: string) {
-  return value === "Chờ xác minh";
+function displayFact(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed;
 }
 
 export default function ProjectDetailPage() {
@@ -35,6 +36,12 @@ export default function ProjectDetailPage() {
   const atlases = filterProjectMedia(project.media, "atlas").filter((m) =>
     Boolean(m.url?.trim() || m.r2Key?.trim()),
   );
+
+  const address = displayFact(project.address);
+  const priceRange = displayFact(project.priceRange);
+  const handover = displayFact(project.handover);
+  const totalUnits = displayFact(project.totalUnits);
+  const hasFacts = Boolean(address || priceRange || handover || totalUnits);
 
   return (
     <div className="project-detail">
@@ -66,48 +73,54 @@ export default function ProjectDetailPage() {
       <div className="container project-detail-body">
       <div className="project-detail-meta">
         {project.district && <span className="tag">{project.district}</span>}
-        {project.confidence != null && (
-          <span className="tag tag-clay">Tin cậy: {Math.round(project.confidence * 100)}%</span>
-        )}
-        {state.source && <span className="tag">src:{state.source}</span>}
+        {project.city && <span className="tag">{project.city}</span>}
       </div>
       {project.description && <p className="project-description">{project.description}</p>}
-      {project.provenance && <p className="provenance">Nguồn: {project.provenance}</p>}
-
-      <ProjectInfographic project={project} />
 
       <section className="project-facts-grid">
-        <div className="card card-body">
-          <h3>Thông tin</h3>
-          <dl>
-            <dt>Địa chỉ</dt>
-            <dd className={isPending(project.address ?? "") ? "pending-data" : ""}>
-              {project.address ?? "Chờ xác minh"}
-            </dd>
-            <dt>Giá</dt>
-            <dd className={isPending(project.priceRange) ? "pending-data" : ""}>{project.priceRange}</dd>
-            {project.priceProvenance && (
-              <>
-                <dt>Nguồn giá</dt>
-                <dd className="provenance">{project.priceProvenance}</dd>
-              </>
-            )}
-            <dt>Bàn giao</dt>
-            <dd className={isPending(project.handover) ? "pending-data" : ""}>{project.handover}</dd>
-            <dt>Quy mô</dt>
-            <dd className={isPending(project.totalUnits) ? "pending-data" : ""}>{project.totalUnits}</dd>
-          </dl>
-        </div>
-        <div className="card card-body">
-          <h3>Tiện ích</h3>
-          <ul className="amenity-list">
-            {project.amenities.map((a) => (
-              <li key={`${a.category}-${a.name}`}>
-                <span className="tag">{a.category}</span> {a.name}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {hasFacts && (
+          <div className="card card-body">
+            <h3>Thông tin</h3>
+            <dl>
+              {address && (
+                <>
+                  <dt>Địa chỉ</dt>
+                  <dd>{address}</dd>
+                </>
+              )}
+              {priceRange && (
+                <>
+                  <dt>Giá</dt>
+                  <dd>{priceRange}</dd>
+                </>
+              )}
+              {handover && (
+                <>
+                  <dt>Bàn giao</dt>
+                  <dd>{handover}</dd>
+                </>
+              )}
+              {totalUnits && (
+                <>
+                  <dt>Quy mô</dt>
+                  <dd>{totalUnits}</dd>
+                </>
+              )}
+            </dl>
+          </div>
+        )}
+        {project.amenities.length > 0 && (
+          <div className="card card-body">
+            <h3>Tiện ích</h3>
+            <ul className="amenity-list">
+              {project.amenities.map((a) => (
+                <li key={`${a.category}-${a.name}`}>
+                  <span className="tag">{a.category}</span> {a.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section className="project-actions-bar" aria-label="Lối tắt dự án">
@@ -145,9 +158,7 @@ export default function ProjectDetailPage() {
           <div className="project-gallery-head">
             <div>
               <h2>Phối cảnh, mặt bằng & atlas</h2>
-              <p>
-                Hình minh họa / atlas quy hoạch — chờ bản chính thức từ CĐT. Mở showroom để xem 3D.
-              </p>
+              <p>Hình minh họa — mở showroom để xem không gian 3D.</p>
             </div>
             <Link to={`/projects/${project.slug}/showroom`} className="btn btn-ghost">
               Mở showroom
@@ -176,28 +187,31 @@ export default function ProjectDetailPage() {
         </section>
       )}
 
-      <section>
-        <h2>Loại căn hộ</h2>
-        <div className="apartment-type-grid">
-          {project.apartmentTypes.map((apt) => (
-            <Link
-              key={apt.id}
-              to={`/projects/${project.slug}/apartments/${apt.slug}`}
-              className="card card-body apartment-type-card"
-            >
-              <h3>{apt.name}</h3>
-              <p>
-                {apt.bedrooms != null ? `${apt.bedrooms} PN` : "—"} ·{" "}
-                <span className={isPending(apt.areaSqm) ? "pending-data" : ""}>{apt.areaSqm}</span>
-              </p>
-              <p className={isPending(apt.price) ? "pending-data" : ""}>Giá: {apt.price}</p>
-              {apt.confidence != null && (
-                <p className="apt-confidence">Tin cậy: {Math.round(apt.confidence * 100)}%</p>
-              )}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {project.apartmentTypes.length > 0 && (
+        <section>
+          <h2>Loại căn hộ</h2>
+          <div className="apartment-type-grid">
+            {project.apartmentTypes.map((apt) => {
+              const area = displayFact(apt.areaSqm);
+              const price = displayFact(apt.price);
+              return (
+                <Link
+                  key={apt.id}
+                  to={`/projects/${project.slug}/apartments/${apt.slug}`}
+                  className="card card-body apartment-type-card"
+                >
+                  <h3>{apt.name}</h3>
+                  <p>
+                    {apt.bedrooms != null ? `${apt.bedrooms} PN` : "—"}
+                    {area ? ` · ${area}` : ""}
+                  </p>
+                  {price && <p>Giá: {price}</p>}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {(project.documents?.length ?? 0) > 0 && (
         <section className="project-docs-section">
@@ -207,17 +221,9 @@ export default function ProjectDetailPage() {
               <li key={doc.id} className="card card-body">
                 <div className="project-docs-head">
                   <strong>{doc.title}</strong>
-                  <span className={`tag ${doc.status === "verified" ? "tag-teal" : "tag-clay"}`}>
-                    {doc.status === "verified"
-                      ? "Đã xác minh"
-                      : doc.status === "unavailable"
-                        ? "Không có"
-                        : "Chờ xác minh"}
-                  </span>
                 </div>
                 {doc.note && <p>{doc.note}</p>}
-                {doc.issuedAt && <p className="provenance">Thời điểm: {doc.issuedAt}</p>}
-                {doc.provenance && <p className="provenance">Nguồn: {doc.provenance}</p>}
+                {doc.issuedAt && <p>Thời điểm: {doc.issuedAt}</p>}
               </li>
             ))}
           </ul>
@@ -245,7 +251,6 @@ export default function ProjectDetailPage() {
                 {unit.tower && <p>Tháp / phân khu: {unit.tower}</p>}
                 {unit.handedOverAt && <p>Mốc: {unit.handedOverAt}</p>}
                 {unit.note && <p>{unit.note}</p>}
-                {unit.provenance && <p className="provenance">Nguồn: {unit.provenance}</p>}
               </li>
             ))}
           </ul>
@@ -259,6 +264,8 @@ export default function ProjectDetailPage() {
             {project.nearbyPlaces.map((place) => {
               const categoryLabel =
                 AMENITY_CATEGORIES.find((c) => c.id === place.category)?.label ?? place.category;
+              const distance = displayFact(place.distanceKm);
+              const travel = displayFact(place.travelTime);
               return (
                 <li key={place.id} className="nearby-item card card-body">
                   <div className="nearby-item-header">
@@ -266,16 +273,19 @@ export default function ProjectDetailPage() {
                     <span className="tag tag-teal">{categoryLabel}</span>
                   </div>
                   <dl className="nearby-details">
-                    <dt>Khoảng cách</dt>
-                    <dd className={isPending(place.distanceKm) ? "pending-data" : ""}>
-                      {place.distanceKm}
-                    </dd>
-                    <dt>Thời gian di chuyển</dt>
-                    <dd className={isPending(place.travelTime) ? "pending-data" : ""}>
-                      {place.travelTime}
-                    </dd>
+                    {distance && (
+                      <>
+                        <dt>Khoảng cách</dt>
+                        <dd>{distance}</dd>
+                      </>
+                    )}
+                    {travel && (
+                      <>
+                        <dt>Thời gian di chuyển</dt>
+                        <dd>{travel}</dd>
+                      </>
+                    )}
                   </dl>
-                  <span className="tag">{place.sourceClass}</span>
                 </li>
               );
             })}

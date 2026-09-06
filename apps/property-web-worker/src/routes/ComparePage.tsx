@@ -1,12 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { CompareInfographic } from "../components/CompareInfographic";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { useProjectSummaries } from "../hooks/useProjects";
 import type { ProjectSummary } from "../types";
 import "./ComparePage.css";
 
 const MAX_COMPARE = 3;
+
+function displayFact(value: string | null | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed || "—";
+}
 
 function CompareRow({
   label,
@@ -19,9 +23,7 @@ function CompareRow({
     <tr>
       <th>{label}</th>
       {values.map((v, i) => (
-        <td key={i} className={v === "Chờ xác minh" ? "pending-data" : ""}>
-          {v ?? "—"}
-        </td>
+        <td key={i}>{displayFact(v)}</td>
       ))}
     </tr>
   );
@@ -81,7 +83,7 @@ export default function ComparePage() {
     <div className="container compare-page">
       <header className="page-header">
         <h1>So sánh dự án</h1>
-        <p>Chọn tối đa {MAX_COMPARE} dự án để so sánh song song.</p>
+        <p>Chọn tối đa {MAX_COMPARE} dự án để so sánh thông tin cơ bản.</p>
       </header>
 
       <div className="compare-picker">
@@ -108,8 +110,6 @@ export default function ComparePage() {
       {compared.length < 2 ? (
         <p className="compare-hint">Chọn ít nhất 2 dự án để so sánh.</p>
       ) : (
-        <>
-        <CompareInfographic projects={compared} />
         <div className="compare-table-wrap">
           <table className="compare-table">
             <thead>
@@ -139,17 +139,9 @@ export default function ComparePage() {
               <CompareRow label="Giá" values={compared.map((p) => p.priceRange)} />
               <CompareRow label="Bàn giao" values={compared.map((p) => p.handover)} />
               <CompareRow label="Quy mô" values={compared.map((p) => p.totalUnits)} />
-              <CompareRow
-                label="Tin cậy"
-                values={compared.map((p) =>
-                  p.confidence != null ? `${Math.round(p.confidence * 100)}%` : "—",
-                )}
-              />
-              <CompareRow label="Nguồn" values={compared.map((p) => p.provenance)} />
             </tbody>
           </table>
         </div>
-        </>
       )}
     </div>
   );

@@ -14,7 +14,6 @@ import { PageSkeleton } from "../components/PageSkeleton";
 import { ViewModeBar } from "../components/ViewModeBar";
 import { useProject } from "../hooks/useProjects";
 import { getSampleFloorPlan } from "../data/sample-floorplans";
-import { qaMetadata } from "../viewer/utils";
 import { QaPanel } from "../viewer/QaPanel";
 import "../viewer/QaPanel.css";
 import "./ApartmentViewerPage.css";
@@ -75,7 +74,6 @@ export default function ApartmentViewerPage() {
   const apt = project.apartmentTypes.find((a) => a.slug === unit);
   const floorPlanKey = apt?.floorplanKey ?? unit;
   const floorPlan = floorPlanKey ? getSampleFloorPlan(floorPlanKey) : null;
-  const floorMeta = floorPlan ? qaMetadata(floorPlan) : null;
   const media = project.media ?? [];
   const floorplan2d = filterProjectMedia(media, "floorplan_2d", unit);
   const perspectives = filterProjectMedia(media, "perspective", unit);
@@ -109,28 +107,9 @@ export default function ApartmentViewerPage() {
         <p>
           {apt.bedrooms != null ? `${apt.bedrooms} phòng ngủ` : "—"}
           {apt.bathrooms != null ? ` · ${apt.bathrooms} phòng tắm` : ""}
-          {" · "}
-          <span className={apt.areaSqm === "Chờ xác minh" ? "pending-data" : ""}>
-            {apt.areaSqm}
-          </span>
+          {apt.areaSqm?.trim() ? ` · ${apt.areaSqm}` : ""}
+          {apt.price?.trim() ? ` · ${apt.price}` : ""}
         </p>
-        {apt.provenance && <p className="provenance">Nguồn: {apt.provenance}</p>}
-        {apt.confidence != null && (
-          <p className="apt-meta">
-            Tin cậy dữ liệu căn: <strong>{Math.round(apt.confidence * 100)}%</strong>
-          </p>
-        )}
-        {apt.validationSummary && (
-          <p className="apt-meta validation-summary">{apt.validationSummary}</p>
-        )}
-        {floorMeta?.validationSummary && (
-          <p className="apt-meta">
-            Kiểm tra mặt bằng: {floorMeta.validationSummary}
-            {floorMeta.confidence != null && (
-              <> · Tin cậy mặt bằng: <strong>{Math.round(floorMeta.confidence * 100)}%</strong></>
-            )}
-          </p>
-        )}
       </header>
 
       <ViewModeBar

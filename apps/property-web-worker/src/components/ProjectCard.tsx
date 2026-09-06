@@ -7,13 +7,17 @@ type ProjectCardProps = {
   project: ProjectSummary;
 };
 
-function isPending(value: string) {
-  return value === "Chờ xác minh";
+function displayFact(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return trimmed;
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const cover = projectCoverUrl(project.slug, project);
   const place = project.district ?? project.city;
+  const price = displayFact(project.priceRange);
+  const handover = displayFact(project.handover);
 
   return (
     <article className="project-card">
@@ -27,20 +31,22 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <Link to={`/projects/${project.slug}`}>{project.name}</Link>
         </h2>
         {project.tagline && <p className="project-tagline">{project.tagline}</p>}
-        <dl className="project-facts">
-          <div>
-            <dt>Giá</dt>
-            <dd className={isPending(project.priceRange) ? "pending-data" : ""}>
-              {project.priceRange}
-            </dd>
-          </div>
-          <div>
-            <dt>Bàn giao</dt>
-            <dd className={isPending(project.handover) ? "pending-data" : ""}>
-              {project.handover}
-            </dd>
-          </div>
-        </dl>
+        {(price || handover) && (
+          <dl className="project-facts">
+            {price && (
+              <div>
+                <dt>Giá</dt>
+                <dd>{price}</dd>
+              </div>
+            )}
+            {handover && (
+              <div>
+                <dt>Bàn giao</dt>
+                <dd>{handover}</dd>
+              </div>
+            )}
+          </dl>
+        )}
         <div className="project-card-actions">
           <Link to={`/projects/${project.slug}`} className="btn btn-primary">
             Khám phá
