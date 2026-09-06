@@ -81,8 +81,14 @@
 }
 
 .admin-gate {
-  padding: var(--space-xl) 0;
   max-width: 28rem;
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-xl) 0;
+}
+
+.admin-login-form {
+  margin-top: var(--space-sm);
 }
 
 .admin-gate h2 {

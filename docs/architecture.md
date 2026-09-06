@@ -166,7 +166,7 @@ Job create returns quickly; work runs on Queue/Workflow.
 
 ## Admin + AI Gateway (P30+)
 
-- **Admin UI** (`/admin`): Bearer `ADMIN_SECRET`; add project by name → crawl/synthesize/publish with live stage timing (no rate limit / timeout on this path).
+- **Admin UI** (`/admin`): username/password session (default admin must change password on first login); add project by name → crawl/synthesize/publish with live stage timing (no rate limit / timeout on this path).
 - **AI Gateway**: multi-model routing in `@ancu/shared` (`research`, `blog`, `image_gen`, `image_edit`, `vision_2d`, `qa_factual`) with Workers AI fallback.
 - **Blog** (`/blog`): weekly draft generation from existing projects; Vietnamese primary.
 - **Showroom** (`/projects/:slug/showroom`): lighting presets, material palettes (incl. photo-derived), room hotspots, shareable `?unit=&preset=&palette=` link.
