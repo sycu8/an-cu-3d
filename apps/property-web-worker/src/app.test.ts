@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getProjectBySlug, getProjectSummaries } from "./data/gamuda-projects";
+import { getProjectSummaries, getProjectBySlug } from "./data/gamuda-projects";
 import { getSampleFloorPlan } from "./data/sample-floorplans";
 import { documentBounds, wallLength } from "./viewer/utils";
 import { buildFurnitureDef, furnitureStyleFromPaletteLabel } from "./viewer/furnitureCatalog";
@@ -100,5 +100,34 @@ describe("RealEstateOS-inspired furniture icons", () => {
   it("maps palette labels to staging styles", () => {
     expect(furnitureStyleFromPaletteLabel("Ivory ấm")).toBe("scandinavian");
     expect(furnitureStyleFromPaletteLabel("Teal hiện đại")).toBe("luxury");
+  });
+});
+
+
+describe("project media seeds", () => {
+  it("assigns a unique cover URL to every seed project", () => {
+    const projects = getProjectSummaries();
+    const covers = projects.map((p) => p.coverUrl).filter(Boolean) as string[];
+    expect(covers.length).toBe(projects.length);
+    expect(new Set(covers).size).toBe(covers.length);
+  });
+
+  it("loads Celadon City gallery media from celadoncityhcm.com", () => {
+    const celadon = getProjectBySlug("celadon-city");
+    expect(celadon?.coverUrl).toContain("celadoncityhcm.com");
+    const withUrl = (celadon?.media ?? []).filter((m) => m.url?.includes("celadoncityhcm.com"));
+    expect(withUrl.length).toBeGreaterThanOrEqual(20);
+    expect(withUrl.some((m) => m.kind === "floorplan_2d")).toBe(true);
+    expect(withUrl.some((m) => m.kind === "atlas")).toBe(true);
+    expect(withUrl.some((m) => m.kind === "site")).toBe(true);
+    expect(withUrl.some((m) => m.kind === "perspective")).toBe(true);
+  });
+
+  it("gives every project amenity site images (park/school/commerce)", () => {
+    for (const summary of getProjectSummaries()) {
+      const detail = getProjectBySlug(summary.slug);
+      const sites = (detail?.media ?? []).filter((m) => m.kind === "site" && m.url);
+      expect(sites.length, summary.slug).toBeGreaterThanOrEqual(4);
+    }
   });
 });

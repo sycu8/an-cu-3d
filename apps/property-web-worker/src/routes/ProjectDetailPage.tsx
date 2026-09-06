@@ -54,7 +54,9 @@ export default function ProjectDetailPage() {
   const project = state.data;
   const cover = projectCoverUrl(project.slug, project);
   const perspectives = filterProjectMedia(project.media, "perspective");
+  const sites = filterProjectMedia(project.media, "site");
   const floorplan2d = filterProjectMedia(project.media, "floorplan_2d");
+  const elevations = filterProjectMedia(project.media, "elevation");
   const atlases = filterProjectMedia(project.media, "atlas").filter((m) =>
     Boolean(m.url?.trim() || m.r2Key?.trim()),
   );
@@ -205,10 +207,10 @@ export default function ProjectDetailPage() {
             </p>
           )}
 
-          {(atlases.length > 0 || perspectives.length > 0) && (
+          {(atlases.length > 0 || perspectives.length > 0 || sites.length > 0 || floorplan2d.length > 0 || elevations.length > 0) && (
             <div className="project-gallery-section">
               <MediaGallery
-                items={(atlases.length ? atlases : perspectives).slice(0, 4)}
+                items={[...atlases, ...perspectives, ...elevations, ...floorplan2d, ...sites].filter((m) => Boolean(m.url?.trim() || m.r2Key?.trim())).slice(0, 36)}
                 emptyLabel="Chưa có hình tổng thể"
                 variant="card"
               />
