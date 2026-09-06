@@ -72,9 +72,11 @@ pnpm --filter @ancu/floorplan-engine exec wrangler types
 Set Worker secrets (production / preview) — never commit real values:
 
 ```bash
-# Generate a strong admin bearer
-openssl rand -base64 32
+# Local .dev.vars (gitignored)
+node scripts/generate-admin-secret.mjs
 
+# Production / preview Worker secret
+openssl rand -base64 32
 pnpm --filter @ancu/property-web-worker exec wrangler secret put ADMIN_SECRET
 # Optional AI Gateway (research / blog / image / QA). Without these, pipelines use deterministic fallbacks.
 pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_TOKEN

@@ -283,10 +283,11 @@ export default function AdminPage() {
       if (!res.ok) throw new Error("Approve all thất bại");
       const data = (await res.json()) as {
         apartmentUpdates?: number;
+        nearbyUpdates?: number;
         projectUpdates?: number;
       };
       setStatus(
-        `Đã duyệt: ${data.apartmentUpdates ?? 0} căn · ${data.projectUpdates ?? 0} dự án`,
+        `Đã duyệt: ${data.apartmentUpdates ?? 0} căn · ${data.nearbyUpdates ?? 0} tiện ích gần · ${data.projectUpdates ?? 0} dự án`,
       );
       await load();
     } catch (err) {

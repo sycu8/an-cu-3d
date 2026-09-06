@@ -298,7 +298,7 @@ export async function upsertSynthesizedProject(
         `INSERT INTO apartment_types (
            id, project_id, slug, name, bedrooms, bathrooms, area_sqm, floorplan_key,
            price, source_class, provenance, confidence, validation_summary
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'estimated', 'Linked sample / pending verification', 0.35, 'Awaiting published metrics')`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'estimated', 'Liên kết mẫu — đã duyệt hiển thị; số liệu vẫn Chờ xác minh nếu thiếu nguồn', 0.35, 'Chờ số liệu công bố')`,
       )
       .bind(
         crypto.randomUUID(),
@@ -320,7 +320,7 @@ export async function upsertSynthesizedProject(
       .prepare(
         `INSERT INTO nearby_places (
            id, project_id, category, name, distance_km, travel_time, source_class, provenance
-         ) VALUES (?, ?, ?, ?, ?, ?, 'estimated', 'AI synthesis — pending verification')`,
+         ) VALUES (?, ?, ?, ?, ?, ?, 'estimated', 'Tổng hợp AI — đã duyệt hiển thị; số liệu vẫn Chờ xác minh nếu thiếu nguồn')`,
       )
       .bind(crypto.randomUUID(), projectId, n.category, n.name, PENDING, PENDING)
       .run();

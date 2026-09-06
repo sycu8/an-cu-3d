@@ -341,8 +341,18 @@ async function handleAdmin(
         `UPDATE apartment_types
          SET source_class = 'estimated',
              provenance = COALESCE(provenance, 'Admin approved sample linkage'),
-             validation_summary = 'Đã duyệt hiển thị showroom — số liệu vẫn Chờ xác minh nếu chưa có nguồn'
-         WHERE source_class = 'pending_verification'`,
+             validation_summary = 'Đã duyệt hiển thị showroom — số liệu vẫn Chờ xác minh nếu chưa có nguồn',
+             updated_at = datetime('now')
+         WHERE source_class IN ('pending_verification')
+            OR provenance LIKE '%pending verification%'
+            OR validation_summary LIKE '%pending%'`,
+      ),
+      env.DB.prepare(
+        `UPDATE nearby_places
+         SET source_class = 'estimated',
+             provenance = COALESCE(provenance, 'Admin approved sample linkage')
+         WHERE source_class IN ('pending_verification')
+            OR provenance LIKE '%pending verification%'`,
       ),
       env.DB.prepare(
         `UPDATE projects
@@ -354,7 +364,8 @@ async function handleAdmin(
       {
         ok: true,
         apartmentUpdates: result[0].meta.changes ?? 0,
-        projectUpdates: result[1].meta.changes ?? 0,
+        nearbyUpdates: result[1].meta.changes ?? 0,
+        projectUpdates: result[2].meta.changes ?? 0,
       },
       requestId,
       200,
