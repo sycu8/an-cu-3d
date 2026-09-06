@@ -80,8 +80,6 @@ export default function AdminPage() {
   const [assistDesc, setAssistDesc] = useState("");
   const [assistResult, setAssistResult] = useState<string | null>(null);
 
-  const [imagePrompt, setImagePrompt] = useState("");
-  const [imageResult, setImageResult] = useState<string | null>(null);
   const [editPrompt, setEditPrompt] = useState("");
   const [editBase64, setEditBase64] = useState("");
   const [editResult, setEditResult] = useState<string | null>(null);
@@ -414,28 +412,6 @@ export default function AdminPage() {
       setStatus("Đã chạy 2D→3D assist");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Assist failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onGenerateImage(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    setImageResult(null);
-    try {
-      const res = await fetch("/api/admin/images/generate", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ prompt: imagePrompt }),
-      });
-      if (!res.ok) throw new Error("Image generate thất bại");
-      const data = (await res.json()) as { result: { r2Key?: string; note?: string; url?: string } };
-      setImageResult(`${data.result.url ?? data.result.r2Key ?? "—"} · ${data.result.note ?? ""}`);
-      setStatus("Đã generate ảnh");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Image generate failed");
     } finally {
       setBusy(false);
     }
@@ -890,33 +866,13 @@ export default function AdminPage() {
                 </section>
 
                 <section className="admin-section">
-                  <h2>Tạo ảnh</h2>
-                  <form className="admin-stack" onSubmit={(e) => void onGenerateImage(e)}>
-                    <textarea
-                      value={imagePrompt}
-                      onChange={(e) => setImagePrompt(e.target.value)}
-                      rows={3}
-                      required
-                      placeholder="Warm showroom interior, HCMC daylight…"
-                    />
-                    <button
-                      type="submit"
-                      className="btn btn-primary"
-                      disabled={busy || !imagePrompt.trim()}
-                    >
-                      Generate
-                    </button>
-                  </form>
-                  {imageResult && (
-                    <>
-                      <p className="admin-muted">{imageResult}</p>
-                      {imageResult.startsWith("/api/media/") && (
-                        <img src={imageResult.split(" · ")[0]} alt="" className="admin-media-preview" />
-                      )}
-                    </>
-                  )}
+                  <h2>Hình dự án</h2>
+                  <p className="admin-muted">
+                    Chính sách: hình dự án chỉ dùng ảnh thật hoặc hình từ chủ đầu tư (CĐT). Không tạo /
+                    generate ảnh dự án bằng AI. Upload media CĐT hoặc dùng seed crawl từ trang chính thức.
+                  </p>
 
-                  <h3>Sửa ảnh</h3>
+                  <h3>Sửa ảnh (không dùng cho cover dự án)</h3>
                   <form className="admin-stack" onSubmit={(e) => void onEditImage(e)}>
                     <input
                       type="file"
