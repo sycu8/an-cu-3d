@@ -21,6 +21,12 @@ export function Layout() {
             <NavLink to="/compare" className={({ isActive }) => (isActive ? "active" : "")}>
               So sánh
             </NavLink>
+            <NavLink to="/blog" className={({ isActive }) => (isActive ? "active" : "")}>
+              Blog
+            </NavLink>
+            <NavLink to="/admin" className={({ isActive }) => (isActive ? "active" : "")}>
+              Admin
+            </NavLink>
           </nav>
         </div>
       </header>

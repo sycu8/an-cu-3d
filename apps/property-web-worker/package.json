@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
-    "test": "vitest run",
+    "test": "vitest run --config vitest.unit.config.ts",
     "lint": "echo \"no lint yet\"",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test:app": "vitest run"
   },
   "dependencies": {
     "@ancu/shared": "workspace:*",

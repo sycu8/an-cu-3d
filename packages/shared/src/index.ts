@@ -1,4 +1,4 @@
-/** Package entry — tokens, schema, geometry, R2 helpers, samples. */
+/** Package entry — tokens, schema, geometry, R2 helpers, samples, AI, blog, showroom. */
 export { BRAND, TAGLINE, palette, tokens } from "./tokens.js";
 export type { Palette, Tokens } from "./tokens.js";
 
@@ -85,3 +85,41 @@ export type { TopologyCheckResult, TopologyIssue } from "./geometry/validation.j
 
 export { sampleFloorPlans } from "./floorplan/samples/index.js";
 export type { SampleFloorPlanKey } from "./floorplan/samples/index.js";
+
+export {
+  DEFAULT_MODELS,
+  chatViaGateway,
+  chatViaWorkersAi,
+  gatewayChatUrl,
+  gatewayOpenAiUrl,
+  parseJsonFromLlm,
+} from "./ai-gateway.js";
+export type {
+  AiGatewayConfig,
+  AiUseCase,
+  ChatMessage,
+  ChatResult,
+} from "./ai-gateway.js";
+
+export {
+  PROJECT_BUILD_STAGES,
+  slugifyProjectName,
+} from "./project-build.js";
+export type {
+  ProjectBuildEvent,
+  ProjectBuildJob,
+  ProjectBuildJobStatus,
+  ProjectBuildStage,
+} from "./project-build.js";
+
+export type { BlogMedia, BlogPost, BlogPostStatus } from "./blog.js";
+
+export {
+  DEFAULT_MATERIAL_PALETTES,
+  LIGHTING_PRESETS,
+} from "./showroom.js";
+export type {
+  LightingPreset,
+  MaterialPalette,
+  RoomHotspot,
+} from "./showroom.js";

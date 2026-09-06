@@ -7,7 +7,7 @@ export type {
   Window,
   FurnitureInstance,
   Fixture,
-  SourceClass,
+  SourceClassType as SourceClass,
 } from "@ancu/shared";
 
 export type { AmenityCategory } from "./amenity";

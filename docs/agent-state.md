@@ -2,9 +2,9 @@
 
 ## Current phase
 
-**M4 complete** — P0–P29 done (perf, security/observability, production wiring).
+**M4 + Admin/AI Gateway in progress** — P0–P29 done (perf, security/observability, production wiring).
 
-Branch: `cursor/mvp-build-4bd7` · PR: https://github.com/sycu8/an-cu-3d/pull/2
+Branch: `cursor/admin-ai-gateway-4bd7` (from mvp-build) · PR: https://github.com/sycu8/an-cu-3d/pull/2
 
 ## Packages
 
@@ -35,3 +35,10 @@ pnpm --filter @ancu/floorplan-engine build
 - Real amenity POI feed (OpenStreetMap Overpass) for denser map detail
 - Further 3D LOD / Draco for lower mobile GPU cost
 - Travel-time via a licensed routing API (never invent times)
+
+
+## New secrets for Admin / AI Gateway
+
+- `ADMIN_SECRET` on property-web (admin Bearer)
+- `AI_GATEWAY_ACCOUNT_ID`, `AI_GATEWAY_ID`, `AI_GATEWAY_TOKEN` (optional; deterministic fallback without them)
+- `ENGINE_BASE_URL` + `ENGINE_API_SECRET` on property-web for engine crawl enrichment

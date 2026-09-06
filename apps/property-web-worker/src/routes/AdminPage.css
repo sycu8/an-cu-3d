@@ -1,0 +1,123 @@
+.admin-page {
+  padding: var(--space-xl) 0 var(--space-3xl);
+}
+
+.admin-header h1 {
+  margin-bottom: var(--space-sm);
+}
+
+.admin-header p {
+  color: var(--color-text-muted);
+  max-width: 40rem;
+}
+
+.admin-auth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: end;
+  margin: var(--space-xl) 0;
+}
+
+.admin-auth label {
+  display: block;
+  width: 100%;
+  font-size: var(--text-small);
+  font-weight: 600;
+}
+
+.admin-auth input {
+  flex: 1;
+  min-width: 16rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+}
+
+.admin-error {
+  color: var(--color-danger, #a33);
+  margin: var(--space-md) 0;
+}
+
+.admin-section {
+  margin: var(--space-2xl) 0;
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.admin-form input {
+  flex: 1;
+  min-width: 16rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.admin-job {
+  margin-top: var(--space-lg);
+  padding: var(--space-lg);
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-md);
+}
+
+.admin-job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.admin-elapsed {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--color-teal-700, #285a52);
+}
+
+.admin-events {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: var(--text-small);
+}
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.admin-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.linkish {
+  background: none;
+  border: none;
+  color: var(--color-teal-700, #285a52);
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.linkish:hover {
+  text-decoration: underline;
+}

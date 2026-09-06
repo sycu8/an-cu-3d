@@ -106,6 +106,21 @@ app.use("/jobs", async (c, next) => {
     return next();
   }
 
+  // Admin project-build orchestration must never be rate-limited or timed out.
+  if (c.req.header("X-AnCu-Admin-Build") === "1") {
+    return next();
+  }
+
+  let bodyPreview: { bypassRateLimit?: boolean } | null = null;
+  try {
+    bodyPreview = await c.req.raw.clone().json();
+  } catch {
+    bodyPreview = null;
+  }
+  if (bodyPreview?.bypassRateLimit === true) {
+    return next();
+  }
+
   const clientIp =
     c.req.header("CF-Connecting-IP") ??
     c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ??
