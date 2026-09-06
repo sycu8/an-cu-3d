@@ -1,5 +1,7 @@
 import { Link, useParams } from "react-router";
+import { filterProjectMedia } from "@ancu/shared";
 import { AMENITY_CATEGORIES } from "../types/amenity";
+import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { useProject } from "../hooks/useProjects";
 import "./ProjectDetailPage.css";
@@ -25,6 +27,8 @@ export default function ProjectDetailPage() {
   }
 
   const project = state.data;
+  const perspectives = filterProjectMedia(project.media, "perspective");
+  const floorplan2d = filterProjectMedia(project.media, "floorplan_2d");
 
   return (
     <div className="container">
@@ -72,22 +76,54 @@ export default function ProjectDetailPage() {
       </section>
 
       <section className="project-actions-bar">
-        <Link to={`/projects/${project.slug}/3d`} className="btn btn-primary">
-          Xem 3D dự án
+        <Link to={`/projects/${project.slug}/showroom?view=3d`} className="btn btn-primary">
+          Xem 3D
         </Link>
-        <Link to={`/projects/${project.slug}/apartments`} className="btn btn-secondary">
-          Căn hộ & mặt bằng
+        <Link to={`/projects/${project.slug}/showroom?view=auto`} className="btn btn-secondary">
+          Tự phối cảnh
         </Link>
-        <Link to={`/projects/${project.slug}/showroom`} className="btn btn-secondary">
-          Showroom nhà mẫu
+        <Link to={`/projects/${project.slug}/showroom?view=2d`} className="btn btn-secondary">
+          Mặt bằng 2D
+        </Link>
+        <Link to={`/projects/${project.slug}/showroom?view=perspective`} className="btn btn-ghost">
+          Phối cảnh
+        </Link>
+        <Link to={`/projects/${project.slug}/apartments`} className="btn btn-ghost">
+          Căn hộ
         </Link>
         <Link to={`/map?project=${project.slug}`} className="btn btn-ghost">
-          Vị trí trên bản đồ
-        </Link>
-        <Link to={`/compare?a=${project.slug}`} className="btn btn-ghost">
-          So sánh
+          Bản đồ
         </Link>
       </section>
+
+      {(perspectives.length > 0 || floorplan2d.length > 0) && (
+        <section className="project-gallery-section" aria-label="Hình 2D và phối cảnh">
+          <div className="project-gallery-head">
+            <div>
+              <h2>Phối cảnh & mặt bằng 2D</h2>
+              <p>
+                Hình minh họa — chờ bản chính thức. Mở showroom để xem 3D hoặc tự phối ánh sáng.
+              </p>
+            </div>
+            <Link to={`/projects/${project.slug}/showroom`} className="btn btn-ghost">
+              Mở showroom
+            </Link>
+          </div>
+          {perspectives.length > 0 ? (
+            <MediaGallery
+              items={perspectives.slice(0, 6)}
+              emptyLabel="Chưa có phối cảnh"
+              variant="card"
+            />
+          ) : (
+            <MediaGallery
+              items={floorplan2d.slice(0, 4)}
+              emptyLabel="Chưa có mặt bằng 2D"
+              variant="card"
+            />
+          )}
+        </section>
+      )}
 
       <section>
         <h2>Loại căn hộ</h2>

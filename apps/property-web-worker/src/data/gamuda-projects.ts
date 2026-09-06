@@ -1,4 +1,5 @@
 import type { ProjectDetail, ProjectSummary } from "../types";
+import { demoGalleryForSlug } from "./demo-gallery";
 import { DEMO_SCALE_PROJECTS } from "./demo-scale-projects";
 
 const PENDING = "Chờ xác minh";
@@ -266,7 +267,10 @@ export function getProjectSummaries(): ProjectSummary[] {
 }
 
 export function getProjectBySlug(slug: string): ProjectDetail | undefined {
-  return ALL_SEED_PROJECTS.find((p) => p.slug === slug);
+  const project = ALL_SEED_PROJECTS.find((p) => p.slug === slug);
+  if (!project) return undefined;
+  if (project.media?.length) return project;
+  return { ...project, media: demoGalleryForSlug(slug) };
 }
 
 export function getAllNearbyPlaces() {

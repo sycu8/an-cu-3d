@@ -18,6 +18,7 @@ import { createBuildJob, getBuildJob, listBuildJobs } from "./db/jobs";
 import { getDbProjectBySlug, listDbProjectSummaries } from "./db/projects";
 import { runProjectBuild } from "./project-build";
 import { serveMedia, withMediaUrl } from "./media";
+import { demoGalleryForSlug } from "../data/demo-gallery";
 import type { Env } from "./types";
 
 function securityHeaders(requestId: string): Record<string, string> {
@@ -110,12 +111,22 @@ async function mergeProjects(env: Env) {
 async function resolveProject(env: Env, slug: string) {
   try {
     const fromDb = await getDbProjectBySlug(env.DB, slug);
-    if (fromDb) return { project: fromDb, source: "d1" as const };
+    if (fromDb) {
+      const project = fromDb.media?.length
+        ? fromDb
+        : { ...fromDb, media: demoGalleryForSlug(fromDb.slug) };
+      return { project, source: "d1" as const };
+    }
   } catch {
     /* fall through */
   }
   const seed = getProjectBySlug(slug);
-  if (seed) return { project: seed, source: "seed" as const };
+  if (seed) {
+    const project = seed.media?.length
+      ? seed
+      : { ...seed, media: demoGalleryForSlug(seed.slug) };
+    return { project, source: "seed" as const };
+  }
   return null;
 }
 

@@ -2,11 +2,17 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import {
   DEFAULT_MATERIAL_PALETTES,
+  filterProjectMedia,
+  isUnitViewMode,
   LIGHTING_PRESETS,
   type LightingPreset,
   type MaterialPalette,
+  type UnitViewMode,
 } from "@ancu/shared";
+import { AutoComposePanel } from "../components/AutoComposePanel";
+import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { ViewModeBar } from "../components/ViewModeBar";
 import { useProject } from "../hooks/useProjects";
 import { getSampleFloorPlan } from "../data/sample-floorplans";
 import "./ShowroomPage.css";
@@ -34,9 +40,15 @@ export default function ShowroomPage() {
   const state = useProject(slug);
   const [focusRoomId, setFocusRoomId] = useState<string | undefined>();
   const [copied, setCopied] = useState(false);
+  const [autoCycling, setAutoCycling] = useState(true);
 
   const project = "data" in state ? state.data : undefined;
   const showroom = project?.showroom;
+
+  const viewMode: UnitViewMode = useMemo(() => {
+    const raw = params.get("view");
+    return isUnitViewMode(raw) ? raw : "3d";
+  }, [params]);
 
   const unit =
     params.get("unit") ?? project?.apartmentTypes[0]?.slug ?? "studio-a";
@@ -74,6 +86,16 @@ export default function ShowroomPage() {
     [floorPlanKey],
   );
 
+  const media = project?.media ?? [];
+  const floorplan2d = useMemo(
+    () => filterProjectMedia(media, "floorplan_2d", unit),
+    [media, unit],
+  );
+  const perspectives = useMemo(
+    () => filterProjectMedia(media, "perspective", unit),
+    [media, unit],
+  );
+
   const hotspots = useMemo(() => {
     const configured = [...(showroom?.hotspots ?? [])].sort(
       (a, b) => a.order - b.order,
@@ -109,9 +131,20 @@ export default function ShowroomPage() {
   }
 
   function setParam(key: string, value: string) {
-    const next = new URLSearchParams(params);
-    next.set(key, value);
-    setParams(next);
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set(key, value);
+      return next;
+    });
+  }
+
+  function setViewMode(mode: UnitViewMode) {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (mode === "3d") next.delete("view");
+      else next.set("view", mode);
+      return next;
+    });
   }
 
   async function copyShareLink() {
@@ -119,6 +152,7 @@ export default function ShowroomPage() {
     url.searchParams.set("unit", unit);
     url.searchParams.set("preset", lighting);
     url.searchParams.set("palette", paletteLabel);
+    if (viewMode !== "3d") url.searchParams.set("view", viewMode);
     try {
       await navigator.clipboard.writeText(url.toString());
       setCopied(true);
@@ -128,6 +162,15 @@ export default function ShowroomPage() {
     }
   }
 
+  const show3d = viewMode === "3d" || viewMode === "auto";
+  const showMedia = viewMode === "2d" || viewMode === "perspective";
+  const galleryItems = viewMode === "2d" ? floorplan2d : perspectives;
+  const galleryEmpty =
+    viewMode === "2d"
+      ? "Chưa có mặt bằng 2D đã xác minh cho dự án này."
+      : "Chưa có phối cảnh đã xác minh cho dự án này.";
+  const viewerMode = viewMode === "auto" ? "perspective" : "dollhouse";
+
   return (
     <div className="showroom-page">
       <div className="container showroom-toolbar">
@@ -135,9 +178,9 @@ export default function ShowroomPage() {
           <p className="showroom-eyebrow">
             <Link to={`/projects/${project.slug}`}>{project.name}</Link> · Nhà mẫu
           </p>
-          <h1>Showroom 3D</h1>
+          <h1>Showroom</h1>
           <p>
-            Ánh sáng / vật liệu / điểm dừng phòng — chia sẻ link cho khách hàng.
+            Mặt bằng 2D, phối cảnh, xem 3D hoặc để AnCư tự phối ánh sáng & vật liệu.
           </p>
         </div>
         <div className="showroom-controls">
@@ -154,33 +197,37 @@ export default function ShowroomPage() {
               ))}
             </select>
           </label>
-          <label>
-            Ánh sáng
-            <select
-              value={lighting}
-              onChange={(e) => setParam("preset", e.target.value)}
-            >
-              {(Object.keys(LIGHTING_PRESETS) as LightingPreset[]).map((key) => (
-                <option key={key} value={key}>
-                  {LIGHTING_PRESETS[key].label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Vật liệu
-            <select
-              value={paletteLabel}
-              onChange={(e) => setParam("palette", e.target.value)}
-            >
-              {DEFAULT_MATERIAL_PALETTES.map((p) => (
-                <option key={p.label} value={p.label}>
-                  {p.label}
-                </option>
-              ))}
-              {photoMaterial && <option value="from-photo">Từ ảnh dự án</option>}
-            </select>
-          </label>
+          {viewMode === "3d" ? (
+            <>
+              <label>
+                Ánh sáng
+                <select
+                  value={lighting}
+                  onChange={(e) => setParam("preset", e.target.value)}
+                >
+                  {(Object.keys(LIGHTING_PRESETS) as LightingPreset[]).map((key) => (
+                    <option key={key} value={key}>
+                      {LIGHTING_PRESETS[key].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Vật liệu
+                <select
+                  value={paletteLabel}
+                  onChange={(e) => setParam("palette", e.target.value)}
+                >
+                  {DEFAULT_MATERIAL_PALETTES.map((p) => (
+                    <option key={p.label} value={p.label}>
+                      {p.label}
+                    </option>
+                  ))}
+                  {photoMaterial && <option value="from-photo">Từ ảnh dự án</option>}
+                </select>
+              </label>
+            </>
+          ) : null}
           <button
             type="button"
             className="btn btn-ghost"
@@ -191,40 +238,106 @@ export default function ShowroomPage() {
         </div>
       </div>
 
-      <div className="showroom-hotspots container">
-        {hotspots.map((spot, index) => (
-          <button
-            key={spot.key}
-            type="button"
-            className={focusRoomId === spot.roomId ? "active" : ""}
-            onClick={() =>
-              setFocusRoomId((cur) =>
-                cur === spot.roomId ? undefined : spot.roomId,
-              )
-            }
-            disabled={!spot.roomId}
-          >
-            {index + 1}. {spot.label}
-          </button>
-        ))}
+      <div className="container">
+        <ViewModeBar
+          value={viewMode}
+          onChange={setViewMode}
+          counts={{ "2d": floorplan2d.length, perspective: perspectives.length }}
+        />
       </div>
 
-      {photoMaterial?.notes && paletteLabel === "from-photo" && (
-        <p className="container showroom-photo-note">{photoMaterial.notes}</p>
-      )}
+      {showMedia ? (
+        <section className="container showroom-media" aria-label="Thư viện hình ảnh">
+          <MediaGallery items={galleryItems} emptyLabel={galleryEmpty} />
+          <p className="showroom-media-note">
+            Ảnh minh họa — chờ xác minh từ chủ đầu tư trước khi dùng làm căn cứ bán hàng.
+          </p>
+        </section>
+      ) : null}
 
-      <Suspense fallback={<div className="container">Đang tải 3D…</div>}>
-        <FloorPlanViewer
-          document={floorPlan}
-          mode="dollhouse"
-          showFurniture
-          showLabels
-          focusRoomId={focusRoomId}
-          roomOverlayOpacity={0.35}
-          lightingPreset={lighting}
-          materialPalette={palette}
-        />
-      </Suspense>
+      {show3d ? (
+        <>
+          {viewMode === "3d" ? (
+            <div className="showroom-hotspots container">
+              {hotspots.map((spot, index) => (
+                <button
+                  key={spot.key}
+                  type="button"
+                  className={focusRoomId === spot.roomId ? "active" : ""}
+                  onClick={() =>
+                    setFocusRoomId((cur) =>
+                      cur === spot.roomId ? undefined : spot.roomId,
+                    )
+                  }
+                  disabled={!spot.roomId}
+                >
+                  {index + 1}. {spot.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {photoMaterial?.notes && paletteLabel === "from-photo" && viewMode === "3d" ? (
+            <p className="container showroom-photo-note">{photoMaterial.notes}</p>
+          ) : null}
+
+          <div
+            className={
+              viewMode === "auto" ? "showroom-auto-layout container" : undefined
+            }
+          >
+            <Suspense fallback={<div className="container">Đang tải 3D…</div>}>
+              <FloorPlanViewer
+                document={floorPlan}
+                mode={viewerMode}
+                showFurniture
+                showLabels
+                focusRoomId={focusRoomId}
+                roomOverlayOpacity={0.35}
+                lightingPreset={lighting}
+                materialPalette={palette}
+              />
+            </Suspense>
+
+            {viewMode === "auto" ? (
+              <AutoComposePanel
+                lighting={lighting}
+                palette={palette}
+                cycling={autoCycling}
+                onCyclingChange={setAutoCycling}
+                onLightingChange={(preset) => setParam("preset", preset)}
+                onPaletteChange={(label) => setParam("palette", label)}
+                onOpen3d={() => setViewMode("3d")}
+              />
+            ) : null}
+          </div>
+
+          {viewMode === "3d" && perspectives.length > 0 ? (
+            <section className="container showroom-side-strip" aria-label="Phối cảnh nhanh">
+              <div className="showroom-side-strip-head">
+                <h2>Phối cảnh nhanh</h2>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setViewMode("perspective")}
+                >
+                  Xem tất cả
+                </button>
+              </div>
+              <MediaGallery
+                items={perspectives.slice(0, 4)}
+                emptyLabel=""
+                variant="card"
+              />
+            </section>
+          ) : null}
+        </>
+      ) : null}
+
+      <p className="container showroom-disclaimer">
+        Giá / diện tích chỉ mang tính minh họa khi dữ liệu chưa xác minh. Ảnh 2D & phối cảnh
+        demo là placeholder — thay bằng media chính thức trong Admin khi có.
+      </p>
     </div>
   );
 }

@@ -100,10 +100,60 @@
   margin: 0 auto var(--space-md);
 }
 
+.showroom-media {
+  margin-bottom: var(--space-xl);
+}
+
+.showroom-media-note,
+.showroom-disclaimer {
+  margin: var(--space-sm) 0 var(--space-lg);
+  color: var(--color-text-muted);
+  font-size: var(--text-small);
+  max-width: 70ch;
+}
+
+.showroom-auto-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(16rem, 22rem);
+  gap: var(--space-lg);
+  align-items: start;
+  margin-bottom: var(--space-lg);
+}
+
+.showroom-auto-layout .viewer-canvas-wrap {
+  min-height: min(64vh, 38rem);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.showroom-side-strip {
+  margin: var(--space-lg) auto var(--space-xl);
+}
+
+.showroom-side-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.showroom-side-strip-head h2 {
+  margin: 0;
+  font-size: var(--text-h3);
+}
+
 .showroom-page .viewer-wrap,
 .showroom-page .floorplan-viewer,
 .showroom-page canvas {
   min-height: min(68vh, 40rem);
+}
+
+@media (max-width: 900px) {
+  .showroom-auto-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {

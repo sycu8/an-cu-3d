@@ -1,4 +1,6 @@
 /** Re-export shared domain types used by the web app. */
+import type { ProjectMediaItem } from "@ancu/shared";
+
 export type {
   FloorPlanDocument,
   Room,
@@ -8,6 +10,7 @@ export type {
   FurnitureInstance,
   Fixture,
   SourceClassType as SourceClass,
+  ProjectMediaItem,
 } from "@ancu/shared";
 
 export type { AmenityCategory } from "./amenity";
@@ -75,6 +78,8 @@ export interface ProjectDetail extends ProjectSummary {
   apartmentTypes: ApartmentTypeSummary[];
   nearbyPlaces: NearbyPlace[];
   showroom?: ProjectShowroomConfig;
+  /** 2D floorplans, perspectives, and related gallery items. */
+  media?: ProjectMediaItem[];
 }
 
 export interface NearbyPlace {

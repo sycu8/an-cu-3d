@@ -137,3 +137,17 @@ export type {
   RoomHotspot,
   ProjectShowroomConfig,
 } from "./showroom.js";
+
+export {
+  PROJECT_MEDIA_KINDS,
+  UNIT_VIEW_MODES,
+  UNIT_VIEW_MODE_LABELS,
+  filterProjectMedia,
+  isUnitViewMode,
+} from "./project-media.js";
+export type {
+  ProjectMediaItem,
+  ProjectMediaKind,
+  UnitViewMode,
+} from "./project-media.js";
+
