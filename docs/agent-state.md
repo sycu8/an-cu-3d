@@ -2,18 +2,24 @@
 
 ## Current phase
 
-**P1 Architecture — complete**  
-Next: **P2 Brand/design system**
+**M0–M4 continuous build** (user: roadmap + all features)  
+Completed: P0, P1, **P2/P5/P13/P14–P18 foundation in `@ancu/shared`**  
+In flight (parallel agents): P2–P29 scaffold/MVP toward acceptance  
+Next after merge of agent work: integrate, typecheck, fill gaps, update PR
+
+## Roadmap
+
+See `docs/roadmap.md` (milestones M0–M4, phase checklist, MVP acceptance).
 
 ## Confirmed architecture
 
 - Monorepo (`pnpm` workspaces): `apps/*`, `packages/*`
 - Apps:
-  - `apps/property-web-worker` → `@ancu/property-web-worker` (public UI + API)
-  - `apps/ancu-floorplan-engine` → `@ancu/floorplan-engine` (conversion pipeline)
-- Shared: `packages/shared` → `@ancu/shared` (tokens, Zod schema, types)
-- FloorPlanDocument JSON = architectural SoT; GLB optional derived
-- Config: `wrangler.jsonc` per app; envs `local` | `preview` | `production`
+  - `apps/property-web-worker` → `@ancu/property-web-worker`
+  - `apps/ancu-floorplan-engine` → `@ancu/floorplan-engine`
+- Shared: `packages/shared` → `@ancu/shared`
+- FloorPlanDocument JSON = SoT; GLB optional
+- `wrangler.jsonc`; envs `local` | `preview` | `production`
 - See `docs/architecture.md`
 
 ## Binding names
@@ -21,40 +27,45 @@ Next: **P2 Brand/design system**
 **property-web:** `DB`, `ASSETS`, optional `ENGINE`  
 **engine:** `ENGINE_DB`, `FLOORPLANS`, `CONVERSION_QUEUE`, `CRAWL_QUEUE`, `CONVERSION_WORKFLOW`, `AI`, `BROWSER`
 
-Logical resources: `ancu-property-db`, `ancu-engine-db`, `ancu-property-assets`, `ancu-floorplans`, `ancu-conversion`, `ancu-crawl`, `ancu-conversion-workflow`
+Logical: `ancu-property-db`, `ancu-engine-db`, `ancu-property-assets`, `ancu-floorplans`, `ancu-conversion`, `ancu-crawl`, `ancu-conversion-workflow`
 
 ## Important paths
 
-- `/workspace/docs/architecture.md`
-- `/workspace/docs/agent-state.md`
-- `/workspace/apps/property-web-worker/`
-- `/workspace/apps/ancu-floorplan-engine/`
-- `/workspace/packages/shared/`
+- `docs/roadmap.md`, `docs/architecture.md`, `docs/agent-state.md`
+- `apps/property-web-worker/`, `apps/ancu-floorplan-engine/`, `packages/shared/`
+
+## Shared package (`@ancu/shared`)
+
+- Tokens: `src/tokens.ts`, `src/tokens.css`
+- R2 paths: `src/r2-paths.ts`
+- FloorPlanDocument: `src/floorplan/schema.ts`, `src/floorplan/types.ts`
+- Geometry: `src/geometry/{vec2,walls,validation}.ts`
+- Seed docs: `src/floorplan/samples/` (studio / 1BR / 2BR, estimated)
+- Validate: `pnpm --filter @ancu/shared typecheck && pnpm --filter @ancu/shared test`
 
 ## Completed decisions
 
-- Greenfield repo; Cloudflare Workers + D1 + R2 primary
-- Separate D1/R2 for product vs engine
-- Queues + Workflows for crawl/conversion durability
-- Workers AI cascade (cheap → stronger); cache by input hash
-- MapLibre + provider abstraction; R3F procedural renderer
-- Initial projects: Eaton Park, Elysian, Celadon City (no fabricated facts)
-- Brand palette locked in master prompt (implement P2)
+- Separate D1/R2 product vs engine; Queues+Workflows for conversion
+- Workers AI cascade + R2 inference cache by input hash
+- MapLibre abstracted; R3F procedural renderer; no fabricated Gamuda facts
+- Brand palette locked; implement via shared tokens
+- Placeholder D1 UUIDs in wrangler until CI creates real resources
 
 ## Unresolved blockers
 
-- Cloudflare resource IDs not created yet (P3+)
-- Official Gamuda floor-plan source URLs not inventoried (P7–P8)
-- No CI deploy wiring yet (secrets exist in GitHub; wiring later)
+- Real Cloudflare resource IDs (create via wrangler + GitHub secrets on deploy)
+- Official Gamuda floor-plan URL inventory (allowlist crawl later)
+- Parallel agent integration may need conflict resolution
 
 ## Validation commands
 
 ```bash
 pnpm install
-# after P3+: wrangler types (per app)
-# after code: pnpm typecheck && pnpm test
+pnpm -r run typecheck
+pnpm -r run test
+pnpm -r run build
 ```
 
-## Model routing default
+## Model routing
 
-T1 (Composer 2.5 / GPT-5.6 Luna) through P11/P13; escalate per matrix for geometry (P14–P18).
+T1 default; T3 for hard geometry if stubs prove insufficient.

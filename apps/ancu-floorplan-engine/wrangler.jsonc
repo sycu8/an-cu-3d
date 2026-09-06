@@ -1,0 +1,166 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ancu-floorplan-engine",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "vars": {
+    "PUBLISH_CONFIDENCE_HIGH": "0.90",
+    "PUBLISH_CONFIDENCE_REVIEW": "0.75"
+  },
+  "d1_databases": [
+    {
+      "binding": "ENGINE_DB",
+      "database_name": "ancu-engine-db",
+      "database_id": "00000000-0000-0000-0000-000000000002",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FLOORPLANS",
+      "bucket_name": "ancu-floorplans"
+    }
+  ],
+  "queues": {
+    "producers": [
+      { "binding": "CONVERSION_QUEUE", "queue": "ancu-conversion" },
+      { "binding": "CRAWL_QUEUE", "queue": "ancu-crawl" }
+    ],
+    "consumers": [
+      {
+        "queue": "ancu-conversion",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "ancu-conversion-dlq"
+      },
+      {
+        "queue": "ancu-crawl",
+        "max_batch_size": 5,
+        "max_batch_timeout": 10,
+        "max_retries": 3,
+        "dead_letter_queue": "ancu-crawl-dlq"
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "name": "ancu-conversion-workflow",
+      "binding": "CONVERSION_WORKFLOW",
+      "class_name": "ConversionWorkflow"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "browser": {
+    "binding": "BROWSER"
+  },
+  "env": {
+    "preview": {
+      "name": "ancu-floorplan-engine-preview",
+      "vars": {
+        "PUBLISH_CONFIDENCE_HIGH": "0.90",
+        "PUBLISH_CONFIDENCE_REVIEW": "0.75"
+      },
+      "d1_databases": [
+        {
+          "binding": "ENGINE_DB",
+          "database_name": "ancu-engine-db-preview",
+          "database_id": "00000000-0000-0000-0000-000000000002",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "FLOORPLANS",
+          "bucket_name": "ancu-floorplans-preview"
+        }
+      ],
+      "queues": {
+        "producers": [
+          { "binding": "CONVERSION_QUEUE", "queue": "ancu-conversion-preview" },
+          { "binding": "CRAWL_QUEUE", "queue": "ancu-crawl-preview" }
+        ],
+        "consumers": [
+          {
+            "queue": "ancu-conversion-preview",
+            "max_batch_size": 10,
+            "max_retries": 3,
+            "dead_letter_queue": "ancu-conversion-dlq-preview"
+          },
+          {
+            "queue": "ancu-crawl-preview",
+            "max_batch_size": 5,
+            "max_retries": 3,
+            "dead_letter_queue": "ancu-crawl-dlq-preview"
+          }
+        ]
+      },
+      "workflows": [
+        {
+          "name": "ancu-conversion-workflow-preview",
+          "binding": "CONVERSION_WORKFLOW",
+          "class_name": "ConversionWorkflow"
+        }
+      ],
+      "ai": { "binding": "AI" },
+      "browser": { "binding": "BROWSER" }
+    },
+    "production": {
+      "name": "ancu-floorplan-engine-production",
+      "vars": {
+        "PUBLISH_CONFIDENCE_HIGH": "0.90",
+        "PUBLISH_CONFIDENCE_REVIEW": "0.75"
+      },
+      "d1_databases": [
+        {
+          "binding": "ENGINE_DB",
+          "database_name": "ancu-engine-db",
+          "database_id": "00000000-0000-0000-0000-000000000002",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "FLOORPLANS",
+          "bucket_name": "ancu-floorplans"
+        }
+      ],
+      "queues": {
+        "producers": [
+          { "binding": "CONVERSION_QUEUE", "queue": "ancu-conversion" },
+          { "binding": "CRAWL_QUEUE", "queue": "ancu-crawl" }
+        ],
+        "consumers": [
+          {
+            "queue": "ancu-conversion",
+            "max_batch_size": 10,
+            "max_retries": 3,
+            "dead_letter_queue": "ancu-conversion-dlq"
+          },
+          {
+            "queue": "ancu-crawl",
+            "max_batch_size": 5,
+            "max_retries": 3,
+            "dead_letter_queue": "ancu-crawl-dlq"
+          }
+        ]
+      },
+      "workflows": [
+        {
+          "name": "ancu-conversion-workflow",
+          "binding": "CONVERSION_WORKFLOW",
+          "class_name": "ConversionWorkflow"
+        }
+      ],
+      "ai": { "binding": "AI" },
+      "browser": { "binding": "BROWSER" }
+    }
+  }
+}

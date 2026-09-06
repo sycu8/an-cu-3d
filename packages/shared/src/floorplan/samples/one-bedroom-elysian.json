@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "id": "elysian-1br-a2-est",
+  "label": "Elysian — 1BR Type A2 (estimated seed)",
+  "createdAt": "2026-09-06T00:00:00.000Z",
+  "updatedAt": "2026-09-06T00:00:00.000Z",
+  "coordinateUnit": "meter",
+  "netAreaSqM": 49.0,
+  "bedroomCount": 1,
+  "bathroomCount": 1,
+  "source": {
+    "sourceClass": "seed_estimated",
+    "assetClass": "floorplan_pdf",
+    "projectSlug": "elysian",
+    "projectName": "Elysian",
+    "buildingId": "tower-1",
+    "unitTypeCode": "A2",
+    "bedroomLabel": "1 Bedroom",
+    "provenanceNote": "Estimated from marketing layout references — official Gamuda PDF URL pending verification.",
+    "jobState": "REVIEW_PENDING"
+  },
+  "scale": {
+    "metersPerUnit": 1,
+    "unit": "meter",
+    "referenceLengthM": 3.5,
+    "method": "known_room",
+    "confidence": 0.71,
+    "estimated": true,
+    "notes": "Bedroom width used as weak reference; scale bar not yet extracted."
+  },
+  "confidence": {
+    "overall": 0.66,
+    "scale": 0.71,
+    "walls": 0.74,
+    "openings": 0.6,
+    "rooms": 0.72,
+    "fixtures": 0.5,
+    "source": 0.4,
+    "reviewStatus": "unreviewed"
+  },
+  "validation": {
+    "valid": true,
+    "errors": [],
+    "warnings": [
+      {
+        "code": "seed.estimated_layout",
+        "message": "Balcony depth estimated; verify against published unit matrix.",
+        "severity": "warning"
+      }
+    ],
+    "areaDeviationPercent": 3.4
+  },
+  "walls": [
+    { "id": "w-ext-n", "start": [0, 0], "end": [8.0, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-ext-e", "start": [8.0, 0], "end": [8.0, 6.5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-ext-s", "start": [8.0, 6.5], "end": [0, 6.5], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-ext-w", "start": [0, 6.5], "end": [0, 0], "thicknessM": 0.15, "heightM": 2.8, "exterior": true },
+    { "id": "w-bed-bath", "start": [5.0, 0], "end": [5.0, 2.8], "thicknessM": 0.1, "heightM": 2.8 },
+    { "id": "w-living-kit", "start": [0, 3.8], "end": [5.0, 3.8], "thicknessM": 0.1, "heightM": 2.8 },
+    { "id": "w-balcony", "start": [5.0, 4.8], "end": [8.0, 4.8], "thicknessM": 0.1, "heightM": 2.8 }
+  ],
+  "doors": [
+    { "id": "d-entry", "wallId": "w-ext-s", "offsetM": 3.2, "widthM": 1.0, "heightM": 2.1, "swing": "left" },
+    { "id": "d-bed", "wallId": "w-bed-bath", "offsetM": 1.2, "widthM": 0.8, "heightM": 2.05, "swing": "right" },
+    { "id": "d-bath", "wallId": "w-bed-bath", "offsetM": 0.2, "widthM": 0.7, "heightM": 2.05, "swing": "left" },
+    { "id": "d-balcony", "wallId": "w-balcony", "offsetM": 0.8, "widthM": 1.8, "heightM": 2.2, "swing": "sliding" }
+  ],
+  "windows": [
+    { "id": "win-living", "wallId": "w-ext-e", "offsetM": 1.0, "widthM": 2.0, "heightM": 1.5, "sillHeightM": 0.9 },
+    { "id": "win-bed", "wallId": "w-ext-n", "offsetM": 5.8, "widthM": 1.8, "heightM": 1.4, "sillHeightM": 0.9 }
+  ],
+  "rooms": [
+    {
+      "id": "room-living",
+      "name": "Living / Dining",
+      "type": "living",
+      "polygon": [[0, 3.8], [5.0, 3.8], [5.0, 6.5], [0, 6.5]],
+      "areaSqM": 13.5
+    },
+    {
+      "id": "room-kitchen",
+      "name": "Kitchen",
+      "type": "kitchen",
+      "polygon": [[0, 0], [3.2, 0], [3.2, 3.8], [0, 3.8]],
+      "areaSqM": 12.2
+    },
+    {
+      "id": "room-bedroom",
+      "name": "Bedroom",
+      "type": "bedroom",
+      "polygon": [[5.0, 0], [8.0, 0], [8.0, 3.8], [5.0, 3.8]],
+      "areaSqM": 11.4
+    },
+    {
+      "id": "room-bath",
+      "name": "Bathroom",
+      "type": "bathroom",
+      "polygon": [[3.2, 0], [5.0, 0], [5.0, 2.8], [3.2, 2.8]],
+      "areaSqM": 5.0
+    },
+    {
+      "id": "room-balcony",
+      "name": "Balcony",
+      "type": "balcony",
+      "polygon": [[5.0, 4.8], [8.0, 4.8], [8.0, 6.5], [5.0, 6.5]],
+      "areaSqM": 3.4
+    }
+  ],
+  "fixtures": [
+    { "id": "fx-toilet", "type": "toilet", "roomId": "room-bath", "position": [3.8, 0.7], "rotationRad": 0 },
+    { "id": "fx-shower", "type": "shower", "roomId": "room-bath", "position": [4.6, 2.0], "rotationRad": 0 },
+    { "id": "fx-stove", "type": "stove", "roomId": "room-kitchen", "position": [1.0, 1.0], "rotationRad": 0 }
+  ],
+  "furniture": [
+    { "id": "f-dining", "catalogId": "table-4", "roomId": "room-living", "position": [2.0, 5.0], "rotationRad": 0, "scale": 1 },
+    { "id": "f-bed", "catalogId": "bed-queen", "roomId": "room-bedroom", "position": [6.0, 1.2], "rotationRad": 0, "scale": 1 }
+  ],
+  "notes": "1BR seed — bedroom/kitchen split approximate until vision extraction (P12)."
+}
