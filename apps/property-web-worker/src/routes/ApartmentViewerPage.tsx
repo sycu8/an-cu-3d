@@ -89,13 +89,13 @@ export default function ApartmentViewerPage() {
     );
   }
 
-  const show3d = viewMode === "3d" || viewMode === "auto";
-  const showMedia = viewMode === "2d" || viewMode === "perspective";
   const galleryItems = viewMode === "2d" ? floorplan2d : perspectives;
   const galleryEmpty =
     viewMode === "2d"
       ? "Chưa có mặt bằng 2D đã xác minh cho căn này."
       : "Chưa có phối cảnh đã xác minh cho căn này.";
+  const webglMode =
+    viewMode === "2d" ? "top" : viewMode === "perspective" ? "perspective" : null;
 
   return (
     <div className="container apartment-viewer-page">
@@ -139,19 +139,40 @@ export default function ApartmentViewerPage() {
         counts={{ "2d": floorplan2d.length, perspective: perspectives.length }}
       />
 
-      {showMedia ? (
+      {webglMode ? (
+        <section className="apartment-webgl-plan" aria-label="Mặt bằng WebGL">
+          <p className="viewer-hint">
+            {viewMode === "2d"
+              ? "Mặt bằng 2D được đùn WebGL (tường / cửa / cửa sổ) từ cùng dữ liệu vector với chế độ 3D."
+              : "Phối cảnh WebGL từ mặt bằng vector — kéo để xoay, cuộn để phóng to."}
+          </p>
+          <Suspense fallback={<div className="viewer-fallback">Đang tải WebGL…</div>}>
+            <FloorPlanViewer
+              document={floorPlan}
+              mode={webglMode}
+              showFurniture={viewMode !== "2d"}
+              showLabels
+              roomOverlayOpacity={viewMode === "2d" ? 0.95 : overlayOpacity}
+              lightingPreset={lighting}
+              materialPalette={palette}
+            />
+          </Suspense>
+        </section>
+      ) : null}
+
+      {viewMode === "2d" || viewMode === "perspective" ? (
         <section className="apartment-media" aria-label="Thư viện hình ảnh">
           <MediaGallery items={galleryItems} emptyLabel={galleryEmpty} />
           <p className="apartment-media-note">
-            Ảnh minh họa — chờ xác minh trước khi dùng làm căn cứ bán hàng.
+            Ảnh raster minh họa (nếu có) — chờ xác minh trước khi dùng làm căn cứ bán hàng.
           </p>
         </section>
       ) : null}
 
-      {show3d && viewMode === "3d" ? (
+      {viewMode === "3d" ? (
         <>
           <p className="viewer-hint">
-            Kéo để xoay · cuộn để phóng to · giữ Shift và kéo để di chuyển góc nhìn
+            Dollhouse / mặt bằng / phối cảnh / đi bộ · kéo để xoay · WASD khi chế độ đi bộ
           </p>
           <div className="apartment-viewer-layout">
             <Suspense

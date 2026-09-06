@@ -15,7 +15,7 @@ export type {
 
 export type { AmenityCategory } from "./amenity";
 
-export type ViewerMode = "dollhouse" | "top" | "perspective";
+export type ViewerMode = "dollhouse" | "top" | "perspective" | "walk";
 
 export interface ProjectSummary {
   id: string;

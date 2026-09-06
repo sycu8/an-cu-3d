@@ -162,14 +162,21 @@ export default function ShowroomPage() {
     }
   }
 
-  const show3d = viewMode === "3d" || viewMode === "auto";
-  const showMedia = viewMode === "2d" || viewMode === "perspective";
   const galleryItems = viewMode === "2d" ? floorplan2d : perspectives;
   const galleryEmpty =
     viewMode === "2d"
       ? "Chưa có mặt bằng 2D đã xác minh cho dự án này."
       : "Chưa có phối cảnh đã xác minh cho dự án này.";
-  const viewerMode = viewMode === "auto" ? "perspective" : "dollhouse";
+  const viewerMode =
+    viewMode === "auto"
+      ? "perspective"
+      : viewMode === "2d"
+        ? "top"
+        : viewMode === "perspective"
+          ? "perspective"
+          : "dollhouse";
+  const showWebgl =
+    viewMode === "3d" || viewMode === "auto" || viewMode === "2d" || viewMode === "perspective";
 
   return (
     <div className="showroom-page">
@@ -180,7 +187,7 @@ export default function ShowroomPage() {
           </p>
           <h1>Showroom</h1>
           <p>
-            Mặt bằng 2D, phối cảnh, xem 3D hoặc để AnCư tự phối ánh sáng & vật liệu.
+            Mặt bằng WebGL (đùn 2D→3D), phối cảnh, đi bộ trong căn, hoặc tự phối ánh sáng & vật liệu.
           </p>
         </div>
         <div className="showroom-controls">
@@ -246,16 +253,16 @@ export default function ShowroomPage() {
         />
       </div>
 
-      {showMedia ? (
+      {viewMode === "2d" || viewMode === "perspective" ? (
         <section className="container showroom-media" aria-label="Thư viện hình ảnh">
           <MediaGallery items={galleryItems} emptyLabel={galleryEmpty} />
           <p className="showroom-media-note">
-            Ảnh minh họa — chờ xác minh từ chủ đầu tư trước khi dùng làm căn cứ bán hàng.
+            Ảnh raster minh họa (nếu có) — chờ xác minh từ chủ đầu tư trước khi dùng làm căn cứ bán hàng.
           </p>
         </section>
       ) : null}
 
-      {show3d ? (
+      {showWebgl ? (
         <>
           {viewMode === "3d" ? (
             <div className="showroom-hotspots container">
@@ -281,19 +288,27 @@ export default function ShowroomPage() {
             <p className="container showroom-photo-note">{photoMaterial.notes}</p>
           ) : null}
 
+          {viewMode === "2d" || viewMode === "perspective" ? (
+            <p className="container viewer-hint">
+              {viewMode === "2d"
+                ? "Mặt bằng vector được đùn WebGL (tường có cửa/cửa sổ) — cùng nguồn dữ liệu với chế độ 3D."
+                : "Phối cảnh WebGL từ mặt bằng 2D đã vector hóa."}
+            </p>
+          ) : null}
+
           <div
             className={
               viewMode === "auto" ? "showroom-auto-layout container" : undefined
             }
           >
-            <Suspense fallback={<div className="container">Đang tải 3D…</div>}>
+            <Suspense fallback={<div className="container">Đang tải WebGL…</div>}>
               <FloorPlanViewer
                 document={floorPlan}
                 mode={viewerMode}
-                showFurniture
+                showFurniture={viewMode !== "2d"}
                 showLabels
                 focusRoomId={focusRoomId}
-                roomOverlayOpacity={0.35}
+                roomOverlayOpacity={viewMode === "2d" ? 0.95 : 0.85}
                 lightingPreset={lighting}
                 materialPalette={palette}
               />
