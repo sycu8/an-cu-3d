@@ -84,5 +84,5 @@
 ## Pass status
 
 - Inventory: `docs/qa-inventory.md`
-- Automated regressions: `pnpm test` (shared 18 · engine 32 · web 36)
+- Automated regressions: `pnpm test` (shared 26 · web 36 + engine suite)
 - Manual browser pass: pending after deploy preview
