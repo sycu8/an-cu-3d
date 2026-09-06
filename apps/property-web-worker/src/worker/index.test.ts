@@ -79,4 +79,13 @@ describe("worker security + health", () => {
     expect(body.project.provenance).toMatch(/xác minh|tham khảo|dữ liệu/i);
   });
 
+  it("rejects admin routes without a session bearer", async () => {
+    const response = await worker.fetch(
+      new Request("http://localhost/api/admin/projects"),
+      env,
+    );
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "unauthorized" });
+  });
+
 });

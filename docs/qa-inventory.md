@@ -8,7 +8,7 @@ Production-like local pass. No production deploy, real PII, or destructive cloud
 | --- | --- |
 | Seed inventory | `ALL_SEED_PROJECTS` = Gamuda public stubs + sanitized `demo-*` fixtures |
 | D1 merge | Worker `GET /api/projects` merges D1 over seed by slug |
-| Admin auth | Bearer `ADMIN_SECRET` from `.dev.vars` |
+| Admin auth | Username/password session in D1; default password must be changed on first login |
 | AI Gateway | Optional; UI works without tokens |
 | Pricing / area / handover | Always `"Chờ xác minh"` unless verified + provenance |
 
