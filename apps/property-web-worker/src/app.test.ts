@@ -123,7 +123,22 @@ describe("project media seeds", () => {
     expect(withUrl.some((m) => m.kind === "perspective")).toBe(true);
   });
 
-  it("gives every project amenity site images (park/school/commerce)", () => {
+  it("uses only official / real media hosts (no Unsplash or AI stock)", async () => {
+    const { isOfficialMediaUrl } = await import("./data/project-media-seeds");
+    for (const summary of getProjectSummaries()) {
+      const detail = getProjectBySlug(summary.slug);
+      expect(detail?.coverUrl, summary.slug).toBeTruthy();
+      expect(isOfficialMediaUrl(detail!.coverUrl!), summary.slug).toBe(true);
+      expect(detail!.coverUrl!.includes("unsplash"), summary.slug).toBe(false);
+      for (const item of detail?.media ?? []) {
+        if (!item.url) continue;
+        expect(isOfficialMediaUrl(item.url), `${summary.slug}:${item.id}`).toBe(true);
+        expect(item.url.includes("unsplash"), `${summary.slug}:${item.id}`).toBe(false);
+      }
+    }
+  });
+
+  it("gives every project amenity site images", () => {
     for (const summary of getProjectSummaries()) {
       const detail = getProjectBySlug(summary.slug);
       const sites = (detail?.media ?? []).filter((m) => m.kind === "site" && m.url);

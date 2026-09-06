@@ -21,6 +21,13 @@ describe("worker security + health", () => {
     expect(response.headers.get("Content-Security-Policy")).toContain("wasm-unsafe-eval");
     expect(response.headers.get("Content-Security-Policy")).toContain("celadoncityhcm.com");
     expect(response.headers.get("Content-Security-Policy")).toContain("ecopark.com.vn");
+    expect(response.headers.get("Content-Security-Policy")).toContain("gamudaland.com.vn");
+    expect(response.headers.get("Content-Security-Policy")).toContain("storage.googleapis.com");
+    expect(response.headers.get("Content-Security-Policy")).toContain("cdn.onehousing.vn");
+    expect(response.headers.get("Content-Security-Policy")).toContain("upload.wikimedia.org");
+    expect(response.headers.get("Content-Security-Policy")).toContain("web.archive.org");
+    expect(response.headers.get("Content-Security-Policy")).toContain("theprive.vn");
+    expect(response.headers.get("Content-Security-Policy")).not.toContain("unsplash");
   });
 
   it("includes APP_VERSION in health when set", async () => {

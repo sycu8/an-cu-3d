@@ -1,9 +1,16 @@
 /**
  * Curated project cover + gallery media seeds.
- * Celadon City: official assets from https://celadoncityhcm.com/
- * (phối cảnh, mặt bằng 2D, công viên, trường học, AEON, clubhouse, y tế…).
- * Other projects: distinct covers + full amenity galleries (labeled stand-ins until crawl/R2).
+ * Chỉ dùng hình thật hoặc hình từ CĐT / nền tảng chính thức.
+ * Không Unsplash minh họa, không AI generation.
+ *
+ * - Celadon City: https://celadoncityhcm.com/
+ * - Eaton Park / Elysian: Gamuda Land (gamudaland.com.vn + GCS CĐT)
+ * - Vinhomes: Wikimedia Commons + CDN OneHousing (media CĐT)
+ * - Ecopark / Aqua Bay: https://ecopark.com.vn/
+ * - Opal Boulevard: archive trang CĐT opalboulevard.vn (Wayback)
+ * - The Privé: https://theprive.vn/
  */
+
 
 import type { ProjectMediaItem } from "../types";
 
@@ -11,6 +18,30 @@ export type ProjectMediaSeed = {
   coverUrl: string;
   items: ProjectMediaItem[];
 };
+
+/** Hosts allowed for seeded project imagery (tests + CSP). */
+export const OFFICIAL_MEDIA_HOST_SUFFIXES = [
+  "celadoncityhcm.com",
+  "ecopark.com.vn",
+  "gamudaland.com.vn",
+  "storage.googleapis.com",
+  "cdn.onehousing.vn",
+  "upload.wikimedia.org",
+  "web.archive.org",
+  "theprive.vn",
+] as const;
+
+export function isOfficialMediaUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return OFFICIAL_MEDIA_HOST_SUFFIXES.some(
+      (suffix) => host === suffix || host.endsWith(`.${suffix}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
 
 function media(
   id: string,
@@ -25,26 +56,22 @@ function media(
   return { id, kind, url, altText, caption, provenance, sortOrder, sourceClass };
 }
 
-function unsplash(photoId: string): string {
-  return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=1400&q=80`;
-}
-
-function amenityPack(
-  prefix: string,
-  photos: { park: string; school: string; commerce: string; leisure: string; landscape: string },
-  provenance = "Unsplash — minh họa chờ crawl CĐT",
-): ProjectMediaItem[] {
-  return [
-    media(`${prefix}_park`, "site", unsplash(photos.park), "Công viên / không gian xanh (minh họa)", "Tiện ích — công viên", provenance, 10, "estimated"),
-    media(`${prefix}_school`, "site", unsplash(photos.school), "Trường học / giáo dục (minh họa)", "Tiện ích — trường học", provenance, 11, "estimated"),
-    media(`${prefix}_commerce`, "site", unsplash(photos.commerce), "Tiện ích thương mại (minh họa)", "Tiện ích — mua sắm", provenance, 12, "estimated"),
-    media(`${prefix}_leisure`, "site", unsplash(photos.leisure), "Hồ bơi / thể thao / nghỉ dưỡng (minh họa)", "Tiện ích — thể thao / hồ bơi", provenance, 13, "estimated"),
-    media(`${prefix}_landscape`, "site", unsplash(photos.landscape), "Quang cảnh / mặt nước (minh họa)", "Tiện ích — quang cảnh", provenance, 14, "estimated"),
-  ];
-}
 
 const CELADON = "https://celadoncityhcm.com/wp-content/uploads";
 const CELADON_SRC = "https://celadoncityhcm.com/";
+const GAMUDA_GCS = "https://storage.googleapis.com/glvncorpweb01p-bucket";
+const GAMUDA_SRC = "https://gamudaland.com.vn/";
+const ECOPARK = "https://ecopark.com.vn";
+const ECOPARK_SRC = "https://ecopark.com.vn/";
+const OH = "https://cdn.onehousing.vn";
+const OH_SRC = "https://onehousing.vn/ (media CĐT Vinhomes)";
+const WM = "https://upload.wikimedia.org/wikipedia/commons";
+const WM_SRC = "Wikimedia Commons — ảnh thực địa";
+const OPAL_WA =
+  "https://web.archive.org/web/20231210200920im_/https://www.opalboulevard.vn";
+const OPAL_SRC = "https://opalboulevard.vn/ (archive CĐT Đất Xanh)";
+const PRIVE = "https://theprive.vn/wp-content/uploads";
+const PRIVE_SRC = "https://theprive.vn/";
 
 export const PROJECT_MEDIA_SEEDS: Record<string, ProjectMediaSeed> = {
   "celadon-city": {
@@ -97,144 +124,124 @@ export const PROJECT_MEDIA_SEEDS: Record<string, ProjectMediaSeed> = {
   },
 
   "eaton-park": {
-    coverUrl: unsplash("photo-1545324418-cc1a3fa10c00"),
+    coverUrl: `${GAMUDA_GCS}/Eaton_Park_Hero_GLVN_19831eddd7.jpg`,
     items: [
-      media("media_eaton_hero", "perspective", unsplash("photo-1545324418-cc1a3fa10c00"), "Phối cảnh cao ốc Eaton Park (minh họa)", "Phối cảnh tổng thể", "Unsplash — minh họa chờ crawl Gamuda Land", 1, "estimated"),
-      media("media_eaton_ext", "perspective", unsplash("photo-1486406146926-c627a92ad1ab"), "Mặt ngoài tháp (minh họa)", "Phối cảnh tháp", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_eaton", {
-        park: "photo-1580587771525-78b9dba3b914",
-        school: "photo-1497633762265-9d179a990aa6",
-        commerce: "photo-1441986300917-64674bd600d8",
-        leisure: "photo-1576013551627-0cc20b96c2a7",
-        landscape: "photo-1441974231531-c6227db76b6e",
-      }),
+      media("media_eaton_hero", "perspective", `${GAMUDA_GCS}/Eaton_Park_Hero_GLVN_19831eddd7.jpg`, "Phối cảnh Eaton Park", "Phối cảnh tổng thể", GAMUDA_SRC, 1),
+      media("media_eaton_main", "perspective", `${GAMUDA_GCS}/Eaton_Park_Main_Image_8c187fb8b7_bceef832c5.webp`, "Eaton Park — hình chính CĐT", "Phối cảnh dự án", GAMUDA_SRC, 2),
+      media("media_eaton_banner", "perspective", "https://gamudaland.com.vn/images/vn/landing/Hero-Banner_Eaton-Park3.jpg", "Banner Eaton Park trên gamudaland.com.vn", "Phối cảnh / banner CĐT", GAMUDA_SRC, 3),
+      media("media_eaton_site_hero", "site", `${GAMUDA_GCS}/Eaton_Park_Hero_GLVN_19831eddd7.jpg`, "Không gian đô thị Eaton Park", "Tiện ích — quang cảnh dự án", GAMUDA_SRC, 10),
+      media("media_eaton_site_main", "site", `${GAMUDA_GCS}/Eaton_Park_Main_Image_8c187fb8b7_bceef832c5.webp`, "Mặt đứng / cảnh quan Eaton Park", "Tiện ích — mặt ngoài", GAMUDA_SRC, 11),
+      media("media_eaton_site_banner", "site", "https://gamudaland.com.vn/images/vn/landing/Hero-Banner_Eaton-Park3.jpg", "Cảnh quan tổng thể Eaton Park", "Tiện ích — tổng thể", GAMUDA_SRC, 12),
+      media("media_eaton_site_gcs", "site", `${GAMUDA_GCS}/Eaton_Park_Hero_GLVN_19831eddd7.jpg`, "Eaton Park — media kho CĐT Gamuda", "Tiện ích — kho media CĐT", GAMUDA_SRC, 13),
     ],
   },
 
   elysian: {
-    coverUrl: unsplash("photo-1600607687939-ce8a6c25118c"),
+    coverUrl: `${GAMUDA_GCS}/Elysian_Hero_GLVN_604d0f1d65.jpg`,
     items: [
-      media("media_elysian_hero", "perspective", unsplash("photo-1600607687939-ce8a6c25118c"), "Phối cảnh Elysian (minh họa)", "Phối cảnh tổng thể", "Unsplash — minh họa chờ crawl Gamuda Land", 1, "estimated"),
-      media("media_elysian_sky", "perspective", unsplash("photo-1493809842364-78817add7ffb"), "Phối cảnh căn hộ (minh họa)", "Phối cảnh không gian sống", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_elysian", {
-        park: "photo-1441974231531-c6227db76b6e",
-        school: "photo-1497633762265-9d179a990aa6",
-        commerce: "photo-1555529902-5261145633bf",
-        leisure: "photo-1571902943202-507ec2618e8f",
-        landscape: "photo-1558618666-fcd25c85cd64",
-      }),
+      media("media_elysian_hero", "perspective", `${GAMUDA_GCS}/Elysian_Hero_GLVN_604d0f1d65.jpg`, "Phối cảnh Elysian", "Phối cảnh tổng thể", GAMUDA_SRC, 1),
+      media("media_elysian_thumb", "perspective", `${GAMUDA_GCS}/Elysian_Thumbnail_3f3a46095c_79e8f99503.webp`, "Elysian — thumbnail CĐT", "Phối cảnh dự án", GAMUDA_SRC, 2),
+      media("media_elysian_site_hero", "site", `${GAMUDA_GCS}/Elysian_Hero_GLVN_604d0f1d65.jpg`, "Quang cảnh Elysian", "Tiện ích — quang cảnh", GAMUDA_SRC, 10),
+      media("media_elysian_site_thumb", "site", `${GAMUDA_GCS}/Elysian_Thumbnail_3f3a46095c_79e8f99503.webp`, "Không gian Elysian", "Tiện ích — tổng thể", GAMUDA_SRC, 11),
+      media("media_elysian_site_hero2", "site", `${GAMUDA_GCS}/Elysian_Hero_GLVN_604d0f1d65.jpg`, "Elysian — media Gamuda Land", "Tiện ích — media CĐT", GAMUDA_SRC, 12),
+      media("media_elysian_site_thumb2", "site", `${GAMUDA_GCS}/Elysian_Thumbnail_3f3a46095c_79e8f99503.webp`, "Elysian — hình CĐT", "Tiện ích — hình CĐT", GAMUDA_SRC, 13),
     ],
   },
 
   "vinhomes-grand-park": {
-    coverUrl: unsplash("photo-1460317442991-0ec209397118"),
+    coverUrl: `${WM}/c/ca/C%C3%B4ng_vi%C3%AAn_%C3%81nh_S%C3%A1ng_Vinhomes_Grand_Park%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh.jpg`,
     items: [
-      media("media_vgp_hero", "perspective", unsplash("photo-1460317442991-0ec209397118"), "Phối cảnh đại đô thị (minh họa Grand Park)", "Phối cảnh tổng thể", "Unsplash — minh họa chờ crawl Vinhomes", 1, "estimated"),
-      media("media_vgp_tower", "perspective", unsplash("photo-1545324418-cc1a3fa10c00"), "Tháp căn hộ (minh họa)", "Phối cảnh tháp", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_vgp", {
-        park: "photo-1558618666-fcd25c85cd64",
-        school: "photo-1497633762265-9d179a990aa6",
-        commerce: "photo-1441986300917-64674bd600d8",
-        leisure: "photo-1571902943202-507ec2618e8f",
-        landscape: "photo-1439066615861-d1af74d74000",
-      }),
-      media("media_vgp_health", "site", unsplash("photo-1519494026892-80bbd2d6fd0d"), "Y tế nội khu (minh họa Vinmec)", "Tiện ích — y tế", "Unsplash — minh họa", 15, "estimated"),
+      media("media_vgp_hero", "perspective", `${WM}/c/ca/C%C3%B4ng_vi%C3%AAn_%C3%81nh_S%C3%A1ng_Vinhomes_Grand_Park%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh.jpg`, "Công viên Ánh Sáng — Vinhomes Grand Park", "Ảnh thực địa dự án", WM_SRC, 1),
+      media("media_vgp_park2", "perspective", `${WM}/8/86/C%C3%B4ng_vi%C3%AAn_%C3%81nh_S%C3%A1ng_Vinhomes_Grand_Park%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh_%282%29.jpg`, "Công viên Ánh Sáng và phân khu The Beverly", "Ảnh thực địa", WM_SRC, 2),
+      media("media_vgp_park3", "site", `${WM}/1/19/C%C3%B4ng_vi%C3%AAn_%C3%81nh_S%C3%A1ng_Vinhomes_Grand_Park%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh_%283%29.jpg`, "Công viên Ánh Sáng Vinhomes Grand Park", "Tiện ích — công viên", WM_SRC, 10),
+      media("media_vgp_beach", "site", `${WM}/2/2c/C%C3%B4ng_vi%C3%AAn_%C3%81nh_S%C3%A1ng_Vinhomes_Grand_Park%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh_%284%29.jpg`, "Bãi biển nhân tạo Công viên Ánh Sáng", "Tiện ích — giải trí / mặt nước", WM_SRC, 11),
+      media("media_vgp_park4", "site", `${WM}/c/ca/C%C3%B4ng_vi%C3%AAn_%C3%81nh_S%C3%A1ng_Vinhomes_Grand_Park%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh.jpg`, "Không gian xanh Grand Park", "Tiện ích — cảnh quan", WM_SRC, 12),
+      media("media_vgp_park5", "site", `${WM}/8/86/C%C3%B4ng_vi%C3%AAn_%C3%81nh_S%C3%A1ng_Vinhomes_Grand_Park%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh_%282%29.jpg`, "Cảnh quan The Beverly — Grand Park", "Tiện ích — phân khu", WM_SRC, 13),
     ],
   },
 
   "vinhomes-ocean-park": {
-    coverUrl: unsplash("photo-1512917774080-9991f1c4c750"),
+    coverUrl: `${OH}/media/Vinhomes%20Ocean%20Park/VHOP/AVATAR/du-an-vinhomes-ocean-park-2.jpg`,
     items: [
-      media("media_vop_hero", "perspective", unsplash("photo-1512917774080-9991f1c4c750"), "Phối cảnh thấp tầng (minh họa Ocean Park)", "Phối cảnh tổng thể", "Unsplash — minh họa chờ crawl Vinhomes", 1, "estimated"),
-      media("media_vop_house", "perspective", unsplash("photo-1564013799919-ab600027ffc6"), "Biệt thự / thấp tầng (minh họa)", "Phối cảnh nhà thấp tầng", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_vop", {
-        park: "photo-1506905925346-21bda4d32df4",
-        school: "photo-1497633762265-9d179a990aa6",
-        commerce: "photo-1441986300917-64674bd600d8",
-        leisure: "photo-1576013551627-0cc20b96c2a7",
-        landscape: "photo-1439066615861-d1af74d74000",
-      }),
-      media("media_vop_health", "site", unsplash("photo-1582719478250-c89cae4dc85b"), "Y tế nội khu (minh họa)", "Tiện ích — y tế", "Unsplash — minh họa", 15, "estimated"),
+      media("media_vop_hero", "perspective", `${OH}/media/Vinhomes%20Ocean%20Park/VHOP/AVATAR/du-an-vinhomes-ocean-park-2.jpg`, "Vinhomes Ocean Park", "Phối cảnh / avatar dự án", OH_SRC, 1),
+      media("media_vop_avatar", "perspective", `${OH}/media/Vinhomes%20Ocean%20Park/VHOP/AVATAR/du-an-vinhomes-ocean-park-1.jpg`, "Vinhomes Ocean Park — góc nhìn khác", "Phối cảnh dự án", OH_SRC, 2),
+      media("media_vop_wm", "perspective", `${WM}/a/a2/The_grand_voyage_vinhomes_ocean_park_3.jpg`, "The Grand Voyage — Vinhomes Ocean Park", "Ảnh thực địa", WM_SRC, 3),
+      media("media_vop_bridge", "site", `${WM}/b/b1/Cau_dong_tay_vhm_ocean_park_3.jpg`, "Cầu Đông Tây Grand World — Ocean Park", "Tiện ích — cảnh quan", WM_SRC, 10),
+      media("media_vop_pool", "site", `${OH}/media/VHOP/The%20Sapphire/UTILITY/be-boi-cua-du-an-Vinhomes-Ocean-Park-The-Sapphire-1-3.jpg`, "Hồ bơi The Sapphire — Ocean Park", "Tiện ích — hồ bơi", OH_SRC, 11),
+      media("media_vop_park", "site", `${OH}/media/VHOP/The%20Sapphire/UTILITY/cong-vien-cua-du-an-Vinhomes-Ocean-Park-The%20Sapphire-2-4.jpg`, "Công viên The Sapphire", "Tiện ích — công viên", OH_SRC, 12),
+      media("media_vop_yoga", "site", `${OH}/media/VHOP/The%20Pavilion/UTILITY/dao-tap-yoga-cua-du-an-Vinhomes-Ocean-Park-The-Pavilion-1.jpg`, "Đảo tập yoga The Pavilion", "Tiện ích — thể thao", OH_SRC, 13),
+      media("media_vop_play", "site", `${OH}/media/VHOP/The%20Pavilion/UTILITY/san-choi-tre-nho-cua-du-an-Vinhomes-Ocean-Park-The-Pavilion-3.jpg`, "Sân chơi trẻ nhỏ The Pavilion", "Tiện ích — sân chơi", OH_SRC, 14),
     ],
   },
 
   "vinhomes-smart-city": {
-    coverUrl: unsplash("photo-1493809842364-78817add7ffb"),
+    coverUrl: `${OH}/media/VHSC/The%20Miami/AVATAR/phan-khu-The-Miami-Vinhomes-Smart-City-1.jpg`,
     items: [
-      media("media_vsc_hero", "perspective", unsplash("photo-1493809842364-78817add7ffb"), "Phối cảnh căn hộ Smart City (minh họa)", "Phối cảnh tổng thể", "Unsplash — minh họa chờ crawl Vinhomes", 1, "estimated"),
-      media("media_vsc_ext", "perspective", unsplash("photo-1600585154340-be6161a56a0c"), "Mặt ngoài (minh họa)", "Phối cảnh kiến trúc", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_vsc", {
-        park: "photo-1441974231531-c6227db76b6e",
-        school: "photo-1580587771525-78b9dba3b914",
-        commerce: "photo-1555529902-5261145633bf",
-        leisure: "photo-1540497077202-7c8a3999166f",
-        landscape: "photo-1558618666-fcd25c85cd64",
-      }),
+      media("media_vsc_hero", "perspective", `${OH}/media/VHSC/The%20Miami/AVATAR/phan-khu-The-Miami-Vinhomes-Smart-City-1.jpg`, "The Miami — Vinhomes Smart City", "Phối cảnh phân khu", OH_SRC, 1),
+      media("media_vsc_sakura", "perspective", `${OH}/media/VHSC/The%20Sakura/AVATAR/phan-khu-Vinhomes-Smart-City-The-Sakura-1.jpg`, "The Sakura — Smart City", "Phối cảnh phân khu", OH_SRC, 2),
+      media("media_vsc_sapphire", "perspective", `${OH}/media/VHSC/The%20Sapphire/AVATAR/phan-khu-The-Sapphire-1_2-Vinhomes-Smart-City-1.jpg`, "The Sapphire — Smart City", "Phối cảnh phân khu", OH_SRC, 3),
+      media("media_vsc_pool", "site", `${OH}/media/VHSC/The%20Miami/UTILITY/be-boi-cua-phan-khu-The-Miami-Vinhomes-Smart-City-1.jpg`, "Hồ bơi The Miami", "Tiện ích — hồ bơi", OH_SRC, 10),
+      media("media_vsc_gym", "site", `${OH}/media/VHSC/The%20Miami/UTILITY/san-tap-gym-cua-phan-khu-The-Miami-Vinhomes-Smart-City-2.jpg`, "Sân tập gym The Miami", "Tiện ích — gym", OH_SRC, 11),
+      media("media_vsc_sport", "site", `${OH}/media/VHSC/The%20Miami/UTILITY/san-the-thao-cua-phan-khu-The-Miami-Vinhomes-Smart-City-3.jpg`, "Sân thể thao The Miami", "Tiện ích — thể thao", OH_SRC, 12),
+      media("media_vsc_shop", "site", `${OH}/media/VHSC/The%20Sapphire/UTILITY/shop-thuong-mai-dich-vu-cua-phan-khu-The-Sapphire-Vinhomes-Smart-City-3.jpg`, "Shophouse / thương mại The Sapphire", "Tiện ích — thương mại", OH_SRC, 13),
+      media("media_vsc_play", "site", `${OH}/media/VHSC/The%20Sapphire/UTILITY/san-choi-tre-nho-cua-phan-khu-The-Sapphire-Vinhomes-Smart-City-4.jpg`, "Sân chơi trẻ nhỏ The Sapphire", "Tiện ích — sân chơi", OH_SRC, 14),
     ],
   },
 
   ecopark: {
-    coverUrl: "https://ecopark.com.vn/images/slideshow/2022/03/11/original/kv-skyforest-01_1646974489.jpg",
+    coverUrl: `${ECOPARK}/images/slideshow/2022/03/11/original/kv-skyforest-01_1646974489.jpg`,
     items: [
-      media("media_ecopark_hero", "perspective", "https://ecopark.com.vn/images/slideshow/2022/03/11/original/kv-skyforest-01_1646974489.jpg", "Ecopark Sky Forest", "Phối cảnh / quang cảnh Ecopark", "https://ecopark.com.vn/", 1),
-      media("media_ecopark_landmark", "perspective", "https://ecopark.com.vn/images/slideshow/2021/08/10/original/thelandmark-homepage_1628581276.jpg", "The Landmark Ecopark", "Phối cảnh The Landmark", "https://ecopark.com.vn/", 2),
-      ...amenityPack(
-        "media_ecopark",
-        {
-          park: "photo-1441974231531-c6227db76b6e",
-          school: "photo-1497633762265-9d179a990aa6",
-          commerce: "photo-1441986300917-64674bd600d8",
-          leisure: "photo-1551882547-ff40c63fe5fa",
-          landscape: "photo-1439066615861-d1af74d74000",
-        },
-        "Unsplash — minh họa bổ sung cho tiện ích Ecopark",
-      ),
-      media("media_ecopark_health", "site", unsplash("photo-1519494026892-80bbd2d6fd0d"), "Y tế nội khu (minh họa)", "Tiện ích — y tế", "Unsplash — minh họa", 15, "estimated"),
+      media("media_ecopark_hero", "perspective", `${ECOPARK}/images/slideshow/2022/03/11/original/kv-skyforest-01_1646974489.jpg`, "Ecopark Sky Forest", "Phối cảnh / quang cảnh Ecopark", ECOPARK_SRC, 1),
+      media("media_ecopark_landmark", "perspective", `${ECOPARK}/images/slideshow/2021/08/10/original/thelandmark-homepage_1628581276.jpg`, "The Landmark Ecopark", "Phối cảnh The Landmark", ECOPARK_SRC, 2),
+      media("media_ecopark_gallery", "perspective", `${ECOPARK}/images/gallery/2023/06/27/resize_home/351108925_2843611302436818_5505970865256659562_n_1687848852.jpg`, "Thư viện ảnh Ecopark", "Ảnh thực tế / CĐT", ECOPARK_SRC, 3),
+      media("media_ecopark_swan", "site", `${ECOPARK}/images/open_sale/cat/2021/07/resize/swanlake_1625925951.jpg`, "Swanlake Residences", "Tiện ích — phân khu mặt nước", ECOPARK_SRC, 10),
+      media("media_ecopark_sol", "site", `${ECOPARK}/images/open_sale/cat/2020/12/resize/solforest2_1607939008.jpg`, "Sol Forest", "Tiện ích — không gian xanh", ECOPARK_SRC, 11),
+      media("media_ecopark_mariana", "site", `${ECOPARK}/images/open_sale/cat/2021/03/resize/mariana_1615050281.jpg`, "Mariana", "Tiện ích — phân khu", ECOPARK_SRC, 12),
+      media("media_ecopark_amen1", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich1_1625926805.jpg`, "Tiện ích nội khu Ecopark", "Tiện ích — nội khu", ECOPARK_SRC, 13),
+      media("media_ecopark_amen2", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich2_1625926828.jpg`, "Tiện ích Ecopark (2)", "Tiện ích — nội khu", ECOPARK_SRC, 14),
+      media("media_ecopark_amen3", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich3_1625926846.jpg`, "Tiện ích Ecopark (3)", "Tiện ích — nội khu", ECOPARK_SRC, 15),
+      media("media_ecopark_amen4", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich4_1625926776.jpg`, "Tiện ích Ecopark (4)", "Tiện ích — nội khu", ECOPARK_SRC, 16),
     ],
   },
 
   "ecopark-aqua-bay": {
-    coverUrl: unsplash("photo-1560448204-e02f11c3d0e2"),
+    coverUrl: `${ECOPARK}/images/open_sale/cat/2021/07/resize/swanlake_1625925951.jpg`,
     items: [
-      media("media_aqua_hero", "perspective", unsplash("photo-1560448204-e02f11c3d0e2"), "Phối cảnh Aqua Bay (minh họa)", "Phối cảnh tổng thể", "Unsplash — minh họa chờ crawl Ecopark", 1, "estimated"),
-      media("media_aqua_view", "perspective", unsplash("photo-1600566753190-17f0baa2a6c3"), "View tháp / vịnh (minh họa)", "Phối cảnh view", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_aqua", {
-        park: "photo-1558618666-fcd25c85cd64",
-        school: "photo-1497633762265-9d179a990aa6",
-        commerce: "photo-1555529902-5261145633bf",
-        leisure: "photo-1576013551627-0cc20b96c2a7",
-        landscape: "photo-1439066615861-d1af74d74000",
-      }),
+      media("media_aqua_hero", "perspective", `${ECOPARK}/images/open_sale/cat/2021/07/resize/swanlake_1625925951.jpg`, "Swanlake / mặt nước Ecopark", "Phối cảnh mặt nước", ECOPARK_SRC, 1),
+      media("media_aqua_sky", "perspective", `${ECOPARK}/images/slideshow/2022/03/11/original/kv-skyforest-01_1646974489.jpg`, "Sky Forest cạnh khu mặt nước", "Phối cảnh tháp", ECOPARK_SRC, 2),
+      media("media_aqua_street", "perspective", `${ECOPARK}/images/open_sale/2022/03/large/220126_eco-ct06_v09_street-view_draft-1_1647056054.jpg`, "Street view Ecopark", "Phối cảnh đường nội khu", ECOPARK_SRC, 3),
+      media("media_aqua_amen1", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich1_1625926805.jpg`, "Tiện ích ven vịnh / nội khu", "Tiện ích — nội khu", ECOPARK_SRC, 10),
+      media("media_aqua_amen2", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich2_1625926828.jpg`, "Tiện ích Aqua / Swanlake", "Tiện ích — nghỉ dưỡng", ECOPARK_SRC, 11),
+      media("media_aqua_amen3", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich3_1625926846.jpg`, "Tiện ích thể thao / giải trí", "Tiện ích — thể thao", ECOPARK_SRC, 12),
+      media("media_aqua_amen4", "site", `${ECOPARK}/images/open_sale/2021/07/larger/w_tienich4_1625926776.jpg`, "Tiện ích cảnh quan", "Tiện ích — cảnh quan", ECOPARK_SRC, 13),
+      media("media_aqua_landmark", "site", `${ECOPARK}/images/slideshow/2021/08/10/original/thelandmark-homepage_1628581276.jpg`, "The Landmark trong đô thị Ecopark", "Tiện ích — biểu tượng đô thị", ECOPARK_SRC, 14),
     ],
   },
 
   "opal-boulevard": {
-    coverUrl: unsplash("photo-1522708323590-d24dbb6b0267"),
+    coverUrl: `${OPAL_WA}/Data/Sites/1/Banner/bg_banner_12.jpg`,
     items: [
-      media("media_opal_hero", "perspective", unsplash("photo-1522708323590-d24dbb6b0267"), "Không gian sống Opal Boulevard (minh họa)", "Phối cảnh nội thất", "Unsplash — minh họa chờ crawl Đất Xanh", 1, "estimated"),
-      media("media_opal_ext", "perspective", unsplash("photo-1600607687939-ce8a6c25118c"), "Mặt ngoài (minh họa)", "Phối cảnh tổng thể", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_opal", {
-        park: "photo-1441974231531-c6227db76b6e",
-        school: "photo-1497633762265-9d179a990aa6",
-        commerce: "photo-1441986300917-64674bd600d8",
-        leisure: "photo-1571902943202-507ec2618e8f",
-        landscape: "photo-1580587771525-78b9dba3b914",
-      }),
+      media("media_opal_hero", "perspective", `${OPAL_WA}/Data/Sites/1/Banner/bg_banner_12.jpg`, "Banner Opal Boulevard (CĐT)", "Phối cảnh / banner", OPAL_SRC, 1),
+      media("media_opal_lux1", "perspective", `${OPAL_WA}/Data/Sites/1/media/default/img/bg_luxury01.jpg`, "Opal Boulevard — hình CĐT 1", "Phối cảnh", OPAL_SRC, 2),
+      media("media_opal_lux2", "perspective", `${OPAL_WA}/Data/Sites/1/media/default/img/bg_luxury02.jpg`, "Opal Boulevard — hình CĐT 2", "Phối cảnh", OPAL_SRC, 3),
+      media("media_opal_lux3", "site", `${OPAL_WA}/Data/Sites/1/media/default/img/bg_luxury03.jpg`, "Opal Boulevard — hình CĐT 3", "Tiện ích / không gian", OPAL_SRC, 10),
+      media("media_opal_news1", "site", `${OPAL_WA}/Data/Sites/1/News/1235/opb-b2-h3.jpg`, "Tiến độ / thực tế Opal Boulevard", "Tiện ích — hiện trạng", OPAL_SRC, 11),
+      media("media_opal_news2", "site", `${OPAL_WA}/Data/Sites/1/News/1236/opb-b3-h2.jpg`, "Hạng mục Opal Boulevard", "Tiện ích — công trình", OPAL_SRC, 12),
+      media("media_opal_banner", "site", `${OPAL_WA}/Data/Sites/1/Banner/bg_banner_12.jpg`, "Tổng thể Opal Boulevard", "Tiện ích — tổng thể", OPAL_SRC, 13),
     ],
   },
 
   "the-prive": {
-    coverUrl: unsplash("photo-1502672260266-1c1ef2d93688"),
+    coverUrl: `${PRIVE}/2025/05/tong-quan.jpg`,
     items: [
-      media("media_prive_hero", "perspective", unsplash("photo-1502672260266-1c1ef2d93688"), "Không gian sống The Privé (minh họa)", "Phối cảnh nội thất", "Unsplash — minh họa chờ crawl Bluemarq", 1, "estimated"),
-      media("media_prive_ext", "perspective", unsplash("photo-1600566753190-17f0baa2a6c3"), "Mặt ngoài (minh họa)", "Phối cảnh tổng thể", "Unsplash — minh họa", 2, "estimated"),
-      ...amenityPack("media_prive", {
-        park: "photo-1441974231531-c6227db76b6e",
-        school: "photo-1497633762265-9d179a990aa6",
-        commerce: "photo-1555529902-5261145633bf",
-        leisure: "photo-1576013551627-0cc20b96c2a7",
-        landscape: "photo-1439066615861-d1af74d74000",
-      }),
+      media("media_prive_hero", "perspective", `${PRIVE}/2025/05/tong-quan.jpg`, "Tổng quan The Privé", "Phối cảnh tổng thể", PRIVE_SRC, 1),
+      media("media_prive_lobby", "perspective", `${PRIVE}/2025/05/TPV-SANH-CHINH-LOBBY.jpg`, "Sảnh chính / lobby The Privé", "Phối cảnh nội thất CĐT", PRIVE_SRC, 2),
+      media("media_prive_amen1", "site", `${PRIVE}/2025/05/tien-ich-1.jpg`, "Tiện ích The Privé (1)", "Tiện ích — nội khu", PRIVE_SRC, 10),
+      media("media_prive_amen2", "site", `${PRIVE}/2025/05/tien-ich-2-3-new.jpg`, "Tiện ích The Privé (2)", "Tiện ích — nội khu", PRIVE_SRC, 11),
+      media("media_prive_amen3", "site", `${PRIVE}/2025/05/tien-ich-4.jpg`, "Tiện ích The Privé (3)", "Tiện ích — nội khu", PRIVE_SRC, 12),
+      media("media_prive_gym", "site", `${PRIVE}/2025/05/TPV-THE-GRAND-GYM.jpg`, "The Grand Gym", "Tiện ích — gym", PRIVE_SRC, 13),
+      media("media_prive_pool", "site", `${PRIVE}/2025/06/Azura-pool_s.jpg`, "Hồ bơi Azura", "Tiện ích — hồ bơi", PRIVE_SRC, 14),
+      media("media_prive_play", "site", `${PRIVE}/2025/05/TPV-SAN-CHOI-TRE-EM.jpg`, "Sân chơi trẻ em", "Tiện ích — sân chơi", PRIVE_SRC, 15),
     ],
   },
 };

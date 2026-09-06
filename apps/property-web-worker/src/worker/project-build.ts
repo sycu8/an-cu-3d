@@ -6,7 +6,6 @@ import {
   assist2dTo3d,
   crawlSources,
   discoverSources,
-  generateImageAsset,
   runFactualQa,
   synthesizeProject,
 } from "./ai/pipeline";
@@ -125,13 +124,14 @@ export async function runProjectBuild(
         : `QA flags: ${qa.issues.slice(0, 3).join("; ") || "issues"} (${qa.source})`,
     );
 
-    await emit(env, job.id, startedAt, "assets", "Tạo asset hình ảnh hỗ trợ / prompt…");
-    const cover = await generateImageAsset(
+    await emit(
       env,
-      `Architectural hero photo of ${project.name} residential project in Ho Chi Minh City, showroom quality, natural light`,
-      `projects/${job.slug}/media/cover-${job.id}`,
+      job.id,
+      startedAt,
+      "assets",
+      "Bỏ qua AI image generation — hình dự án chỉ dùng ảnh thật / CĐT (seed hoặc upload).",
     );
-    await emit(env, job.id, startedAt, "assets", `Asset: ${cover.r2Key} (${cover.note})`);
+    const cover = { r2Key: null as string | null, note: "skipped_ai_project_cover_policy" };
 
     await emit(env, job.id, startedAt, "floorplans", "Gắn floorplan mẫu + 2D→3D assist…");
     const assist = await assist2dTo3d(

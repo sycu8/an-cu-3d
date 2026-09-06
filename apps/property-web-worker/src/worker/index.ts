@@ -41,7 +41,7 @@ function securityHeaders(requestId: string): Record<string, string> {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "X-Request-Id": requestId,
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://images.unsplash.com https://celadoncityhcm.com https://*.celadoncityhcm.com https://ecopark.com.vn https://*.ecopark.com.vn https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://gateway.ai.cloudflare.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
+      "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://celadoncityhcm.com https://*.celadoncityhcm.com https://ecopark.com.vn https://*.ecopark.com.vn https://gamudaland.com.vn https://*.gamudaland.com.vn https://storage.googleapis.com https://cdn.onehousing.vn https://*.onehousing.vn https://upload.wikimedia.org https://web.archive.org https://theprive.vn https://*.theprive.vn https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://gateway.ai.cloudflare.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'",
   };
 }
 
@@ -411,18 +411,17 @@ async function handleAdmin(
 
 
   if (path === "/api/admin/images/generate" && request.method === "POST") {
-    let body: { prompt?: string; key?: string };
-    try {
-      body = (await request.json()) as typeof body;
-    } catch {
-      return json({ error: "invalid_json" }, requestId, 400, "no-store");
-    }
-    if (!body.prompt?.trim()) {
-      return json({ error: "prompt_required" }, requestId, 400, "no-store");
-    }
-    const key = body.key?.trim() || `media/generated/${crypto.randomUUID()}.jpg`;
-    const result = await generateImageAsset(env, body.prompt.trim(), key);
-    return json({ result: withMediaUrl(result) }, requestId, 200, "no-store");
+    // Policy: project imagery must be real photos or developer (CĐT) assets — never AI-generated.
+    return json(
+      {
+        error: "ai_project_image_forbidden",
+        message:
+          "Không được tạo ảnh dự án bằng AI. Chỉ dùng ảnh thật hoặc hình từ chủ đầu tư (upload / crawl CĐT).",
+      },
+      requestId,
+      403,
+      "no-store",
+    );
   }
 
   if (path === "/api/admin/images/edit" && request.method === "POST") {

@@ -1,47 +1,11 @@
-/** Cover imagery helpers — prefer R2 / seeded coverUrl, fall back to unique architectural placeholders. */
+/** Cover imagery helpers — prefer R2 / seeded CĐT coverUrl; never AI or stock Unsplash. */
 
 import { resolveCoverUrl } from "@ancu/shared";
 import { mediaSeedForSlug } from "../data/project-media-seeds";
 
-/** Distinct working Unsplash covers (no 404s, no shared duplicates across inventory). */
-const FALLBACK_COVERS = [
-  "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1460317442991-0ec209397118?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80",
-] as const;
-
+/** Home hero — official Celadon City CĐT asset (not stock / AI). */
 export const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=2000&q=80";
-
-export function placeholderCoverUrl(slug: string): string {
-  const seeded = mediaSeedForSlug(slug)?.coverUrl;
-  if (seeded) return seeded;
-  let hash = 0;
-  for (let i = 0; i < slug.length; i++) {
-    hash = (hash * 31 + slug.charCodeAt(i)) >>> 0;
-  }
-  return FALLBACK_COVERS[hash % FALLBACK_COVERS.length]!;
-}
-
-/** Resolve project cover: explicit/R2 URL when available, else seeded/stable placeholder. */
-export function projectCoverUrl(
-  slug: string,
-  cover?: { coverUrl?: string | null; coverR2Key?: string | null },
-): string {
-  return resolveCoverUrl(
-    cover?.coverUrl,
-    cover?.coverR2Key,
-    placeholderCoverUrl(slug),
-    { variant: "card", format: "webp" },
-  );
-}
+  "https://celadoncityhcm.com/wp-content/uploads/2020/12/98000254_101754371555953_4289346695638024192_o.jpg";
 
 /** Last-resort local SVG when a remote cover fails to load. */
 export const COVER_ERROR_FALLBACK =
@@ -55,3 +19,22 @@ export const COVER_ERROR_FALLBACK =
       <text x="600" y="400" text-anchor="middle" fill="#3f4a3a" font-family="Georgia, serif" font-size="36">AnCư 3D</text>
     </svg>`,
   );
+
+export function placeholderCoverUrl(slug: string): string {
+  const seeded = mediaSeedForSlug(slug)?.coverUrl;
+  if (seeded) return seeded;
+  return COVER_ERROR_FALLBACK;
+}
+
+/** Resolve project cover: explicit/R2 URL when available, else seeded CĐT cover / SVG. */
+export function projectCoverUrl(
+  slug: string,
+  cover?: { coverUrl?: string | null; coverR2Key?: string | null },
+): string {
+  return resolveCoverUrl(
+    cover?.coverUrl,
+    cover?.coverR2Key,
+    placeholderCoverUrl(slug),
+    { variant: "card", format: "webp" },
+  );
+}
