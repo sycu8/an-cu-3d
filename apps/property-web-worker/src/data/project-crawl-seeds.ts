@@ -45,6 +45,7 @@ export const PROJECT_CRAWL_SEEDS: ProjectCrawlSeed[] = [
     projectSlug: "celadon-city",
     developerSlug: "gamuda-land",
     officialUrls: [
+      { label: "Celadon City", url: "https://celadoncityhcm.com/" },
       { label: "Gamuda Land VN", url: "https://www.gamudaland.com.vn" },
     ],
     secondaryMarketUrls: [

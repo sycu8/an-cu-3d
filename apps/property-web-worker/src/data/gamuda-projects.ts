@@ -290,6 +290,8 @@ export function getProjectSummaries(): ProjectSummary[] {
     provenance: p.provenance,
     confidence: p.confidence,
     status: "published",
+    coverUrl: p.coverUrl,
+    coverR2Key: p.coverR2Key,
   }));
 }
 

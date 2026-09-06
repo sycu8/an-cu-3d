@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import type { ProjectSummary } from "../types";
-import { projectCoverUrl } from "../lib/projectVisuals";
+import { COVER_ERROR_FALLBACK, projectCoverUrl } from "../lib/projectVisuals";
 import "./ProjectCard.css";
 
 type ProjectCardProps = {
@@ -22,7 +22,18 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <article className="project-card">
       <Link to={`/projects/${project.slug}`} className="project-card-media">
-        <img src={cover} alt="" loading="lazy" decoding="async" />
+        <img
+          src={cover}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (img.dataset.fallbackApplied) return;
+            img.dataset.fallbackApplied = "1";
+            img.src = COVER_ERROR_FALLBACK;
+          }}
+        />
         {place && <span className="project-card-place">{place}</span>}
       </Link>
       <div className="project-card-body">
