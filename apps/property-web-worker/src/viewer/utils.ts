@@ -58,12 +58,17 @@ export function roomCentroid(polygon: [number, number][]): [number, number] {
 }
 
 const CATALOG_SIZES: Record<string, [number, number, number]> = {
-  "bed-queen": [1.6, 0.5, 2.0],
-  "bed-double": [1.4, 0.5, 1.9],
-  "sofa-compact": [1.8, 0.4, 0.9],
-  "sofa-standard": [2.2, 0.4, 0.9],
-  "desk-standard": [1.2, 0.75, 0.6],
+  "bed-queen": [1.6, 0.55, 2.0],
+  "bed-king": [1.8, 0.55, 2.1],
+  "bed-double": [1.4, 0.55, 1.9],
+  "bed-single": [1.0, 0.5, 2.0],
+  "sofa-2seat": [1.6, 0.75, 0.85],
+  "sofa-3seat": [2.2, 0.75, 0.9],
+  "sofa-compact": [1.8, 0.7, 0.85],
+  "sofa-standard": [2.2, 0.75, 0.9],
+  "table-4": [1.2, 0.75, 0.8],
   "table-dining-4": [1.2, 0.75, 0.8],
+  "desk-standard": [1.2, 0.75, 0.6],
 };
 
 const FIXTURE_SIZES: Record<string, [number, number, number]> = {

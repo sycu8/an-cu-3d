@@ -2,17 +2,43 @@ import { describe, expect, it } from "vitest";
 import { getProjectBySlug, getProjectSummaries } from "./data/gamuda-projects";
 import { getSampleFloorPlan } from "./data/sample-floorplans";
 import { documentBounds, wallLength } from "./viewer/utils";
+import { buildFurnitureDef, furnitureStyleFromPaletteLabel } from "./viewer/furnitureCatalog";
 
-describe("gamuda-projects seed", () => {
-  it("lists at least 3 projects", () => {
+describe("project seed inventory", () => {
+  it("lists Gamuda + Vinhomes + Ecopark + Đất Xanh/Bluemarq projects", () => {
     const projects = getProjectSummaries();
-    expect(projects.length).toBeGreaterThanOrEqual(3);
+    expect(projects.length).toBeGreaterThanOrEqual(8);
+    const developers = new Set(projects.map((p) => p.developerName));
+    expect([...developers].some((d) => d.includes("Gamuda"))).toBe(true);
+    expect([...developers].some((d) => d.includes("Vinhomes"))).toBe(true);
+    expect([...developers].some((d) => d.includes("Ecopark"))).toBe(true);
+    expect([...developers].some((d) => d.includes("Đất Xanh") || d.includes("Bluemarq"))).toBe(
+      true,
+    );
   });
 
-  it("finds project by slug", () => {
+  it("does not include sanitized demo-* fixtures", () => {
+    const demos = getProjectSummaries().filter((p) => p.slug.startsWith("demo-"));
+    expect(demos).toHaveLength(0);
+  });
+
+  it("finds Celadon City by slug", () => {
     const p = getProjectBySlug("celadon-city");
     expect(p?.name).toBe("Celadon City");
-    expect(p?.developerName).toBe("Gamuda Land");
+    expect(p?.developerName).toContain("Gamuda");
+  });
+
+  it("includes handover + document metadata on Vinhomes Grand Park", () => {
+    const p = getProjectBySlug("vinhomes-grand-park");
+    expect(p?.handoverUnits?.length).toBeGreaterThan(0);
+    expect(p?.documents?.length).toBeGreaterThan(0);
+    expect(p?.priceRange).toBe("Chờ xác minh");
+  });
+
+  it("includes Opal Boulevard as handed-over Đất Xanh inventory", () => {
+    const p = getProjectBySlug("opal-boulevard");
+    expect(p?.handover).toMatch(/bàn giao/i);
+    expect(p?.handoverUnits?.some((u) => u.status === "handed_over")).toBe(true);
   });
 });
 
@@ -37,28 +63,16 @@ describe("floor plan samples", () => {
   });
 });
 
-describe("demo-scale seed density", () => {
-  it("merges sanitized demos into inventory (>=6 projects)", () => {
-    const projects = getProjectSummaries();
-    expect(projects.length).toBeGreaterThanOrEqual(6);
-    const demos = projects.filter((proj) => proj.slug.startsWith("demo-"));
-    expect(demos.length).toBeGreaterThanOrEqual(3);
-    for (const d of demos) {
-      expect(d.provenance?.toLowerCase()).toMatch(/demo|sanitized|fixture/);
-      expect(d.priceRange).toBe("Chờ xác minh");
-      expect(d.handover).toBe("Chờ xác minh");
-    }
+describe("RealEstateOS-inspired furniture icons", () => {
+  it("builds multi-part meshes for beds and sofas", () => {
+    const bed = buildFurnitureDef("bed-queen", "scandinavian");
+    expect(bed.parts.length).toBeGreaterThan(2);
+    const sofa = buildFurnitureDef("sofa-3seat", "modern");
+    expect(sofa.parts.length).toBeGreaterThan(2);
   });
 
-  it("resolves demo apartment floorplan keys", () => {
-    const riverside = getProjectBySlug("demo-riverside-haven");
-    expect(riverside).toBeTruthy();
-    expect(riverside!.apartmentTypes.length).toBeGreaterThan(0);
-    for (const apt of riverside!.apartmentTypes) {
-      const key = apt.floorplanKey ?? apt.slug;
-      const doc = getSampleFloorPlan(key);
-      expect(doc.walls.length).toBeGreaterThan(0);
-      expect(doc.rooms.length).toBeGreaterThan(0);
-    }
+  it("maps palette labels to staging styles", () => {
+    expect(furnitureStyleFromPaletteLabel("Ivory ấm")).toBe("scandinavian");
+    expect(furnitureStyleFromPaletteLabel("Teal hiện đại")).toBe("luxury");
   });
 });

@@ -71,6 +71,37 @@ export interface ApartmentTypeSummary {
   validationSummary?: string;
 }
 
+/** Legal / sales documents tracked per project (verified public only). */
+export interface ProjectDocument {
+  id: string;
+  kind:
+    | "legal_title"
+    | "sales_contract"
+    | "handover_minutes"
+    | "brochure"
+    | "floorplan"
+    | "other";
+  title: string;
+  /** verified = cited public fact; pending = not yet confirmed; unavailable = known missing */
+  status: "verified" | "pending" | "unavailable";
+  issuedAt?: string;
+  note?: string;
+  sourceClass: string;
+  provenance?: string;
+}
+
+/** Unit / tower handover inventory (public progress, not a sales quote). */
+export interface HandoverUnitSummary {
+  id: string;
+  label: string;
+  tower?: string;
+  status: "handed_over" | "selling" | "upcoming" | "construction";
+  handedOverAt?: string;
+  note?: string;
+  sourceClass: string;
+  provenance?: string;
+}
+
 export interface ProjectDetail extends ProjectSummary {
   description?: string;
   address?: string;
@@ -80,6 +111,10 @@ export interface ProjectDetail extends ProjectSummary {
   showroom?: ProjectShowroomConfig;
   /** 2D floorplans, perspectives, and related gallery items. */
   media?: ProjectMediaItem[];
+  /** Public legal / brochure / handover document checklist. */
+  documents?: ProjectDocument[];
+  /** Handed-over or upcoming unit groups (towers / phases). */
+  handoverUnits?: HandoverUnitSummary[];
 }
 
 export interface NearbyPlace {

@@ -70,7 +70,28 @@
   font-size: var(--text-small);
 }
 
-.apartment-type-grid {
+.project-docs-section,
+.project-handover-section {
+  margin: var(--space-2xl) 0;
+}
+
+.project-docs-list,
+.project-handover-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-md);
+}
+
+.project-docs-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--space-md);
