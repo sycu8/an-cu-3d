@@ -26,6 +26,9 @@
   "ai": {
     "binding": "AI"
   },
+  "images": {
+    "binding": "IMAGES"
+  },
   "r2_buckets": [
     {
       "binding": "ASSETS",
@@ -48,7 +51,10 @@
           "binding": "ASSETS",
           "bucket_name": "ancu-property-assets"
         }
-      ]
+      ],
+      "images": {
+        "binding": "IMAGES"
+      }
     },
     "production": {
       "name": "ancu-property-web",
@@ -65,7 +71,10 @@
           "binding": "ASSETS",
           "bucket_name": "ancu-property-assets"
         }
-      ]
+      ],
+      "images": {
+        "binding": "IMAGES"
+      }
     }
   }
 }

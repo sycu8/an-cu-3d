@@ -16,6 +16,16 @@ export {
 export type { FloorplanStage, SharedAssetKind } from "./r2-paths.js";
 
 export {
+  MEDIA_API_PREFIX,
+  MEDIA_VARIANTS,
+  isSafeR2Key,
+  mediaUrl,
+  normalizeR2Key,
+  resolveCoverUrl,
+} from "./media.js";
+export type { MediaUrlOptions, MediaVariant } from "./media.js";
+
+export {
   AssetClass,
   ConfidenceResultSchema,
   DoorSchema,

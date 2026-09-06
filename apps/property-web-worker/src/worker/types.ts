@@ -3,6 +3,8 @@
 export interface Env {
   DB: D1Database;
   ASSETS: R2Bucket;
+  /** Cloudflare Images binding for resize/optimize from R2 bytes. */
+  IMAGES?: ImagesBinding;
   APP_VERSION?: string;
   ADMIN_SECRET?: string;
   AI_GATEWAY_ACCOUNT_ID?: string;

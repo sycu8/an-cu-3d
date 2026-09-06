@@ -12,7 +12,7 @@ function isPending(value: string) {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
-  const cover = projectCoverUrl(project.slug);
+  const cover = projectCoverUrl(project.slug, project);
 
   return (
     <article className="project-card">

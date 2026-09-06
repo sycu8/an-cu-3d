@@ -1,4 +1,6 @@
-/** Stable cover imagery for project cards / hero accents (architectural atmosphere). */
+/** Cover imagery helpers — prefer R2 media, fall back to architectural placeholders. */
+
+import { resolveCoverUrl } from "@ancu/shared";
 
 const COVERS = [
   "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
@@ -12,10 +14,23 @@ const COVERS = [
 export const HERO_IMAGE =
   "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=2000&q=80";
 
-export function projectCoverUrl(slug: string): string {
+export function placeholderCoverUrl(slug: string): string {
   let hash = 0;
   for (let i = 0; i < slug.length; i++) {
     hash = (hash * 31 + slug.charCodeAt(i)) >>> 0;
   }
   return COVERS[hash % COVERS.length]!;
+}
+
+/** Resolve project cover: R2 media URL when available, else stable placeholder. */
+export function projectCoverUrl(
+  slug: string,
+  cover?: { coverUrl?: string | null; coverR2Key?: string | null },
+): string {
+  return resolveCoverUrl(
+    cover?.coverUrl,
+    cover?.coverR2Key,
+    placeholderCoverUrl(slug),
+    { variant: "card", format: "webp" },
+  );
 }

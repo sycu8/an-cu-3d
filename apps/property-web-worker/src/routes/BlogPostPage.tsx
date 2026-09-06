@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import type { BlogPost } from "@ancu/shared";
+import { mediaUrl, type BlogPost } from "@ancu/shared";
 import "./BlogPage.css";
 
 export default function BlogPostPage() {
@@ -39,14 +39,21 @@ export default function BlogPostPage() {
     );
   }
 
+  const coverSrc =
+    post.coverUrl ??
+    (post.coverR2Key
+      ? mediaUrl(post.coverR2Key, { variant: "hero", format: "webp" })
+      : null);
+
   return (
-    <article className="container blog-article">
+    <div className="container blog-article">
       <p>
         <Link to="/blog">← Blog</Link>
       </p>
+      {coverSrc && <img className="blog-cover" src={coverSrc} alt="" />}
       <h1>{post.title}</h1>
       <p>{post.excerpt}</p>
       <div className="prose">{post.bodyMarkdown}</div>
-    </article>
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { ProjectBuildStage } from "@ancu/shared";
 import type { Env } from "./types";
 import { appendBuildEvent, updateBuildJob } from "./db/jobs";
-import { upsertSynthesizedProject } from "./db/projects";
+import { upsertSynthesizedProject, updateProjectCoverR2Key } from "./db/projects";
 import {
   assist2dTo3d,
   crawlSources,
@@ -185,6 +185,9 @@ export async function runProjectBuild(
 
     await emit(env, job.id, startedAt, "persist", "Ghi D1 projects / amenities / units…");
     const projectId = await upsertSynthesizedProject(env.DB, project);
+    if (cover.r2Key && !String(cover.r2Key).endsWith(".json")) {
+      await updateProjectCoverR2Key(env.DB, job.slug, cover.r2Key);
+    }
     await emit(env, job.id, startedAt, "persist", `Đã lưu project id=${projectId}`);
 
     await emit(env, job.id, startedAt, "publish", "Xuất bản trang dự án…");

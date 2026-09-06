@@ -19,6 +19,7 @@ Browser
 property-web-worker (Workers + Assets)
   ├── D1  DB              → projects, buildings, units, POIs, media meta
   ├── R2  ASSETS          → project media, published floorplan keys (read)
+  ├── Images IMAGES       → resize/optimize media from R2 bytes
   ├── Cache API           → CDN-ish responses for public reads
   └── service binding?    → optional internal calls to engine (admin only)
 
@@ -40,6 +41,7 @@ ancu-floorplan-engine (Workers, internal)
 | --- | --- | --- | --- |
 | `DB` | D1 | `ancu-property-db` | Queryable product metadata |
 | `ASSETS` | R2 | `ancu-property-assets` | Project images + published artifact pointers |
+| `IMAGES` | Images | — | Resize/optimize R2 image bytes at the media edge |
 | `ENGINE` | Service (optional) | `ancu-floorplan-engine` | Internal admin proxy only |
 
 ### `ancu-floorplan-engine` (`ancu-floorplan-engine`)

@@ -33,6 +33,10 @@ export interface ProjectSummary {
   /** D1/admin status when known */
   status?: string;
   updatedAt?: string;
+  /** R2 object key for project cover (served via /api/media). */
+  coverR2Key?: string;
+  /** Public media URL when cover is stored in R2. */
+  coverUrl?: string;
   showroom?: ProjectShowroomConfig;
 }
 
