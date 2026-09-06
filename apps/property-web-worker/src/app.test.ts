@@ -32,7 +32,8 @@ describe("project seed inventory", () => {
     const p = getProjectBySlug("vinhomes-grand-park");
     expect(p?.handoverUnits?.length).toBeGreaterThan(0);
     expect(p?.documents?.length).toBeGreaterThan(0);
-    expect(p?.priceRange).toBe("Chờ xác minh");
+    expect(p?.priceRange).toMatch(/thứ cấp/i);
+    expect(p?.priceProvenance).toBeTruthy();
   });
 
   it("includes Opal Boulevard as handed-over Đất Xanh inventory", () => {

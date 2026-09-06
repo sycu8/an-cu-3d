@@ -3,9 +3,9 @@ import type { ProjectSummary } from "../types";
 import { projectCoverUrl } from "../lib/projectVisuals";
 import "./ProjectCard.css";
 
-interface ProjectCardProps {
+type ProjectCardProps = {
   project: ProjectSummary;
-}
+};
 
 function isPending(value: string) {
   return value === "Chờ xác minh";
@@ -13,14 +13,13 @@ function isPending(value: string) {
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const cover = projectCoverUrl(project.slug, project);
+  const place = project.district ?? project.city;
 
   return (
     <article className="project-card">
       <Link to={`/projects/${project.slug}`} className="project-card-media">
-        <img src={cover} alt="" loading="lazy" />
-        <span className="project-card-place">
-          {project.district ?? project.city}
-        </span>
+        <img src={cover} alt="" loading="lazy" decoding="async" />
+        {place && <span className="project-card-place">{place}</span>}
       </Link>
       <div className="project-card-body">
         <p className="project-card-developer">{project.developerName}</p>

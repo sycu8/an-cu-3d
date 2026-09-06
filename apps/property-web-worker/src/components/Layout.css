@@ -3,6 +3,7 @@
   top: 0;
   z-index: 100;
   height: var(--header-height);
+  padding-top: env(safe-area-inset-top, 0);
   background: color-mix(in srgb, var(--color-bg-primary) 88%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border-subtle);
@@ -18,11 +19,14 @@
 
 .brand {
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: clamp(1.25rem, 3.5vw, 1.5rem);
   font-weight: 700;
   color: var(--color-teal-900);
   text-decoration: none;
   letter-spacing: -0.02em;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 .brand:hover {
@@ -41,9 +45,12 @@
   font-weight: 500;
   color: var(--color-text-secondary);
   text-decoration: none;
-  padding: var(--space-xs) 0;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
   border-bottom: 2px solid transparent;
-  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+  transition: color var(--dur-fast, 180ms) ease, border-color var(--dur-fast, 180ms) ease;
 }
 
 .main-nav a:hover,
@@ -55,8 +62,8 @@
 
 .nav-toggle {
   display: none;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
@@ -69,10 +76,10 @@
 
 .nav-toggle span:not(.sr-only) {
   display: block;
-  width: 1.1rem;
+  width: 1.15rem;
   height: 2px;
   background: var(--color-teal-900);
-  transition: transform var(--dur-fast) var(--ease-out);
+  transition: transform var(--dur-fast, 180ms) var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .nav-toggle.is-open span:not(.sr-only):first-of-type {
@@ -84,12 +91,12 @@
 }
 
 .site-main {
-  min-height: calc(100vh - var(--header-height) - 8rem);
+  min-height: calc(100svh - var(--header-height) - 8rem);
 }
 
 .site-footer {
   margin-top: var(--space-3xl);
-  padding: var(--space-2xl) 0 var(--space-xl);
+  padding: var(--space-2xl) 0 calc(var(--space-xl) + env(safe-area-inset-bottom, 0));
   border-top: 1px solid var(--color-border-subtle);
   background:
     linear-gradient(180deg, transparent, rgba(13, 61, 58, 0.04)),
@@ -125,6 +132,9 @@
   color: var(--color-text-secondary);
   font-size: var(--text-small);
   font-weight: 500;
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
 }
 
 .footer-links a:hover {
@@ -148,15 +158,18 @@
 
   .main-nav {
     position: fixed;
-    inset: var(--header-height) 0 auto 0;
+    inset: calc(var(--header-height) + env(safe-area-inset-top, 0)) 0 0 0;
     display: none;
     flex-direction: column;
     align-items: stretch;
     gap: 0;
-    padding: var(--space-md) var(--space-lg) var(--space-lg);
-    background: var(--color-bg-primary);
-    border-bottom: 1px solid var(--color-border);
-    box-shadow: var(--shadow-md);
+    padding: var(--space-md) var(--space-lg) calc(var(--space-xl) + env(safe-area-inset-bottom, 0));
+    background:
+      linear-gradient(180deg, var(--color-bg-primary), var(--color-bg-secondary));
+    border-bottom: none;
+    box-shadow: none;
+    overflow-y: auto;
+    z-index: 99;
   }
 
   .main-nav.is-open {
@@ -164,11 +177,14 @@
   }
 
   .main-nav a {
-    padding: 0.85rem 0;
+    padding: 1rem 0;
+    min-height: 3.25rem;
+    font-size: 1.05rem;
     border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .main-nav a.active {
     border-bottom-color: var(--color-teal-600);
+    color: var(--color-teal-800);
   }
 }

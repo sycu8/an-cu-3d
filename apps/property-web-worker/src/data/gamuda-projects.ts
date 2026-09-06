@@ -1,4 +1,6 @@
 import type { ProjectDetail, ProjectSummary } from "../types";
+import { applyCrawlMediaHints } from "./apply-crawl-media";
+import { applySecondaryMarketPrice } from "./secondary-market-prices";
 import { DATXANH_BLUEMARQ_PROJECTS } from "./datxanh-bluemarq-projects";
 import { DEVELOPERS } from "./developers";
 import { ECOPARK_PROJECTS } from "./ecopark-projects";
@@ -267,7 +269,7 @@ export const ALL_SEED_PROJECTS: ProjectDetail[] = [
   ...VINHOMES_PROJECTS,
   ...ECOPARK_PROJECTS,
   ...DATXANH_BLUEMARQ_PROJECTS,
-];
+].map((p) => applyCrawlMediaHints(applySecondaryMarketPrice(p)));
 
 export function getProjectSummaries(): ProjectSummary[] {
   return ALL_SEED_PROJECTS.map((p) => ({
@@ -280,6 +282,7 @@ export function getProjectSummaries(): ProjectSummary[] {
     developerName: p.developerName,
     handover: p.handover,
     priceRange: p.priceRange,
+    priceProvenance: p.priceProvenance,
     totalUnits: p.totalUnits,
     latitude: p.latitude,
     longitude: p.longitude,

@@ -1,5 +1,8 @@
 import { Hono } from "hono";
-import { validateAllowlistedUrl } from "../allowlist";
+import {
+  crawlChannelForHost,
+  validateAllowlistedUrl,
+} from "../allowlist";
 import {
   addCrawlCandidate,
   createCrawlJob,
@@ -8,6 +11,8 @@ import {
   updateCrawlJob,
 } from "../db/crawl";
 import { logJob } from "../logger";
+import { classifyAsset } from "../pipeline/classify";
+import { extractPage } from "../pipeline/extractHtml";
 
 type Env = {
   ENGINE_DB: D1Database;
@@ -36,6 +41,7 @@ crawl.post("/", async (c) => {
   const crawlJobId = crypto.randomUUID();
   const domain = validation.url.hostname;
   const sourceId = crypto.randomUUID();
+  const channel = crawlChannelForHost(domain) ?? "developer";
 
   if (body.projectSlug) {
     await ensureSource(c.env.ENGINE_DB, {
@@ -58,9 +64,9 @@ crawl.post("/", async (c) => {
     projectSlug: body.projectSlug,
   });
 
-  logJob("info", "crawl_job_enqueued", { jobId: crawlJobId });
+  logJob("info", "crawl_job_enqueued", { jobId: crawlJobId, channel });
 
-  return c.json({ id: crawlJobId, status: "pending" }, 202);
+  return c.json({ id: crawlJobId, status: "pending", channel }, 202);
 });
 
 crawl.get("/:id", async (c) => {
@@ -84,28 +90,134 @@ export async function processCrawlMessage(
   env: Env,
   message: CrawlQueueMessage,
 ): Promise<void> {
-  const { crawlJobId, seedUrl } = message;
+  const { crawlJobId, seedUrl, projectSlug } = message;
 
   try {
     await updateCrawlJob(env.ENGINE_DB, crawlJobId, { status: "running" });
 
-    await addCrawlCandidate(env.ENGINE_DB, {
-      id: crypto.randomUUID(),
-      crawlJobId,
-      url: seedUrl,
-      status: "discovered",
-      metadata: { stub: true },
+    const validation = validateAllowlistedUrl(seedUrl);
+    if (!validation.ok) {
+      throw new Error(validation.reason);
+    }
+
+    const channel = crawlChannelForHost(validation.url.hostname) ?? "developer";
+
+    const response = await fetch(validation.url.toString(), {
+      headers: {
+        "User-Agent":
+          "AnCu3D-ResearchBot/1.0 (+https://ancu.vn; allowlist crawl only)",
+        Accept:
+          "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
     });
+
+    if (!response.ok) {
+      throw new Error(`fetch_failed_${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    const candidates: Array<{
+      id: string;
+      url: string;
+      status: string;
+      metadata: Record<string, unknown>;
+    }> = [];
+
+    if (contentType.includes("text/html")) {
+      const html = await response.text();
+      const page = extractPage(html, validation.url.toString());
+
+      await addCrawlCandidate(env.ENGINE_DB, {
+        id: crypto.randomUUID(),
+        crawlJobId,
+        url: seedUrl,
+        status: "fetched",
+        metadata: {
+          kind: "page",
+          channel,
+          title: page.title,
+          description: page.description,
+          textSnippet: page.textSnippet.slice(0, 1500),
+          projectSlug: projectSlug ?? null,
+        },
+      });
+
+      for (const link of page.links) {
+        if (link.kind === "page") continue;
+        const linkValidation = validateAllowlistedUrl(link.url);
+        const classified = classifyAsset(link.url, link.text);
+        candidates.push({
+          id: crypto.randomUUID(),
+          url: link.url,
+          status: "discovered",
+          metadata: {
+            kind: link.kind,
+            channel,
+            linkText: link.text,
+            classification: classified.label,
+            confidence: classified.confidence,
+            matchedKeywords: classified.matchedKeywords,
+            // CDN assets may be off-allowlist when discovered from allowlisted HTML
+            allowlistedAsset: linkValidation.ok,
+            parentPage: seedUrl,
+            projectSlug: projectSlug ?? null,
+          },
+        });
+      }
+    } else {
+      const classified = classifyAsset(seedUrl, contentType);
+      candidates.push({
+        id: crypto.randomUUID(),
+        url: seedUrl,
+        status: "fetched",
+        metadata: {
+          kind: contentType.includes("pdf") ? "pdf" : "binary",
+          channel,
+          contentType,
+          classification: classified.label,
+          confidence: classified.confidence,
+          projectSlug: projectSlug ?? null,
+        },
+      });
+    }
+
+    for (const candidate of candidates.slice(0, 40)) {
+      await addCrawlCandidate(env.ENGINE_DB, {
+        id: candidate.id,
+        crawlJobId,
+        url: candidate.url,
+        status: candidate.status,
+        metadata: candidate.metadata,
+      });
+    }
+
+    const atlasCount = candidates.filter(
+      (c) => c.metadata.classification === "atlas",
+    ).length;
+    const floorplanCount = candidates.filter(
+      (c) => c.metadata.classification === "floorplan",
+    ).length;
 
     await updateCrawlJob(env.ENGINE_DB, crawlJobId, {
       status: "completed",
       result: {
-        candidates: 1,
-        note: "crawl_stub_completed",
+        channel,
+        candidates: candidates.length + 1,
+        atlasCount,
+        floorplanCount,
+        note:
+          channel === "secondary_market"
+            ? "secondary_market_reference_only_not_cdt_price_sheet"
+            : "developer_public_page_crawl",
       },
     });
 
-    logJob("info", "crawl_job_completed", { jobId: crawlJobId });
+    logJob("info", "crawl_job_completed", {
+      jobId: crawlJobId,
+      candidates: candidates.length,
+      channel,
+    });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "crawl_failed";

@@ -3,7 +3,9 @@ import { filterProjectMedia } from "@ancu/shared";
 import { AMENITY_CATEGORIES } from "../types/amenity";
 import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { ProjectInfographic } from "../components/ProjectInfographic";
 import { useProject } from "../hooks/useProjects";
+import { projectCoverUrl } from "../lib/projectVisuals";
 import "./ProjectDetailPage.css";
 
 function isPending(value: string) {
@@ -27,25 +29,52 @@ export default function ProjectDetailPage() {
   }
 
   const project = state.data;
+  const cover = projectCoverUrl(project.slug, project);
   const perspectives = filterProjectMedia(project.media, "perspective");
   const floorplan2d = filterProjectMedia(project.media, "floorplan_2d");
+  const atlases = filterProjectMedia(project.media, "atlas").filter((m) =>
+    Boolean(m.url?.trim() || m.r2Key?.trim()),
+  );
 
   return (
-    <div className="container">
-      <header className="page-header">
-        <div className="project-detail-meta">
-          <span className="tag tag-teal">{project.developerName}</span>
-          {project.district && <span className="tag">{project.district}</span>}
-          {project.confidence != null && (
-            <span className="tag tag-clay">Tin cậy: {Math.round(project.confidence * 100)}%</span>
-          )}
-          {state.source && <span className="tag">src:{state.source}</span>}
+    <div className="project-detail">
+      <section className="project-hero" aria-label={project.name}>
+        <div
+          className="project-hero-media"
+          style={{ backgroundImage: `url(${cover})` }}
+          role="img"
+          aria-label={`Hình cover ${project.name}`}
+        />
+        <div className="project-hero-veil" aria-hidden="true" />
+        <div className="container project-hero-inner">
+          <p className="project-hero-developer">{project.developerName}</p>
+          <h1>{project.name}</h1>
+          <p className="project-hero-tagline">
+            {project.tagline ?? "Khám phá không gian thật trước khi quyết định."}
+          </p>
+          <div className="project-hero-actions">
+            <Link to={`/projects/${project.slug}/showroom?view=3d`} className="btn btn-primary btn-lg">
+              Xem showroom 3D
+            </Link>
+            <Link to={`/projects/${project.slug}/apartments`} className="btn btn-hero-ghost btn-lg">
+              Loại căn
+            </Link>
+          </div>
         </div>
-        <h1>{project.name}</h1>
-        {project.tagline && <p>{project.tagline}</p>}
-        {project.description && <p className="project-description">{project.description}</p>}
-        {project.provenance && <p className="provenance">Nguồn: {project.provenance}</p>}
-      </header>
+      </section>
+
+      <div className="container project-detail-body">
+      <div className="project-detail-meta">
+        {project.district && <span className="tag">{project.district}</span>}
+        {project.confidence != null && (
+          <span className="tag tag-clay">Tin cậy: {Math.round(project.confidence * 100)}%</span>
+        )}
+        {state.source && <span className="tag">src:{state.source}</span>}
+      </div>
+      {project.description && <p className="project-description">{project.description}</p>}
+      {project.provenance && <p className="provenance">Nguồn: {project.provenance}</p>}
+
+      <ProjectInfographic project={project} />
 
       <section className="project-facts-grid">
         <div className="card card-body">
@@ -57,6 +86,12 @@ export default function ProjectDetailPage() {
             </dd>
             <dt>Giá</dt>
             <dd className={isPending(project.priceRange) ? "pending-data" : ""}>{project.priceRange}</dd>
+            {project.priceProvenance && (
+              <>
+                <dt>Nguồn giá</dt>
+                <dd className="provenance">{project.priceProvenance}</dd>
+              </>
+            )}
             <dt>Bàn giao</dt>
             <dd className={isPending(project.handover) ? "pending-data" : ""}>{project.handover}</dd>
             <dt>Quy mô</dt>
@@ -75,7 +110,7 @@ export default function ProjectDetailPage() {
         </div>
       </section>
 
-      <section className="project-actions-bar">
+      <section className="project-actions-bar" aria-label="Lối tắt dự án">
         <Link to={`/projects/${project.slug}/showroom?view=3d`} className="btn btn-primary">
           Xem 3D
         </Link>
@@ -96,19 +131,35 @@ export default function ProjectDetailPage() {
         </Link>
       </section>
 
-      {(perspectives.length > 0 || floorplan2d.length > 0) && (
-        <section className="project-gallery-section" aria-label="Hình 2D và phối cảnh">
+      <div className="project-mobile-cta" aria-label="Thao tác nhanh">
+        <Link to={`/projects/${project.slug}/showroom?view=3d`} className="btn btn-primary">
+          Showroom 3D
+        </Link>
+        <Link to={`/compare?a=${project.slug}`} className="btn btn-secondary">
+          So sánh
+        </Link>
+      </div>
+
+      {(perspectives.length > 0 || floorplan2d.length > 0 || atlases.length > 0) && (
+        <section className="project-gallery-section" aria-label="Hình 2D, phối cảnh và atlas">
           <div className="project-gallery-head">
             <div>
-              <h2>Phối cảnh & mặt bằng 2D</h2>
+              <h2>Phối cảnh, mặt bằng & atlas</h2>
               <p>
-                Hình minh họa — chờ bản chính thức. Mở showroom để xem 3D hoặc tự phối ánh sáng.
+                Hình minh họa / atlas quy hoạch — chờ bản chính thức từ CĐT. Mở showroom để xem 3D.
               </p>
             </div>
             <Link to={`/projects/${project.slug}/showroom`} className="btn btn-ghost">
               Mở showroom
             </Link>
           </div>
+          {atlases.length > 0 && (
+            <MediaGallery
+              items={atlases.slice(0, 4)}
+              emptyLabel="Chưa có atlas"
+              variant="card"
+            />
+          )}
           {perspectives.length > 0 ? (
             <MediaGallery
               items={perspectives.slice(0, 6)}
@@ -231,6 +282,7 @@ export default function ProjectDetailPage() {
           </ul>
         </section>
       )}
+      </div>
     </div>
   );
 }
