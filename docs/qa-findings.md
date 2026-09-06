@@ -47,30 +47,42 @@
 - **Status:** Fixed — `"data" in state` guards
 
 
-### BUG-005 — Worker returned 404 for all SPA client routes
+### BUG-006 — 3BR units reused 2BR sample floorplan keys
 
-- **Severity:** High
-- **Surface:** Every non-API page except `/` (projects, map, compare, admin, blog, detail, …)
-- **Steps:** Open `http://localhost:5173/projects` (Vite + Cloudflare plugin)
-- **Expected:** SPA `index.html` for client router
-- **Actual:** Plain-text `Not Found` 404 from Worker fetch handler
-- **Evidence:** curl `/projects` → `text/plain` body `Not Found`; `/` HTML 200
-- **Status:** Fixed — `assets.run_worker_first: ["/api/*"]` in `wrangler.jsonc`; Worker prefers Static Assets `fetch` when available
-- **Shared cause:** Worker handled all methods/paths and short-circuited asset/SPA pipeline
+- **Severity:** High (trust)
+- **Surface:** Apartment viewer, showroom, Grand Park / Vinhomes / Ecopark / Đất Xanh seeds
+- **Steps:** Open 3 PN unit on Vinhomes Grand Park
+- **Expected:** No verified/factual 2BR layout presented as 3BR
+- **Actual:** `floorplanKey: "2br-c"` → Celadon 2BR sample
+- **Status:** Fixed — remove 3BR keys; `resolveFloorPlanForUnit` rejects bedroom mismatch; `floorplanVerification` labels; public API strips unknown keys
+- **Regression:** `public-project.test.ts`, `app.test.ts`, shared `trust.test.ts`
+
+### BUG-007 — Public API dropped all estimated apartment typologies
+
+- **Severity:** Medium
+- **Surface:** Project detail apartments section via `/api/projects/:slug`
+- **Steps:** Load Grand Park from API
+- **Expected:** Typology cards with trust labels (even without verified area/price)
+- **Actual:** Empty `apartmentTypes` after buyer gate
+- **Status:** Fixed — keep typologies; strip pending facts; attach `floorplanVerification`
 
 ## Known limitations (not bugs / deferred)
 
 | ID | Note |
 | --- | --- |
 | LIM-001 | Blog body often raw markdown (no full MD renderer) |
-| LIM-002 | Map travel time always pending (no routing engine) |
+| LIM-002 | Map travel time always pending (no routing engine) — `DistanceOnlyRoutingProvider` ready |
 | LIM-003 | Project 3D is schematic blocks, not BIM |
 | LIM-004 | Nearby POIs for D1-only projects need D1 nearby rows (map still uses seed nearby) |
 | LIM-005 | `POST /api/admin/assist/2d3d` is API-only (no admin UI control yet) |
 | LIM-006 | Live AI crawl/blog requires AI Gateway secrets (local optional) |
+| LIM-007 | Seed floorplans remain illustrative cross-project samples until published FloorPlanDocuments exist |
+| LIM-008 | Engine vision/extract still stubbed — conversion needs `seedDocument` or human review |
+| LIM-009 | Documents/handover still seed-only (not yet loaded from D1) |
+| LIM-010 | Space score suppressed for illustrative/estimated layouts (by design) |
 
 ## Pass status
 
 - Inventory: `docs/qa-inventory.md`
-- Automated regressions: `pnpm test` (seed density + `/api/projects` merge)
-- Manual browser pass: pending this turn after local server start
+- Automated regressions: `pnpm test` (shared 18 · engine 32 · web 36)
+- Manual browser pass: pending after deploy preview

@@ -1,11 +1,18 @@
 /**
  * Public (buyer-facing) project shaping.
- * Only surface facts that passed backend verification — never pending placeholders,
- * secondary-market research labels, or internal provenance/confidence noise.
+ * Surface typology + trust labels; never pending placeholders as facts,
+ * never secondary-market prices as CĐT list prices, never mismatched floorplans as verified.
  */
 
+import type { FloorplanVerificationStatusType } from "@ancu/shared";
+import {
+  buildDataTrustInfo,
+  dataTrustShortLabel,
+  sourceClassToTrustState,
+} from "@ancu/shared";
 import type {
   ApartmentTypeSummary,
+  FloorplanVerificationStatus,
   HandoverUnitSummary,
   NearbyPlace,
   ProjectDetail,
@@ -51,15 +58,38 @@ export function verifiedBuyerPrice(value: string | null | undefined): string | u
   return text;
 }
 
-function mapVerifiedApartment(apt: ApartmentTypeSummary): ApartmentTypeSummary | null {
-  if (!isVerifiedSource(apt.sourceClass) && isPendingValue(apt.areaSqm) && isPendingValue(apt.price)) {
-    // Keep typology identity for browsing when source is verified at project level —
-    // but drop completely estimated shells with nothing useful.
-    if (apt.sourceClass === "estimated") return null;
+function resolveApartmentFloorplanVerification(
+  apt: ApartmentTypeSummary,
+): FloorplanVerificationStatus {
+  if (apt.floorplanVerification) return apt.floorplanVerification;
+  if (!apt.floorplanKey) return "unknown";
+  // Seed keys from other projects are illustrative until a project-specific doc is published.
+  if (apt.sourceClass === "estimated" || apt.sourceClass === "seed_estimated") {
+    return "illustrative";
   }
+  if (isVerifiedSource(apt.sourceClass)) return "verified";
+  return "unknown";
+}
 
+/**
+ * Keep typology for browsing; strip unverified area/price.
+ * Attach floorplanVerification so UI never implies a verified layout.
+ */
+function mapPublicApartment(apt: ApartmentTypeSummary): ApartmentTypeSummary {
   const areaSqm = verifiedText(apt.areaSqm);
   const price = verifiedBuyerPrice(apt.price);
+  const floorplanVerification = resolveApartmentFloorplanVerification(apt);
+  const trust = buildDataTrustInfo({
+    sourceClass: apt.sourceClass,
+    provenance: apt.provenance,
+    confidence: apt.confidence,
+    forceState:
+      floorplanVerification === "illustrative"
+        ? "illustrative"
+        : floorplanVerification === "unknown"
+          ? "unknown"
+          : undefined,
+  });
 
   return {
     id: apt.id,
@@ -69,9 +99,13 @@ function mapVerifiedApartment(apt: ApartmentTypeSummary): ApartmentTypeSummary |
     bathrooms: apt.bathrooms,
     areaSqm: areaSqm ?? "",
     price: price ?? "",
-    floorplanKey: apt.floorplanKey,
+    // Only expose floorplanKey when not unknown — unknown means no safe geometry.
+    floorplanKey: floorplanVerification === "unknown" ? undefined : apt.floorplanKey,
+    floorplanVerification,
     sourceClass: apt.sourceClass,
-    // Strip research metadata from public payload
+    // Visitor-friendly note only (not raw engineering confidence).
+    provenance: trust.label,
+    verifiedAt: apt.verifiedAt,
   };
 }
 
@@ -106,7 +140,10 @@ function mapVerifiedNearby(place: NearbyPlace): NearbyPlace | null {
   if (!isVerifiedSource(place.sourceClass)) return null;
   const distanceKm = verifiedText(place.distanceKm);
   const travelTime = verifiedText(place.travelTime);
-  if (!distanceKm && !travelTime) return null;
+  // Keep POI identity when verified even without distance — location intelligence can use coords.
+  if (!distanceKm && !travelTime && place.latitude == null && place.longitude == null) {
+    return null;
+  }
   return {
     id: place.id,
     category: place.category,
@@ -119,8 +156,17 @@ function mapVerifiedNearby(place: NearbyPlace): NearbyPlace | null {
   };
 }
 
+export function projectTrustShortLabel(project: ProjectSummary): string {
+  const state = sourceClassToTrustState(project.sourceClass);
+  return dataTrustShortLabel(state);
+}
+
 /** Strip unverified fields from list cards / compare rows. */
 export function toPublicSummary(project: ProjectSummary): ProjectSummary {
+  const trust = buildDataTrustInfo({
+    sourceClass: project.sourceClass,
+    provenance: project.provenance,
+  });
   return {
     id: project.id,
     slug: project.slug,
@@ -136,22 +182,22 @@ export function toPublicSummary(project: ProjectSummary): ProjectSummary {
     longitude: project.longitude,
     sourceClass: isVerifiedSource(project.sourceClass)
       ? project.sourceClass
-      : "verified_public",
+      : project.sourceClass || "estimated",
+    // Friendly trust label for UI (not raw research notes).
+    provenance: trust.label,
     status: project.status,
     updatedAt: project.updatedAt,
     coverR2Key: project.coverR2Key,
     coverUrl: project.coverUrl,
     showroom: project.showroom,
-    // Intentionally omit: confidence, provenance, priceProvenance
+    // Intentionally omit: confidence, priceProvenance
   };
 }
 
-/** Strip pending / secondary / provenance noise from project detail for buyers. */
+/** Strip pending / secondary noise; keep typology + trust for apartment exploration. */
 export function toPublicDetail(project: ProjectDetail): ProjectDetail {
   const summary = toPublicSummary(project);
-  const apartmentTypes = (project.apartmentTypes ?? [])
-    .map(mapVerifiedApartment)
-    .filter((a): a is ApartmentTypeSummary => Boolean(a));
+  const apartmentTypes = (project.apartmentTypes ?? []).map(mapPublicApartment);
 
   const documents = (project.documents ?? [])
     .map(mapVerifiedDocument)
@@ -178,3 +224,5 @@ export function toPublicDetail(project: ProjectDetail): ProjectDetail {
     handoverUnits: handoverUnits.length ? handoverUnits : undefined,
   };
 }
+
+export type { FloorplanVerificationStatusType };

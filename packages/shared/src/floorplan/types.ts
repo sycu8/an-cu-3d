@@ -6,8 +6,10 @@ import {
   FixtureSchema,
   FloorPlanDocumentSchema,
   FloorPlanSourceMetadataSchema,
+  FloorplanVerificationStatusSchema,
   FurnitureInstanceSchema,
   JobState,
+  PublicationStateSchema,
   ReviewStatus,
   RoomSchema,
   ScaleCalibrationSchema,
@@ -18,6 +20,7 @@ import {
   WallSchema,
   WindowSchema,
 } from "./schema.js";
+import { ObjectConfidenceSchema } from "./object-confidence.js";
 
 export type Vec2 = z.infer<typeof Vec2Schema>;
 export type JobStateType = z.infer<typeof JobState>;
@@ -29,6 +32,9 @@ export type ConfidenceResult = z.infer<typeof ConfidenceResultSchema>;
 export type ValidationIssue = z.infer<typeof ValidationIssueSchema>;
 export type ValidationResult = z.infer<typeof ValidationResultSchema>;
 export type FloorPlanSourceMetadata = z.infer<typeof FloorPlanSourceMetadataSchema>;
+export type FloorplanVerificationStatus = z.infer<typeof FloorplanVerificationStatusSchema>;
+export type PublicationState = z.infer<typeof PublicationStateSchema>;
+export type ObjectConfidence = z.infer<typeof ObjectConfidenceSchema>;
 export type Wall = z.infer<typeof WallSchema>;
 export type Door = z.infer<typeof DoorSchema>;
 export type Window = z.infer<typeof WindowSchema>;

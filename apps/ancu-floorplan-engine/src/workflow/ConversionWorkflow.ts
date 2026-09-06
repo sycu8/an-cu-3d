@@ -171,13 +171,13 @@ export class ConversionWorkflow extends WorkflowEntrypoint<
         vision.confidence,
       );
 
-      if (confidence >= highThreshold) {
-        finalStatus = "APPROVED";
-      } else if (confidence >= reviewThreshold) {
-        finalStatus = "NEEDS_REVIEW";
-      } else {
-        finalStatus = "NEEDS_REVIEW";
-      }
+      // Severity-aware: shared docs may force review even at high aggregate confidence.
+      finalStatus =
+        geometry.needsReview || confidence < highThreshold
+          ? "NEEDS_REVIEW"
+          : "APPROVED";
+      // reviewThreshold retained for publish path / observability
+      void reviewThreshold;
 
       result = {
         document: geometry.document,

@@ -3,17 +3,20 @@ import { Link, useParams, useSearchParams } from "react-router";
 import {
   DEFAULT_MATERIAL_PALETTES,
   filterProjectMedia,
+  floorplanVerificationLabel,
   isUnitViewMode,
   type LightingPreset,
   type MaterialPalette,
   type UnitViewMode,
 } from "@ancu/shared";
 import { AutoComposePanel } from "../components/AutoComposePanel";
+import { DataTrustBadge } from "../components/DataTrustBadge";
 import { MediaGallery } from "../components/MediaGallery";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { SpaceInsights } from "../components/SpaceInsights";
 import { ViewModeBar } from "../components/ViewModeBar";
 import { useProject } from "../hooks/useProjects";
-import { getSampleFloorPlan } from "../data/sample-floorplans";
+import { resolveFloorPlanForUnit } from "../data/sample-floorplans";
 import { QaPanel } from "../viewer/QaPanel";
 import "../viewer/QaPanel.css";
 import "./ApartmentViewerPage.css";
@@ -72,17 +75,46 @@ export default function ApartmentViewerPage() {
 
   const project = state.data;
   const apt = project.apartmentTypes.find((a) => a.slug === unit);
-  const floorPlanKey = apt?.floorplanKey ?? unit;
-  const floorPlan = floorPlanKey ? getSampleFloorPlan(floorPlanKey) : null;
+  const resolved = resolveFloorPlanForUnit({
+    floorplanKey: apt?.floorplanKey,
+    unitSlug: unit,
+    bedrooms: apt?.bedrooms,
+  });
+  const floorPlan = resolved.document;
+  const verification =
+    apt?.floorplanVerification ?? resolved.verificationStatus;
   const media = project.media ?? [];
   const floorplan2d = filterProjectMedia(media, "floorplan_2d", unit);
   const perspectives = filterProjectMedia(media, "perspective", unit);
 
-  if (!apt || !floorPlan) {
+  if (!apt) {
     return (
       <div className="container page-header">
         <h1>Không tìm thấy căn hộ</h1>
         <Link to={`/projects/${project.slug}/apartments`}>← Quay lại</Link>
+      </div>
+    );
+  }
+
+  if (!floorPlan) {
+    return (
+      <div className="container page-header">
+        <p>
+          <Link to={`/projects/${project.slug}/apartments`}>← {project.name}</Link>
+        </p>
+        <h1>{apt.name}</h1>
+        <DataTrustBadge
+          sourceClass={apt.sourceClass}
+          floorplanVerification={verification}
+          provenance={apt.provenance}
+        />
+        <p role="status" style={{ marginTop: "1rem", maxWidth: "42ch" }}>
+          {floorplanVerificationLabel(verification)}. AnCư không hiển thị mặt bằng
+          minh họa sai loại căn (ví dụ 2 PN cho căn 3 PN).
+        </p>
+        <Link to={`/projects/${project.slug}`} className="btn btn-secondary">
+          Quay lại dự án
+        </Link>
       </div>
     );
   }
@@ -110,6 +142,16 @@ export default function ApartmentViewerPage() {
           {apt.areaSqm?.trim() ? ` · ${apt.areaSqm}` : ""}
           {apt.price?.trim() ? ` · ${apt.price}` : ""}
         </p>
+        <DataTrustBadge
+          sourceClass={apt.sourceClass}
+          floorplanVerification={verification}
+          provenance={apt.provenance}
+        />
+        {(verification === "illustrative" || verification === "estimated") && (
+          <p className="viewer-hint" role="status">
+            {floorplanVerificationLabel(verification)} — số đo mang tính tham khảo.
+          </p>
+        )}
       </header>
 
       <ViewModeBar
@@ -210,6 +252,8 @@ export default function ApartmentViewerPage() {
           <MediaGallery items={perspectives.slice(0, 4)} emptyLabel="" variant="card" />
         </section>
       ) : null}
+
+      <SpaceInsights document={floorPlan} verification={verification} />
     </div>
   );
 }

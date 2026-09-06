@@ -86,15 +86,65 @@ Config format: **`wrangler.jsonc`** per app (P3).
 ```text
 /
 /projects
-/projects/:slug
+/projects/:slug                 ← reference UX (Grand Park model): hero → facts → explore → units → space → location → compare → sources
 /projects/:slug/3d
 /projects/:slug/apartments
-/projects/:slug/apartments/:unit
+/projects/:slug/apartments/:unit   ?view=2d|3d|perspective|auto
+/projects/:slug/showroom           ?unit=&view=&preset=&palette=
 /map
-/compare
+/compare                           ?a=&b=&c=&unit=
+/admin
+/blog
 ```
 
-URL state: `?building=` `?view=` `?room=` `?category=` `?destination=`
+URL state: `?unit=` `?view=` `?building=` `?room=` `?category=` `?destination=` `?precinct=`
+
+## Trust / verification model (implemented)
+
+Visitor-facing floorplan states:
+
+| Status | UI label |
+| --- | --- |
+| `verified` | Đã xác minh mặt bằng |
+| `partially_verified` | Xác minh một phần |
+| `estimated` | Mô hình tham khảo |
+| `illustrative` | Hình minh họa — không phải mặt bằng chính thức |
+| `unknown` | Chưa có mặt bằng được xác minh |
+
+Rules:
+
+- Mismatched bedroom geometry (e.g. 3BR → 2BR sample) must never render as factual.
+- Seed FloorPlanDocuments are `illustrative` / `seed_estimated`, never `verified`.
+- Public API keeps apartment typologies for browsing but strips pending prices/areas and raw confidence noise; exposes friendly `DataTrustBadge` copy.
+- Precise measurements require scale confidence ≥ 0.8 and non-estimated scale.
+
+## FloorPlanDocument evolution (backwards-compatible)
+
+Additive optional fields on schema v1:
+
+- per-object `confidence: { score, source, reason? }` on walls/doors/windows/rooms/fixtures/furniture
+- `source.verificationStatus`
+- `publicationState`: draft | needs_review | approved | published
+- window `headHeightM`, wall `heightDefaulted`
+
+Canonical geometry remains FloorPlanDocument JSON. GLB is derived only.
+
+## Spatial intelligence (partial)
+
+Shared helpers:
+
+- `evaluateFurnitureFit` — deterministic AABB + clearance
+- `computeSpatialMetrics` / `computeSpaceScore` — only when geometry sufficient
+- `validateFloorPlanTopology` — openings on walls, duplicates, self-intersect, zero-area
+- `DistanceOnlyRoutingProvider` — never fabricates travel times
+
+## Engine conversion stages
+
+```text
+SOURCE → CAPTURE* → NORMALIZE → CLASSIFY → EXTRACT* → SCALE* → GEOMETRY → VALIDATE → REVIEW → PUBLISH → 3D(consumer)
+```
+
+\* CAPTURE/EXTRACT/SCALE still stubbed or seed-driven; geometry validation now accepts shared schema + severity-aware review thresholds.
 
 ## Engine HTTP surface (internal)
 

@@ -76,15 +76,26 @@ Ship an MVP that feels like a trusted property showroom: Gamuda HCMC projects, m
 
 ## Current execution
 
-Active build wave: **M0 → M4 continuous** (user requested full-feature continuation).
+Active build wave: **Property decision platform** (trust → Grand Park UX → floorplan fidelity → spatial intelligence).
 
+### Implemented this wave
 
-## Next: Admin + AI Gateway + Showroom
+- [x] Floorplan verification semantics + mismatched geometry guard
+- [x] `DataTrustBadge` + visitor-friendly Vietnamese trust copy
+- [x] Unknown/pending value handling (no fake facts)
+- [x] Additive D1 migration `0003_hierarchy_floorplan_trust.sql` (precincts, published_floorplans pointers)
+- [x] Grand Park reference project detail IA (hero → units → space → location → compare → sources)
+- [x] CTA cleanup (Khám phá căn hộ / toàn khu / Xem 2D / 3D / Thử nội thất)
+- [x] Shared furniture fit + spatial metrics + topology validation
+- [x] Engine adopts shared FloorPlanDocument when present; legacy docs force review
 
-- [x] Admin page — project list, add-by-name, live process timing (no rate limit/timeout)
-- [x] AI Gateway client (multi-model use-cases) + crawl/synthesize fallback
-- [x] Blog routes + weekly draft generation
-- [x] Showroom lighting / materials / room hotspots
+### Deferred (P2/P3)
+
+- [ ] Commute profile + weighted decision engine
+- [ ] “Căn này có hợp với tôi?” guided fit (session preferences)
+- [ ] Daylight / view simulators (need orientation data)
+- [ ] Real vision extraction (Workers AI) replacing seedDocument requirement
+- [ ] Admin floorplan review UI overlay (`/admin/floorplans/:jobId/review`)
 - [ ] Wire production secrets + deploy smoke for admin/blog
 
 - Media: R2 object storage (`ASSETS`) + Cloudflare Images resize via `GET /api/media/*`.

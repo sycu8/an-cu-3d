@@ -108,6 +108,8 @@ export async function getDbProjectBySlug(
       area_sqm: string | null;
       price: string | null;
       floorplan_key: string | null;
+      floorplan_verification: string | null;
+      verified_at: string | null;
       source_class: string;
       provenance: string | null;
       confidence: number | null;
@@ -161,10 +163,18 @@ export async function getDbProjectBySlug(
       areaSqm: a.area_sqm ?? PENDING,
       price: a.price ?? PENDING,
       floorplanKey: a.floorplan_key ?? undefined,
+      floorplanVerification: (a.floorplan_verification as
+        | "verified"
+        | "partially_verified"
+        | "estimated"
+        | "illustrative"
+        | "unknown"
+        | null) ?? undefined,
       sourceClass: a.source_class,
       provenance: a.provenance ?? undefined,
       confidence: a.confidence ?? undefined,
       validationSummary: a.validation_summary ?? undefined,
+      verifiedAt: a.verified_at ?? undefined,
     })),
     nearbyPlaces: (nearby.results ?? []).map((n) => ({
       id: n.id,
