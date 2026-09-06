@@ -2,74 +2,40 @@
 
 ## Current phase
 
-**M0–M4 continuous build** (user: roadmap + all features)  
-Completed: P0–P1, **P2–P18 MVP spine** (`@ancu/shared`, engine worker, property web shell)  
-In flight: P19–P29 experience polish + production validation  
-Next: integrate parallel agent work, deploy preview, fill Gamuda crawl gaps
+**M3→M4** — P0–P18 spine landed; next **P19–P29** polish (3D/furniture/QA/map/compare/perf/security/prod).
+
+Branch: `cursor/mvp-build-4bd7`
 
 ## Roadmap
 
-See `docs/roadmap.md` (milestones M0–M4, phase checklist, MVP acceptance).
+See `docs/roadmap.md`.
 
-## Confirmed architecture
+## Packages
 
-- Monorepo (`pnpm` workspaces): `apps/*`, `packages/*`
-- Apps:
-  - `apps/property-web-worker` → `@ancu/property-web-worker`
-  - `apps/ancu-floorplan-engine` → `@ancu/floorplan-engine`
-- Shared: `packages/shared` → `@ancu/shared`
-- FloorPlanDocument JSON = SoT; GLB optional
-- `wrangler.jsonc`; envs `local` | `preview` | `production`
-- See `docs/architecture.md`
+- `@ancu/property-web-worker` — showroom UI + Workers API
+- `@ancu/floorplan-engine` — crawl/convert/publish
+- `@ancu/shared` — tokens, FloorPlanDocument, geometry, R2 paths
 
-## Binding names
+## Bindings
 
-**property-web:** `DB`, `ASSETS`, optional `ENGINE`  
+**web:** `DB`, `ASSETS`, optional `ENGINE`  
 **engine:** `ENGINE_DB`, `FLOORPLANS`, `CONVERSION_QUEUE`, `CRAWL_QUEUE`, `CONVERSION_WORKFLOW`, `AI`, `BROWSER`
 
-Logical: `ancu-property-db`, `ancu-engine-db`, `ancu-property-assets`, `ancu-floorplans`, `ancu-conversion`, `ancu-crawl`, `ancu-conversion-workflow`
-
-## Important paths
-
-- `docs/roadmap.md`, `docs/architecture.md`, `docs/agent-state.md`
-- `apps/property-web-worker/`, `apps/ancu-floorplan-engine/`, `packages/shared/`
-
-## Shared package (`@ancu/shared`)
-
-- Tokens: `src/tokens.ts`, `src/tokens.css`
-- R2 paths: `src/r2-paths.ts`
-- FloorPlanDocument: `src/floorplan/schema.ts`, `src/floorplan/types.ts`
-- Geometry: `src/geometry/{vec2,walls,validation}.ts`
-- Seed docs: `src/floorplan/samples/` (studio / 1BR / 2BR, estimated)
-- Validate: `pnpm --filter @ancu/shared typecheck && pnpm --filter @ancu/shared test`
-
-## Completed decisions
-
-- Separate D1/R2 product vs engine; Queues+Workflows for conversion
-- Workers AI cascade + R2 inference cache by input hash
-- MapLibre abstracted; R3F procedural renderer; no fabricated Gamuda facts
-- Brand palette locked; implement via shared tokens
-- Placeholder D1 UUIDs in wrangler until CI creates real resources
-
-## Unresolved blockers
-
-- Real Cloudflare resource IDs (create via wrangler + GitHub secrets on deploy)
-- Official Gamuda floor-plan URL inventory (allowlist crawl later)
-- Parallel agent integration may need conflict resolution
-
-## Validation commands
+## Validation
 
 ```bash
 pnpm install
 pnpm --filter @ancu/shared typecheck && pnpm --filter @ancu/shared test
-pnpm --filter @ancu/floorplan-engine test
-pnpm --filter @ancu/property-web-worker typecheck
-pnpm --filter @ancu/property-web-worker test
-pnpm --filter @ancu/property-web-worker build
+pnpm --filter @ancu/floorplan-engine typecheck && pnpm --filter @ancu/floorplan-engine test
+pnpm --filter @ancu/property-web-worker typecheck && pnpm --filter @ancu/property-web-worker test && pnpm --filter @ancu/property-web-worker build
 ```
 
-Last integration pass (cursor/mvp-build-4bd7): all commands above green.
+## Blockers
+
+- Real Cloudflare D1/R2/Queue IDs (placeholders in wrangler)
+- Official Gamuda floor-plan URL inventory for crawl allowlist
+- Map/3D bundle size (code-split remaining)
 
 ## Model routing
 
-T1 default; T3 for hard geometry if stubs prove insufficient.
+T1 default; T3 only for hard topology/3D bugs.

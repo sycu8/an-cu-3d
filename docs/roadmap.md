@@ -35,14 +35,14 @@ Ship an MVP that feels like a trusted property showroom: Gamuda HCMC projects, m
 - [x] P16 Doors/windows
 - [x] P17 Rooms
 - [x] P18 Geometry validation
-- [ ] P19 Procedural 3D engine
-- [ ] P20 Furniture
-- [ ] P21 Dollhouse/apartment UI
-- [ ] P22 QA overlay
-- [ ] P23 Review/publish flow
-- [ ] P24 Project 3D experience
-- [ ] P25 Map/location
-- [ ] P26 Comparison/infographics
+- [x] P19 Procedural 3D engine (MVP R3F viewer)
+- [x] P20 Furniture (toggle + seed instances)
+- [x] P21 Dollhouse/apartment UI (modes + room focus)
+- [x] P22 QA overlay (basic confidence/validation panel)
+- [x] P23 Review/publish flow (engine approve/reject/publish stubs)
+- [x] P24 Project 3D experience (placeholder site extrusion)
+- [x] P25 Map/location (MapLibre + amenity filters)
+- [x] P26 Comparison/infographics (up to 3 projects)
 - [ ] P27 Mobile/performance
 - [ ] P28 Security/observability
 - [ ] P29 Production validation
