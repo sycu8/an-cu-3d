@@ -33,6 +33,8 @@ export const DEVELOPER_ALLOWLIST_DOMAINS = [
 export const SECONDARY_MARKET_ALLOWLIST_DOMAINS = [
   "batdongsan.com.vn",
   "www.batdongsan.com.vn",
+  "onehousing.vn",
+  "www.onehousing.vn",
   "nhadat247.com.vn",
   "www.nhadat247.com.vn",
   "mogi.vn",

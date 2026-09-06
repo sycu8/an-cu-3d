@@ -160,7 +160,7 @@ Job create returns quickly; work runs on Queue/Workflow.
 ## Security principles
 
 - Engine endpoints are internal (secret / Access / service binding).
-- No unrestricted URL fetcher; domain allowlist + SSRF guards.
+- No unrestricted URL fetcher; domain allowlist + SSRF guards (CĐT sites + secondary Batdongsan / OneHousing — listing prices never treated as official CĐT sheets).
 - No public R2 write; no secrets in frontend bundles.
 
 
