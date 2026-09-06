@@ -139,6 +139,7 @@ export default function ProjectDetailPage() {
                 {apt.bedrooms != null ? `${apt.bedrooms} PN` : "—"} ·{" "}
                 <span className={isPending(apt.areaSqm) ? "pending-data" : ""}>{apt.areaSqm}</span>
               </p>
+              <p className={isPending(apt.price) ? "pending-data" : ""}>Giá: {apt.price}</p>
               {apt.confidence != null && (
                 <p className="apt-confidence">Tin cậy: {Math.round(apt.confidence * 100)}%</p>
               )}
@@ -146,6 +147,59 @@ export default function ProjectDetailPage() {
           ))}
         </div>
       </section>
+
+      {(project.documents?.length ?? 0) > 0 && (
+        <section className="project-docs-section">
+          <h2>Tài liệu & pháp lý</h2>
+          <ul className="project-docs-list">
+            {project.documents!.map((doc) => (
+              <li key={doc.id} className="card card-body">
+                <div className="project-docs-head">
+                  <strong>{doc.title}</strong>
+                  <span className={`tag ${doc.status === "verified" ? "tag-teal" : "tag-clay"}`}>
+                    {doc.status === "verified"
+                      ? "Đã xác minh"
+                      : doc.status === "unavailable"
+                        ? "Không có"
+                        : "Chờ xác minh"}
+                  </span>
+                </div>
+                {doc.note && <p>{doc.note}</p>}
+                {doc.issuedAt && <p className="provenance">Thời điểm: {doc.issuedAt}</p>}
+                {doc.provenance && <p className="provenance">Nguồn: {doc.provenance}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {(project.handoverUnits?.length ?? 0) > 0 && (
+        <section className="project-handover-section">
+          <h2>Căn hộ / phân khu bàn giao</h2>
+          <ul className="project-handover-list">
+            {project.handoverUnits!.map((unit) => (
+              <li key={unit.id} className="card card-body">
+                <div className="project-docs-head">
+                  <strong>{unit.label}</strong>
+                  <span className="tag tag-teal">
+                    {unit.status === "handed_over"
+                      ? "Đã bàn giao"
+                      : unit.status === "construction"
+                        ? "Đang xây"
+                        : unit.status === "selling"
+                          ? "Đang bán"
+                          : "Sắp tới"}
+                  </span>
+                </div>
+                {unit.tower && <p>Tháp / phân khu: {unit.tower}</p>}
+                {unit.handedOverAt && <p>Mốc: {unit.handedOverAt}</p>}
+                {unit.note && <p>{unit.note}</p>}
+                {unit.provenance && <p className="provenance">Nguồn: {unit.provenance}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {project.nearbyPlaces.length > 0 && (
         <section className="nearby-section">

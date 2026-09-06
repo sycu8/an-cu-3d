@@ -9,15 +9,18 @@ import type {
   Wall,
 } from "@ancu/shared";
 import {
-  catalogSize,
   fixtureColor,
   fixtureSize,
-  furnitureColor,
   roomCentroid,
   wallCenter,
   wallLength,
   wallRotation,
 } from "./utils";
+import {
+  buildFurnitureDef,
+  furnitureStyleFromPaletteLabel,
+  type FurnitureStyle,
+} from "./furnitureCatalog";
 
 function WallMesh({ wall, color }: { wall: Wall; color: string }) {
   const length = wallLength(wall);
@@ -35,18 +38,25 @@ function WallMesh({ wall, color }: { wall: Wall; color: string }) {
   );
 }
 
-function FurnitureMesh({ item }: { item: FurnitureInstance }) {
+function FurnitureMesh({
+  item,
+  style = "modern",
+}: {
+  item: FurnitureInstance;
+  style?: FurnitureStyle;
+}) {
   const [x, z] = item.position;
-  const [w, h, d] = catalogSize(item.catalogId);
+  const def = buildFurnitureDef(item.catalogId, style);
   const scale = item.scale ?? 1;
   return (
-    <Box
-      position={[x, h / 2, z]}
-      rotation={[0, item.rotationRad, 0]}
-      args={[w * scale, h * scale, d * scale]}
-    >
-      <meshStandardMaterial color={furnitureColor(item.catalogId)} />
-    </Box>
+    <group position={[x, 0, z]} rotation={[0, item.rotationRad, 0]} scale={scale}>
+      {def.parts.map((part, index) => (
+        <mesh key={`${item.id}-p${index}`} position={part.position} castShadow receiveShadow>
+          <boxGeometry args={part.size} />
+          <meshStandardMaterial color={part.color} roughness={0.65} metalness={0.05} />
+        </mesh>
+      ))}
+    </group>
   );
 }
 
@@ -182,7 +192,11 @@ export function FloorPlanScene({
       ))}
 
       {visibleFurniture.map((item) => (
-        <FurnitureMesh key={item.id} item={item} />
+        <FurnitureMesh
+          key={item.id}
+          item={item}
+          style={furnitureStyleFromPaletteLabel(materialPalette?.label)}
+        />
       ))}
 
       {visibleFixtures.map((item) => (

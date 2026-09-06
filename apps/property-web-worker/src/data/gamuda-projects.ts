@@ -1,17 +1,12 @@
 import type { ProjectDetail, ProjectSummary } from "../types";
-import { demoGalleryForSlug } from "./demo-gallery";
-import { DEMO_SCALE_PROJECTS } from "./demo-scale-projects";
+import { DATXANH_BLUEMARQ_PROJECTS } from "./datxanh-bluemarq-projects";
+import { DEVELOPERS } from "./developers";
+import { ECOPARK_PROJECTS } from "./ecopark-projects";
+import { VINHOMES_PROJECTS } from "./vinhomes-projects";
 
 const PENDING = "Chờ xác minh";
 
-export const GAMUDA_DEVELOPER = {
-  id: "dev_gamuda_land",
-  slug: "gamuda-land",
-  name: "Gamuda Land",
-  website: "https://www.gamudaland.com.vn",
-  sourceClass: "verified_public" as const,
-  provenance: "Public developer website and press releases",
-};
+export const GAMUDA_DEVELOPER = DEVELOPERS.gamuda;
 
 export const GAMUDA_PROJECTS: ProjectDetail[] = [
   {
@@ -236,13 +231,42 @@ export const GAMUDA_PROJECTS: ProjectDetail[] = [
         sourceClass: "estimated",
       },
     ],
+    documents: [
+      {
+        id: "doc_celadon_brochure",
+        kind: "brochure",
+        title: "Tài liệu giới thiệu Celadon City",
+        status: "pending",
+        note: "Cần đính kèm bản CĐT chính thức",
+        sourceClass: "estimated",
+      },
+      {
+        id: "doc_celadon_legal",
+        kind: "legal_title",
+        title: "Pháp lý / sổ hồng theo phân khu",
+        status: "pending",
+        sourceClass: "estimated",
+      },
+    ],
+    handoverUnits: [
+      {
+        id: "hu_celadon_phases",
+        label: "Các phân khu căn hộ / thấp tầng đang vận hành",
+        status: "handed_over",
+        note: "Celadon City đã có cư dân sinh sống; chi tiết từng block chờ bảng CĐT",
+        sourceClass: "verified_public",
+        provenance: "Public Celadon City community / progress coverage",
+      },
+    ],
   },
 ];
 
-/** Seed + sanitized demo inventory for production-like local density. */
+/** Production seed inventory — real developers only (no sanitized demo fixtures). */
 export const ALL_SEED_PROJECTS: ProjectDetail[] = [
   ...GAMUDA_PROJECTS,
-  ...DEMO_SCALE_PROJECTS,
+  ...VINHOMES_PROJECTS,
+  ...ECOPARK_PROJECTS,
+  ...DATXANH_BLUEMARQ_PROJECTS,
 ];
 
 export function getProjectSummaries(): ProjectSummary[] {
@@ -267,10 +291,7 @@ export function getProjectSummaries(): ProjectSummary[] {
 }
 
 export function getProjectBySlug(slug: string): ProjectDetail | undefined {
-  const project = ALL_SEED_PROJECTS.find((p) => p.slug === slug);
-  if (!project) return undefined;
-  if (project.media?.length) return project;
-  return { ...project, media: demoGalleryForSlug(slug) };
+  return ALL_SEED_PROJECTS.find((p) => p.slug === slug);
 }
 
 export function getAllNearbyPlaces() {

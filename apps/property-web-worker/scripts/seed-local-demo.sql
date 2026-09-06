@@ -1,4 +1,4 @@
--- Sanitized local D1 seed for production-like density.
+-- Local D1 seed helpers. App seed inventory lives in TypeScript (Gamuda/Vinhomes/Ecopark/Đất Xanh).
 -- Apply only to local DB: wrangler d1 execute ancu-property-db --local --file=scripts/seed-local-demo.sql
 -- Does not invent real prices/areas/handover dates.
 
@@ -12,6 +12,14 @@ INSERT OR IGNORE INTO developers (
   'verified_public',
   'Public developer website'
 );
+
+
+INSERT OR IGNORE INTO developers (
+  id, slug, name, website, source_class, provenance
+) VALUES
+  ('dev_vinhomes', 'vinhomes', 'Vinhomes', 'https://vinhomes.vn', 'verified_public', 'Vinhomes / Vingroup public corporate pages'),
+  ('dev_ecopark', 'ecopark', 'Ecopark', 'https://ecopark.com.vn', 'verified_public', 'Ecopark public website'),
+  ('dev_dat_xanh_bluemarq', 'dat-xanh-bluemarq', 'Đất Xanh / Bluemarq Group', 'https://www.datxanh.com.vn', 'verified_public', 'Đất Xanh public disclosures; Bluemarq brand transition');
 
 INSERT OR REPLACE INTO projects (
   id, developer_id, slug, name, tagline, description, city, district, address,

@@ -33,7 +33,7 @@ pnpm db:seed:local   # sanitized D1-only demo project (no real prices)
 pnpm --filter @ancu/property-web-worker dev
 ```
 
-Seed inventory also includes in-memory Gamuda stubs + sanitized `demo-*` fixtures (merged by the worker). Do not invent prices/areas/handover dates. Never apply `scripts/seed-local-demo.sql` to remote/production without explicit approval.
+Seed inventory includes Gamuda Land, Vinhomes, Ecopark, and Đất Xanh/Bluemarq projects with documents + handover metadata. Do not invent prices/areas/handover dates — use `Chờ xác minh` until verified. Never apply `scripts/seed-local-demo.sql` to remote/production without explicit approval.
 
 ## Build
 

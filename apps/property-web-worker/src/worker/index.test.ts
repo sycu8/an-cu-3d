@@ -42,24 +42,30 @@ describe("worker security + health", () => {
   it("lists seed projects from GET /api/projects without D1", async () => {
     const response = await worker.fetch(new Request("http://localhost/api/projects"), env);
     const body = (await response.json()) as {
-      projects: { slug: string }[];
+      projects: { slug: string; developerName?: string }[];
       source?: string;
     };
     expect(response.status).toBe(200);
-    expect(body.projects.length).toBeGreaterThanOrEqual(6);
+    expect(body.projects.length).toBeGreaterThanOrEqual(8);
     expect(body.projects.some((p) => p.slug === "celadon-city")).toBe(true);
-    expect(body.projects.some((p) => p.slug.startsWith("demo-"))).toBe(true);
+    expect(body.projects.some((p) => p.slug === "vinhomes-grand-park")).toBe(true);
+    expect(body.projects.some((p) => p.slug === "ecopark")).toBe(true);
+    expect(body.projects.some((p) => p.slug === "opal-boulevard")).toBe(true);
+    expect(body.projects.some((p) => p.slug.startsWith("demo-"))).toBe(false);
   });
 
   it("resolves seed project detail by slug", async () => {
     const response = await worker.fetch(
-      new Request("http://localhost/api/projects/demo-riverside-haven"),
+      new Request("http://localhost/api/projects/vinhomes-grand-park"),
       env,
     );
-    const body = (await response.json()) as { project: { slug: string; name: string } };
+    const body = (await response.json()) as {
+      project: { slug: string; name: string; handoverUnits?: unknown[] };
+    };
     expect(response.status).toBe(200);
-    expect(body.project.slug).toBe("demo-riverside-haven");
-    expect(body.project.name).toContain("Demo");
+    expect(body.project.slug).toBe("vinhomes-grand-park");
+    expect(body.project.name).toContain("Vinhomes");
+    expect((body.project.handoverUnits ?? []).length).toBeGreaterThan(0);
   });
 
 });
