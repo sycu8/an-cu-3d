@@ -2,6 +2,8 @@
 
 ## Current phase
 
+Listing crawl sources: `batdongsan.com.vn` + `onehousing.vn` allowlisted as **secondary_market** (reference-only).
+
 **Property decision platform** — P0 trust + Grand Park UX + floorplan fidelity + **P2 decision/fit/commute**.
 
 Branch: `cursor/property-decision-platform-e176`

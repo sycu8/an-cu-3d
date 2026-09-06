@@ -53,10 +53,12 @@ const KNOWN_SOURCES: Record<
 /** Merge hardcoded Gamuda hints with CĐT crawl seeds (Vinhomes / Ecopark / Đất Xanh…). */
 function sourcesForSlug(slug: string): { label: string; url: string }[] {
   const known = KNOWN_SOURCES[slug]?.urls ?? [];
-  const seed = crawlSeedForSlug(slug)?.officialUrls ?? [];
+  const crawlSeed = crawlSeedForSlug(slug);
+  const seed = crawlSeed?.officialUrls ?? [];
+  const secondary = crawlSeed?.secondaryMarketUrls ?? [];
   const seen = new Set<string>();
   const out: { label: string; url: string }[] = [];
-  for (const s of [...seed, ...known]) {
+  for (const s of [...seed, ...secondary, ...known]) {
     if (seen.has(s.url)) continue;
     seen.add(s.url);
     out.push(s);
@@ -184,6 +186,7 @@ export async function discoverSources(name: string, slug: string) {
       `${name} tổng mặt bằng atlas`,
       ...(seed?.atlasHints.map((h) => `${name} ${h}`) ?? []),
       `${name} giá thị trường thứ cấp`,
+      `${name} site:batdongsan.com.vn OR site:onehousing.vn`,
     ],
     channel: "developer" as const,
     atlasHints: seed?.atlasHints ?? [],

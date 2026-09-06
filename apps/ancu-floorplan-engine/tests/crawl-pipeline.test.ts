@@ -23,6 +23,8 @@ describe("crawl allowlist extensions", () => {
   it("classifies crawl channel by host", () => {
     expect(crawlChannelForHost("vinhomes.vn")).toBe("developer");
     expect(crawlChannelForHost("www.batdongsan.com.vn")).toBe("secondary_market");
+    expect(crawlChannelForHost("onehousing.vn")).toBe("secondary_market");
+    expect(validateAllowlistedUrl("https://onehousing.vn/mua-ban").ok).toBe(true);
     expect(crawlChannelForHost("evil.example")).toBeNull();
   });
 
