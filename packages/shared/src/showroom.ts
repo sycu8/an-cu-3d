@@ -78,3 +78,17 @@ export const DEFAULT_MATERIAL_PALETTES: MaterialPalette[] = [
     accent: "#C9825B",
   },
 ];
+
+
+export type ProjectShowroomConfig = {
+  lightingDefault?: LightingPreset;
+  materialPaletteLabel?: string;
+  hotspots?: { roomHint: string; label: string; order: number }[];
+  materialFromPhoto?: {
+    floor: string;
+    wall: string;
+    cabinet: string;
+    accent: string;
+    notes?: string;
+  };
+};

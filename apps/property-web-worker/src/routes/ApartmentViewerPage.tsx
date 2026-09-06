@@ -58,7 +58,7 @@ export default function ApartmentViewerPage() {
           {apt.bedrooms != null ? `${apt.bedrooms} phòng ngủ` : "—"}
           {apt.bathrooms != null ? ` · ${apt.bathrooms} phòng tắm` : ""}
           {" · "}
-          <span className={apt.areaSqm === "Data pending verification" ? "pending-data" : ""}>
+          <span className={apt.areaSqm === "Chờ xác minh" ? "pending-data" : ""}>
             {apt.areaSqm}
           </span>
         </p>

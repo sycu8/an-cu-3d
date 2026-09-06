@@ -65,3 +65,41 @@ pnpm --filter @ancu/floorplan-engine exec wrangler types
 - Workers: `wrangler rollback` / prior version deploy
 - D1: forward-only migrations; ship compensating migration (never hand-edit prod)
 - R2 published floor plans: never overwrite; publish new version key and point D1 meta at it
+
+
+## Admin + AI Gateway secrets (property-web)
+
+Set Worker secrets (production / preview) — never commit real values:
+
+```bash
+# Local .dev.vars (gitignored)
+node scripts/generate-admin-secret.mjs
+
+# Production / preview Worker secret
+openssl rand -base64 32
+pnpm --filter @ancu/property-web-worker exec wrangler secret put ADMIN_SECRET
+# Optional AI Gateway (research / blog / image / QA). Without these, pipelines use deterministic fallbacks.
+pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_TOKEN
+pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ACCOUNT_ID
+pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ID
+```
+
+Also set `ENGINE_API_SECRET` on both Workers when the admin build path should call the floorplan engine.
+
+### Smoke (admin + blog)
+
+```bash
+# Health
+curl -sS "$WEB_BASE_URL/api/health"
+
+# Admin without secret → 401
+curl -sS -o /dev/null -w "%{http_code}\n" "$WEB_BASE_URL/api/admin/projects"
+
+# Admin with secret → 200
+curl -sS -H "Authorization: Bearer $ADMIN_SECRET" "$WEB_BASE_URL/api/admin/projects" | head
+
+# Blog public list
+curl -sS "$WEB_BASE_URL/api/blog"
+```
+
+Weekly cron (`0 1 * * 1`) only creates **draft** blog posts — never auto-publishes.

@@ -6,7 +6,7 @@
  */
 import type { ProjectDetail } from "../types";
 
-const PENDING = "Data pending verification";
+const PENDING = "Chờ xác minh";
 
 export const DEMO_SCALE_PROJECTS: ProjectDetail[] = [
   {

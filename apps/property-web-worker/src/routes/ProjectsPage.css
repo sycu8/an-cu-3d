@@ -1,0 +1,11 @@
+.projects-page {
+  padding-bottom: var(--space-3xl);
+}
+
+.projects-header p {
+  max-width: 40rem;
+}
+
+.projects-empty {
+  color: var(--color-text-muted);
+}

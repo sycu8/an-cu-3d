@@ -266,10 +266,10 @@ export default function MapPage() {
                 Khoảng cách đường thẳng (gần đúng): <strong>{straightLineKm.toFixed(1)} km</strong>
               </p>
             ) : routeDestination ? (
-              <p className="pending-data">Data pending verification</p>
+              <p className="pending-data">Chờ xác minh</p>
             ) : null}
             <p className="route-duration pending-data">
-              Thời gian di chuyển: Data pending verification
+              Thời gian di chuyển: Chờ xác minh
             </p>
           </div>
         </aside>

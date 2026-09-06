@@ -7,6 +7,7 @@ import {
   crawlSources,
   discoverSources,
   generateImageAsset,
+  runFactualQa,
   synthesizeProject,
 } from "./ai/pipeline";
 
@@ -104,6 +105,26 @@ export async function runProjectBuild(
         : "Tổng hợp bằng fallback deterministic (chưa cấu hình AI Gateway)",
     );
 
+    await emit(env, job.id, startedAt, "synthesize", "QA thực tế — đối chiếu claims với nguồn…");
+    const claims = [
+      project.priceRange,
+      project.handover,
+      project.totalUnits,
+      project.address,
+      ...project.apartmentTypes.map((a) => a.areaSqm),
+    ].join("\n");
+    const sources = crawled.map((c) => `### ${c.label}\n${c.snippet}`).join("\n\n");
+    const qa = await runFactualQa(env, claims, sources);
+    await emit(
+      env,
+      job.id,
+      startedAt,
+      "synthesize",
+      qa.ok
+        ? `QA OK (${qa.source})`
+        : `QA flags: ${qa.issues.slice(0, 3).join("; ") || "issues"} (${qa.source})`,
+    );
+
     await emit(env, job.id, startedAt, "assets", "Tạo asset hình ảnh hỗ trợ / prompt…");
     const cover = await generateImageAsset(
       env,
@@ -125,6 +146,21 @@ export async function runProjectBuild(
       "floorplans",
       `Assist ${assist.assistJsonKey}; units linked to sample plans`,
     );
+
+    
+    if (assist.materials) {
+      project.showroom = {
+        ...project.showroom,
+        materialFromPhoto: {
+          floor: assist.materials.floor ?? "#d9cbb8",
+          wall: assist.materials.wall ?? "#f4efe8",
+          cabinet: assist.materials.cabinet ?? "#8b7355",
+          accent: assist.materials.accent ?? "#285A52",
+          notes: assist.notes,
+        },
+        materialPaletteLabel: project.showroom?.materialPaletteLabel ?? "Ivory ấm",
+      };
+    }
 
     if (env.ENGINE_BASE_URL && env.ENGINE_API_SECRET) {
       try {

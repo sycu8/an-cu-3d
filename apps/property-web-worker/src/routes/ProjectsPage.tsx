@@ -1,6 +1,7 @@
 import { ProjectCard } from "../components/ProjectCard";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { useProjectSummaries } from "../hooks/useProjects";
+import "./ProjectsPage.css";
 
 export default function ProjectsPage() {
   const state = useProjectSummaries();
@@ -18,22 +19,16 @@ export default function ProjectsPage() {
   const projects = state.data ?? [];
 
   return (
-    <div className="container">
-      <header className="page-header">
+    <div className="container projects-page">
+      <header className="page-header projects-header">
         <h1>Dự án</h1>
         <p>
-          Danh sách dự án với nguồn dữ liệu và mức tin cậy được ghi rõ.
-          Thông tin chưa xác minh hiển thị &ldquo;Data pending verification&rdquo;.
-          {state.status === "ready" && (
-            <>
-              {" "}
-              Nguồn: <strong>{state.source}</strong> · {projects.length} dự án.
-            </>
-          )}
+          Danh sách dự án với nguồn và mức tin cậy rõ ràng. Thông tin chưa xác minh
+          hiển thị &ldquo;Chờ xác minh&rdquo;.
         </p>
       </header>
       {projects.length === 0 ? (
-        <p>Chưa có dự án nào.</p>
+        <p className="projects-empty">Chưa có dự án nào.</p>
       ) : (
         <div className="grid-projects">
           {projects.map((p) => (

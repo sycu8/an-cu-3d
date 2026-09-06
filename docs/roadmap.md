@@ -50,7 +50,7 @@ Ship an MVP that feels like a trusted property showroom: Gamuda HCMC projects, m
 ## MVP acceptance (must demo)
 
 1. Brand tokens applied across UI / map / 3D semantics
-2. ≥3 Gamuda projects listed with provenance; unknowns = `Data pending verification`
+2. ≥3 Gamuda projects listed with provenance; unknowns = `Chờ xác minh`
 3. Map: projects + amenity categories + route UI (no fabricated times)
 4. ≥3 different FloorPlanDocuments (studio/1BR/2BR+) rendering procedurally
 5. Dollhouse + top view + room focus + furniture toggle

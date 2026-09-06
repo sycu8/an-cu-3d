@@ -5,7 +5,7 @@ import { useProject } from "../hooks/useProjects";
 import "./ProjectDetailPage.css";
 
 function isPending(value: string) {
-  return value === "Data pending verification";
+  return value === "Chờ xác minh";
 }
 
 export default function ProjectDetailPage() {
@@ -49,7 +49,7 @@ export default function ProjectDetailPage() {
           <dl>
             <dt>Địa chỉ</dt>
             <dd className={isPending(project.address ?? "") ? "pending-data" : ""}>
-              {project.address ?? "Data pending verification"}
+              {project.address ?? "Chờ xác minh"}
             </dd>
             <dt>Giá</dt>
             <dd className={isPending(project.priceRange) ? "pending-data" : ""}>{project.priceRange}</dd>

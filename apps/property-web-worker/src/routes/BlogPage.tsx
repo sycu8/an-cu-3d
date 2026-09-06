@@ -11,11 +11,11 @@ export default function BlogPage() {
     void (async () => {
       try {
         const res = await fetch("/api/blog");
-        if (!res.ok) throw new Error("Failed to load blog");
+        if (!res.ok) throw new Error("Không tải được blog");
         const data = (await res.json()) as { posts: BlogPost[] };
         setPosts(data.posts);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load blog");
+        setError(e instanceof Error ? e.message : "Không tải được blog");
       }
     })();
   }, []);
@@ -24,19 +24,26 @@ export default function BlogPage() {
     <div className="container blog-page">
       <header className="blog-header">
         <h1>Blog AnCư</h1>
-        <p>Góc nhìn nhà mẫu hàng tuần — hiểu không gian trước khi gọi là nhà.</p>
+        <p>Góc nhìn nhà mẫu — hiểu không gian trước khi gọi là nhà.</p>
       </header>
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p className="blog-error" role="alert">
+          {error}
+        </p>
+      )}
       <ul className="blog-list">
         {posts.map((post) => (
           <li key={post.id}>
-            <Link to={`/blog/${post.slug}`}>
+            <Link to={`/blog/${post.slug}`} className="blog-card">
               <h2>{post.title}</h2>
               <p>{post.excerpt}</p>
+              <span className="blog-card-cta">Đọc bài</span>
             </Link>
           </li>
         ))}
-        {posts.length === 0 && !error && <li>Chưa có bài viết công khai.</li>}
+        {posts.length === 0 && !error && (
+          <li className="blog-empty">Chưa có bài viết công khai.</li>
+        )}
       </ul>
     </div>
   );

@@ -24,6 +24,6 @@
   --room-selected: var(--color-accent);
   --border-subtle: rgba(37, 49, 46, 0.12);
 
-  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype", serif;
-  --font-body: "Source Sans 3", "Source Sans Pro", "Segoe UI", sans-serif;
+  --font-display: "Literata", "Noto Serif", Georgia, serif;
+  --font-body: "Be Vietnam Pro", "Noto Sans", system-ui, sans-serif;
 }

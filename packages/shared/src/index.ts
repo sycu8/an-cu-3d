@@ -93,12 +93,15 @@ export {
   gatewayChatUrl,
   gatewayOpenAiUrl,
   parseJsonFromLlm,
+  imageViaGateway,
+  factualQaViaGateway,
 } from "./ai-gateway.js";
 export type {
   AiGatewayConfig,
   AiUseCase,
   ChatMessage,
   ChatResult,
+  ImageResult,
 } from "./ai-gateway.js";
 
 export {
@@ -122,4 +125,5 @@ export type {
   LightingPreset,
   MaterialPalette,
   RoomHotspot,
+  ProjectShowroomConfig,
 } from "./showroom.js";
