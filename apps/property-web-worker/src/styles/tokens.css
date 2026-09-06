@@ -1,15 +1,14 @@
-/* AnCư 3D design tokens — warm architecture showroom palette */
+/* AnCư 3D — warm architecture showroom palette */
 :root {
-  /* Brand */
   --ancu-brand: "AnCư 3D";
 
-  /* Warm ivory backgrounds */
-  --color-bg-primary: #faf7f2;
-  --color-bg-secondary: #f3ede4;
+  /* Surfaces */
+  --color-bg-primary: #f7f3ea;
+  --color-bg-secondary: #efe8dc;
   --color-bg-elevated: #ffffff;
-  --color-bg-muted: #e8e0d4;
+  --color-bg-muted: #e5ddd0;
 
-  /* Deep Teal — primary CTA */
+  /* Deep Teal */
   --color-teal-900: #0d3d3a;
   --color-teal-800: #14524e;
   --color-teal-700: #1a6b65;
@@ -17,7 +16,7 @@
   --color-teal-500: #2a9d94;
   --color-teal-100: #d4ebe8;
 
-  /* Warm Clay — accent sparingly */
+  /* Warm Clay */
   --color-clay-700: #9a6b4f;
   --color-clay-600: #b07d5e;
   --color-clay-500: #c4916f;
@@ -36,12 +35,13 @@
   --color-accent: var(--color-clay-600);
   --color-success: #3d7a5e;
   --color-warning: #b8860b;
+  --color-danger: #8a3a32;
 
-  /* Typography */
+  /* Typography — match index.html */
   --font-display: "Literata", "Noto Serif", Georgia, serif;
   --font-body: "Be Vietnam Pro", "Noto Sans", system-ui, sans-serif;
 
-  --text-hero: clamp(2.75rem, 6vw, 4.5rem);
+  --text-hero: clamp(2.75rem, 7vw, 4.75rem);
   --text-h1: clamp(2rem, 4vw, 3rem);
   --text-h2: clamp(1.5rem, 3vw, 2rem);
   --text-h3: 1.25rem;
@@ -56,10 +56,10 @@
   --space-lg: 1.5rem;
   --space-xl: 2rem;
   --space-2xl: 3rem;
-  --space-3xl: 4rem;
+  --space-3xl: 4.5rem;
 
   /* Layout */
-  --max-width: 1200px;
+  --max-width: 1180px;
   --header-height: 4rem;
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -67,8 +67,8 @@
 
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(44, 40, 37, 0.06);
-  --shadow-md: 0 4px 12px rgba(44, 40, 37, 0.08);
-  --shadow-lg: 0 8px 24px rgba(44, 40, 37, 0.1);
+  --shadow-md: 0 4px 16px rgba(44, 40, 37, 0.08);
+  --shadow-lg: 0 12px 32px rgba(44, 40, 37, 0.1);
 
   /* 3D viewer */
   --color-wall: #e8e2d8;
@@ -76,4 +76,9 @@
   --color-floor: #f5f0ea;
   --color-room-label: var(--color-teal-800);
   --color-furniture: var(--color-clay-500);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 180ms;
+  --dur-med: 420ms;
 }

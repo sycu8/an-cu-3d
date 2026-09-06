@@ -3,6 +3,7 @@ import { BRAND, TAGLINE } from "@ancu/shared";
 import { ProjectCard } from "../components/ProjectCard";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { useProjectSummaries } from "../hooks/useProjects";
+import { HERO_IMAGE } from "../lib/projectVisuals";
 import "./HomePage.css";
 
 export default function HomePage() {
@@ -18,42 +19,51 @@ export default function HomePage() {
     );
   }
 
-  const projects = ("data" in state && state.data ? state.data : []).slice(0, 6);
+  const projects = (state.data ?? []).slice(0, 6);
 
   return (
     <div className="home">
-      <section className="hero">
+      <section className="hero" aria-label={BRAND}>
+        <div
+          className="hero-media"
+          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
+          role="img"
+          aria-label="Không gian nhà mẫu hiện đại"
+        />
+        <div className="hero-veil" aria-hidden="true" />
         <div className="container hero-inner">
-          <h1 className="hero-title">{BRAND}</h1>
-          <p className="hero-tagline">{TAGLINE}</p>
+          <p className="hero-brand">{BRAND}</p>
+          <h1 className="hero-title">{TAGLINE}</h1>
           <p className="hero-desc">
-            Khám phá dự án bất động sản theo cách kiến trúc — mặt bằng, không gian 3D,
-            và bản đồ kết nối — với nguồn dữ liệu minh bạch.
+            Mặt bằng, không gian 3D và bản đồ kết nối — hiểu căn nhà trước khi gọi là nhà.
           </p>
           <div className="hero-actions">
             <Link to="/projects" className="btn btn-primary btn-lg">
-              Xem dự án
-            </Link>
-            <Link to="/map" className="btn btn-secondary btn-lg">
-              Bản đồ khu vực
+              Khám phá dự án
             </Link>
           </div>
         </div>
       </section>
 
       <section className="container home-featured">
-        <h2>Dự án nổi bật</h2>
-        <p className="section-desc">
-          Gamuda Land &amp; dữ liệu demo QA — nguồn: {state.status === "ready" ? state.source : "…"}
-        </p>
+        <header className="section-head">
+          <h2>Dự án nổi bật</h2>
+          <p className="section-desc">Không gian thật — dữ liệu minh bạch.</p>
+        </header>
         <div className="grid-projects">
-          {projects.map((p) => (
-            <ProjectCard key={p.id} project={p} />
+          {projects.map((p, i) => (
+            <div
+              key={p.id}
+              className="home-card-enter"
+              style={{ animationDelay: `${Math.min(i, 5) * 70}ms` }}
+            >
+              <ProjectCard project={p} />
+            </div>
           ))}
         </div>
         <div className="home-more">
           <Link to="/projects" className="btn btn-secondary">
-            Tất cả dự án →
+            Tất cả dự án
           </Link>
         </div>
       </section>

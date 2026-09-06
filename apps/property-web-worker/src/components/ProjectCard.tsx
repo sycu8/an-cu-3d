@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { ProjectSummary } from "../types";
+import { projectCoverUrl } from "../lib/projectVisuals";
 import "./ProjectCard.css";
 
 interface ProjectCardProps {
@@ -11,18 +12,18 @@ function isPending(value: string) {
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
+  const cover = projectCoverUrl(project.slug);
+
   return (
-    <article className="card project-card">
-      <div className="project-card-visual" aria-hidden="true">
-        <div className="project-card-placeholder">
-          <span>{project.district ?? project.city}</span>
-        </div>
-      </div>
-      <div className="card-body">
-        <div className="project-card-meta">
-          <span className="tag tag-teal">{project.developerName}</span>
-          {project.district && <span className="tag">{project.district}</span>}
-        </div>
+    <article className="project-card">
+      <Link to={`/projects/${project.slug}`} className="project-card-media">
+        <img src={cover} alt="" loading="lazy" />
+        <span className="project-card-place">
+          {project.district ?? project.city}
+        </span>
+      </Link>
+      <div className="project-card-body">
+        <p className="project-card-developer">{project.developerName}</p>
         <h2>
           <Link to={`/projects/${project.slug}`}>{project.name}</Link>
         </h2>
@@ -45,13 +46,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <Link to={`/projects/${project.slug}`} className="btn btn-primary">
             Khám phá
           </Link>
-          <Link to={`/projects/${project.slug}/3d`} className="btn btn-ghost">
-            3D
+          <Link to={`/projects/${project.slug}/showroom`} className="btn btn-ghost">
+            Showroom
           </Link>
         </div>
-        {project.provenance && (
-          <p className="provenance">{project.provenance}</p>
-        )}
       </div>
     </article>
   );
