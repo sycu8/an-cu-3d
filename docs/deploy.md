@@ -14,6 +14,8 @@ Optional later:
 
 ## CI deploy workflow
 
+`.github/workflows/ci.yml` runs typecheck, tests, and build on pull requests and on pushes to `main` and `cursor/**`. The `deploy` job runs `scripts/cf-deploy.sh` only on a push to `main`, or a manual **Run workflow** with `deploy` left on (default true). Pull requests and other branches do not deploy; they run `wrangler deploy --dry-run` at most.
+
 `.github/workflows/deploy.yml` runs on `workflow_dispatch` and pushes to `main`:
 
 1. Install, typecheck, test, build (all packages)

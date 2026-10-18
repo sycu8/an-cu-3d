@@ -27,12 +27,18 @@ jobs:
       - run: pnpm -r run typecheck
       - run: pnpm -r run test
       - run: pnpm -r run build
+      # Pull requests and non-main pushes stop at a local bundle check.
+      - name: Wrangler deploy dry-run
+        if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
+        run: |
+          pnpm --filter @ancu/property-web-worker exec wrangler deploy --dry-run
+          pnpm --filter @ancu/floorplan-engine exec wrangler deploy --dry-run
 
   deploy:
     needs: build
     if: >
       (github.event_name == 'workflow_dispatch' && inputs.deploy == true) ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/cursor/mvp-build-4bd7'))
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: read
