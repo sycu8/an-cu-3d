@@ -16,7 +16,7 @@ async function documentOverflow(page: Page) {
   });
 }
 
-for (const width of [390, 414]) {
+for (const width of [390, 414, 768]) {
   test.describe(`mobile width ${width}`, () => {
     test.use({ viewport: { width, height: 844 } });
 

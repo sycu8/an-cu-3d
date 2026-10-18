@@ -472,6 +472,7 @@
        A larger negative margin grows the rail past the viewport. */
     margin-inline: calc(var(--space-md) * -1);
     padding-inline: var(--space-md);
+    scroll-padding-inline: var(--space-md);
     -webkit-overflow-scrolling: touch;
   }
 
