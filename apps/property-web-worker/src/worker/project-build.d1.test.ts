@@ -96,7 +96,7 @@ function migrationsDir(): string {
   throw new Error("property-web migrations directory not found");
 }
 
-function openMemoryDb(): D1Database {
+function openMemoryDb(maxBoundParameters = Number.POSITIVE_INFINITY): D1Database {
   const database = new (DatabaseSync as new (path: string) => SqliteDatabase)(":memory:");
   database.exec("PRAGMA foreign_keys = ON");
   const migrations = migrationsDir();
@@ -109,6 +109,11 @@ function openMemoryDb(): D1Database {
     let binds: unknown[] = [];
     const api = {
       bind(...args: unknown[]) {
+        if (args.length > maxBoundParameters) {
+          throw new Error(
+            `D1_ERROR: too many SQL variables: ${args.length} bound parameters, limit ${maxBoundParameters}`,
+          );
+        }
         binds = args;
         return api;
       },
@@ -581,6 +586,113 @@ describe("admin project reads and approve-all", () => {
     });
     expect(blogProjects.some((project) => project.description?.includes("HTTP 503"))).toBe(false);
     expect(blogProjects.some((project) => project.description === publishedStub)).toBe(false);
+  });
+
+  it("skips a failed real seed row, a leading space, and a non-tagline placeholder", async () => {
+    const db = openMemoryDb();
+    await seedDeveloper(db);
+    const failedReal = "Failed rebuild kept the live sentence";
+    const leadingSpace = "Leading space placeholder quoted";
+    const otherField = "Price placeholder quoted";
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, description, city, district, address, handover,
+           price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_celadon_fail', 'dev_gamuda_land', 'celadon-city', 'Celadon Failed',
+           'A real failed rebuild', ?, 'HCM', 'Tan Phu', '1 Street', '2028', '100 tr', '10',
+           'failed', 'estimated'
+         )`,
+      )
+      .bind(failedReal)
+      .run();
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, description, city, district, address, handover,
+           price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_grand_space', 'dev_gamuda_land', 'vinhomes-grand-park', 'Grand Space',
+           ?, ?, 'TP. Hồ Chí Minh', 'Quận 9', '1 Nguyễn Xiển', '2026', '90 tr', '1000',
+           'published', 'estimated'
+         )`,
+      )
+      .bind(` ${PENDING}`, leadingSpace)
+      .run();
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, description, city, district, address, handover,
+           price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_ocean_price', 'dev_gamuda_land', 'vinhomes-ocean-park', 'Ocean Price',
+           'Ocean real tagline', ?, 'Hà Nội', 'Gia Lâm', '1 Ocean', '2025', ?, '2000',
+           'published', 'estimated'
+         )`,
+      )
+      .bind(otherField, PENDING)
+      .run();
+
+    const env = buildEnv(db);
+    const token = await adminToken(db);
+    const { generateBlogDraft } = await import("./ai/pipeline");
+    vi.mocked(generateBlogDraft).mockClear();
+    const generated = await worker.fetch(
+      new Request("https://ancu.test/api/admin/blog/generate", {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({
+          projectSlugs: ["celadon-city", "vinhomes-grand-park", "vinhomes-ocean-park"],
+        }),
+      }),
+      env,
+    );
+    expect(generated.status).toBe(201);
+    const blogProjects = vi.mocked(generateBlogDraft).mock.calls.at(-1)?.[1] ?? [];
+    const detail = (slug: string) => blogProjects.find((project) => project.slug === slug);
+    for (const slug of ["celadon-city", "vinhomes-grand-park", "vinhomes-ocean-park"]) {
+      const seed = getProjectBySlug(slug);
+      expect(detail(slug)).toMatchObject({ name: seed?.name, description: seed?.description });
+    }
+    const descriptions = blogProjects.map((project) => project.description ?? "");
+    expect(descriptions.some((text) => text.includes(failedReal))).toBe(false);
+    expect(descriptions.some((text) => text.includes(leadingSpace))).toBe(false);
+    expect(descriptions.some((text) => text.includes(otherField))).toBe(false);
+  });
+
+  it("approves more than 100 drafts without exceeding D1's parameter limit", async () => {
+    const db = openMemoryDb(100);
+    await seedDeveloper(db);
+    const count = 101;
+    for (let i = 0; i < count; i += 1) {
+      await db
+        .prepare(
+          `INSERT INTO projects (id, developer_id, slug, name, tagline, city, status, source_class)
+           VALUES (?, 'dev_gamuda_land', ?, ?, ?, 'HCM', 'draft', 'estimated')`,
+        )
+        .bind(`proj_bulk_${i}`, `qa-bulk-${i}`, `Bulk ${i}`, `Real bulk ${i}`)
+        .run();
+    }
+    const env = buildEnv(db);
+    const token = await adminToken(db);
+    const approved = await worker.fetch(
+      new Request("https://ancu.test/api/admin/projects/approve-all", {
+        method: "POST",
+        headers: authHeaders(token),
+      }),
+      env,
+    );
+    expect(approved.status).toBe(200);
+    const body = (await approved.json()) as { projectUpdates: number };
+    expect(body.projectUpdates).toBe(count);
+    const rows = await db
+      .prepare(
+        `SELECT status, published_at FROM projects WHERE slug LIKE 'qa-bulk-%'`,
+      )
+      .all<{ status: string; published_at: string | null }>();
+    expect(rows.results).toHaveLength(count);
+    expect(rows.results?.every((row) => row.status === "published" && row.published_at)).toBe(true);
   });
 
   it("keeps a failed eaton-park stub out of the weekly blog cron", async () => {
