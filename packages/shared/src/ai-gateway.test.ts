@@ -35,4 +35,34 @@ describe("ai-gateway helpers", () => {
   it("parses raw JSON objects", () => {
     expect(parseJsonFromLlm('noise {"a":1} trailing')).toEqual({ a: 1 });
   });
+
+  it("rejects Workers AI models retired on 2026-05-30", () => {
+    // Exact ids from the Workers AI deprecation notice. Match the full id so
+    // active suffixes such as -fast are not treated as retired.
+    const retired = new Set([
+      "@cf/moonshotai/kimi-k2.5",
+      "@hf/meta-llama/meta-llama-3-8b-instruct",
+      "@cf/meta/llama-3-8b-instruct",
+      "@cf/meta/llama-3-8b-instruct-awq",
+      "@cf/meta/llama-3.1-8b-instruct",
+      "@cf/meta/llama-3.1-8b-instruct-awq",
+      "@cf/meta/llama-3.1-70b-instruct",
+      "@cf/meta/llama-2-7b-chat-int8",
+      "@cf/meta/llama-2-7b-chat-fp16",
+      "@cf/mistral/mistral-7b-instruct-v0.1",
+      "@hf/mistral/mistral-7b-instruct-v0.2",
+      "@hf/google/gemma-7b-it",
+      "@cf/google/gemma-3-12b-it",
+      "@hf/nousresearch/hermes-2-pro-mistral-7b",
+      "@cf/microsoft/phi-2",
+      "@cf/defog/sqlcoder-7b-2",
+      "@cf/unum/uform-gen2-qwen-500m",
+      "@cf/facebook/bart-large-cnn",
+    ]);
+
+    const hits = Object.entries(DEFAULT_MODELS).filter(([, model]) => retired.has(model));
+    expect(hits).toEqual([]);
+    expect(DEFAULT_MODELS.blog).toBe("@cf/meta/llama-3.1-8b-instruct-fast");
+    expect(DEFAULT_MODELS.qa_factual).toBe("@cf/meta/llama-3.1-8b-instruct-fast");
+  });
 });

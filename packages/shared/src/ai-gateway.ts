@@ -29,11 +29,11 @@ export type ChatResult = {
 
 export const DEFAULT_MODELS: Record<AiUseCase, string> = {
   research: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-  blog: "@cf/meta/llama-3.1-8b-instruct",
+  blog: "@cf/meta/llama-3.1-8b-instruct-fast",
   image_gen: "@cf/black-forest-labs/flux-1-schnell",
   image_edit: "@cf/runwayml/stable-diffusion-v1-5-img2img",
   vision_2d: "@cf/meta/llama-3.2-11b-vision-instruct",
-  qa_factual: "@cf/meta/llama-3.1-8b-instruct",
+  qa_factual: "@cf/meta/llama-3.1-8b-instruct-fast",
 };
 
 export function gatewayChatUrl(config: AiGatewayConfig, model: string): string {
