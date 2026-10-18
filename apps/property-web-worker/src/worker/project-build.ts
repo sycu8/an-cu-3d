@@ -10,6 +10,16 @@ import {
   synthesizeProject,
 } from "./ai/pipeline";
 
+/** 401/5xx (and any other non-2xx) fail the build instead of being logged as success. */
+async function assertEngineOk(res: Response, action: string): Promise<void> {
+  if (!res.ok) {
+    const status = res.status;
+    await res.body?.cancel();
+    throw new Error(`${action} failed: HTTP ${status}`);
+  }
+  await res.body?.cancel();
+}
+
 async function emit(
   env: Env,
   jobId: string,
@@ -65,31 +75,21 @@ export async function runProjectBuild(
       `Đã lấy ${crawled.length} snippet (không giới hạn thời gian tác vụ)`,
     );
 
-    // Optional engine crawl enrichment — never blocks failure of whole job
     if (env.ENGINE_BASE_URL && env.ENGINE_API_SECRET) {
       await emit(env, job.id, startedAt, "crawl", "Gọi floorplan-engine crawl (bổ sung)…");
-      try {
-        await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/sources/crawl`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            url: discovered.sources[0]?.url,
-            projectSlug: job.slug,
-          }),
-        });
-        await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
-      } catch (err) {
-        await emit(
-          env,
-          job.id,
-          startedAt,
-          "crawl",
-          `Engine crawl bỏ qua: ${err instanceof Error ? err.message : "error"}`,
-        );
-      }
+      const crawlRes = await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/sources/crawl`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: discovered.sources[0]?.url,
+          projectSlug: job.slug,
+        }),
+      });
+      await assertEngineOk(crawlRes, "Engine crawl");
+      await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
     }
 
     await emit(env, job.id, startedAt, "synthesize", "AI Gateway đang tổng hợp thông tin dự án…");
@@ -163,24 +163,21 @@ export async function runProjectBuild(
     }
 
     if (env.ENGINE_BASE_URL && env.ENGINE_API_SECRET) {
-      try {
-        await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/jobs`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
-            "Content-Type": "application/json",
-            "X-AnCu-Admin-Build": "1",
-          },
-          body: JSON.stringify({
-            projectSlug: job.slug,
-            bypassRateLimit: true,
-            note: "admin project build",
-          }),
-        });
-        await emit(env, job.id, startedAt, "floorplans", "Conversion job gửi tới engine (no admin timeout)");
-      } catch {
-        await emit(env, job.id, startedAt, "floorplans", "Conversion job engine bỏ qua");
-      }
+      const jobRes = await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/jobs`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
+          "Content-Type": "application/json",
+          "X-AnCu-Admin-Build": "1",
+        },
+        body: JSON.stringify({
+          projectSlug: job.slug,
+          bypassRateLimit: true,
+          note: "admin project build",
+        }),
+      });
+      await assertEngineOk(jobRes, "Engine conversion");
+      await emit(env, job.id, startedAt, "floorplans", "Conversion job gửi tới engine (no admin timeout)");
     }
 
     await emit(env, job.id, startedAt, "persist", "Ghi D1 projects / amenities / units…");

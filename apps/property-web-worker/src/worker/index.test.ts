@@ -232,6 +232,46 @@ describe("worker security + health", () => {
     expect(hidden.status).toBe(404);
   });
 
+  it("returns 404 for an unknown /assets chunk instead of SPA HTML", async () => {
+    const missing = await worker.fetch(
+      new Request("http://localhost/assets/index-does-not-exist.js"),
+      env,
+    );
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get("content-type")).toContain("text/plain");
+    expect(await missing.text()).toBe("Not Found");
+
+    const spaFallback = {
+      STATIC_ASSETS: {
+        fetch: async () =>
+          new Response("<!doctype html><html><body>spa</body></html>", {
+            status: 200,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          }),
+      },
+    } as unknown as Env;
+    const html = await worker.fetch(
+      new Request("http://localhost/assets/index-stale.js"),
+      spaFallback,
+    );
+    expect(html.status).toBe(404);
+    expect(await html.text()).toBe("Not Found");
+
+    const present = {
+      STATIC_ASSETS: {
+        fetch: async () =>
+          new Response("export const chunk = 1;\n", {
+            status: 200,
+            headers: { "content-type": "application/javascript; charset=utf-8" },
+          }),
+      },
+    } as unknown as Env;
+    const asset = await worker.fetch(new Request("http://localhost/assets/index-real.js"), present);
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get("content-type")).toContain("javascript");
+    expect(await asset.text()).toContain("export const chunk");
+  });
+
   it("rejects admin routes without a session bearer", async () => {
     const response = await worker.fetch(
       new Request("http://localhost/api/admin/projects"),

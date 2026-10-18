@@ -7,9 +7,12 @@ Required repository secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
+Required before either deploy workflow runs `scripts/cf-deploy.sh`:
+
+- `ENGINE_API_SECRET` — one value, set as a GitHub secret. The script exits if it is missing or whitespace and does not generate a replacement. After both Workers deploy, it runs `wrangler secret put ENGINE_API_SECRET` in `apps/property-web-worker` and `apps/ancu-floorplan-engine` with that same value.
+
 Optional later:
 
-- `ENGINE_API_SECRET` (engine Worker secret)
 - Preview/production D1 database IDs if not injected by `wrangler d1 create` output into env-specific config
 
 ## CI deploy workflow
@@ -75,7 +78,7 @@ Admin UI uses **username/password** stored in D1 (`admin_users` / `admin_session
 Create the first operator only when `admin_users` is empty:
 
 1. **One-time token** — set `ADMIN_BOOTSTRAP_TOKEN` to at least 32 characters (shorter values disable bootstrap), then `POST /api/admin/bootstrap` with JSON `{"token","username","password"}`. A later call returns `admin_exists`. Unset the token after setup.
-2. **Initial hash** — set `ADMIN_BOOTSTRAP_USERNAME` and `ADMIN_INITIAL_PASSWORD_HASH`. The hash is a `pbkdf2-sha256$iterations$salt$hash` string (PBKDF2-SHA256, at least 100000 iterations), not a plaintext password. The first login for that username inserts the row and sets `must_change_password`. An existing row is left unchanged.
+2. **Initial hash** — set `ADMIN_BOOTSTRAP_USERNAME` and `ADMIN_INITIAL_PASSWORD_HASH`. The hash is a `pbkdf2-sha256$iterations$salt$hash` string (PBKDF2-SHA256 at 100000 iterations, the Workers maximum). A higher iteration count is rejected and does not log in. It is not a plaintext password. The first login for that username inserts the row and sets `must_change_password`. An existing row is left unchanged.
 
 If an admin row already exists, these secrets do not rotate it. Change that password in `/admin`, then delete rows from `admin_sessions`.
 
@@ -97,7 +100,7 @@ pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ID
 
 Apply D1 migrations (includes `0004_admin_auth.sql`) before using `/admin`.
 
-Also set `ENGINE_API_SECRET` on both Workers when the admin build path should call the floorplan engine.
+`scripts/cf-deploy.sh` writes the same `ENGINE_API_SECRET` onto both Workers. The admin build calls the floorplan engine with that secret and treats a non-2xx response (including 401 and 5xx) as a failed job.
 
 ### Smoke (admin + blog)
 

@@ -1,8 +1,8 @@
 /** Admin username/password + opaque session tokens (Workers Web Crypto). */
 
 const PBKDF2_ITERATIONS = 100_000;
-/** Reject stored hashes above this so a row cannot pin the Worker on PBKDF2. */
-const PBKDF2_MAX_ITERATIONS = 600_000;
+/** Workers rejects PBKDF2 above 100000. Reject those hashes before deriveBits. */
+const PBKDF2_MAX_ITERATIONS = 100_000;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type PasswordHashRecord = {

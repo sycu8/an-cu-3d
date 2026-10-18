@@ -88,6 +88,31 @@ function unauthorized(requestId: string): Response {
   return json({ error: "unauthorized" }, requestId, 401, "no-store");
 }
 
+function plainNotFound(): Response {
+  return new Response("Not Found", {
+    status: 404,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/**
+ * Hashed files under /assets/* are served from the static-asset binding.
+ * SPA not_found_handling would otherwise answer a missing chunk with index.html.
+ */
+async function hashedAssetResponse(request: Request, env: Env): Promise<Response> {
+  if (!env.STATIC_ASSETS) return plainNotFound();
+  const asset = await env.STATIC_ASSETS.fetch(request);
+  const contentType = asset.headers.get("content-type") ?? "";
+  if (!asset.ok || contentType.toLowerCase().includes("text/html")) {
+    await asset.body?.cancel();
+    return plainNotFound();
+  }
+  return asset;
+}
+
 function logRequest(
   requestId: string,
   method: string,
@@ -718,12 +743,16 @@ export default {
         const apiResponse = await handleApi(request, env, ctx, requestId);
         response = apiResponse ?? notFound("Not Found", requestId);
       }
+    } else if (
+      (request.method === "GET" || request.method === "HEAD") &&
+      path.startsWith("/assets/")
+    ) {
+      response = await hashedAssetResponse(request, env);
     } else if (request.method !== "GET" && request.method !== "HEAD") {
       response = new Response("Method Not Allowed", { status: 405 });
     } else {
-      // Non-API GETs are served by Workers Static Assets when
-      // assets.run_worker_first=["/api/*"] (see wrangler.jsonc). This branch is
-      // only reached if the Worker is invoked for a page route incorrectly.
+      // SPA routes stay on the asset platform (not_found_handling: single-page-application).
+      // This branch runs only when the Worker is invoked for a page route.
       response = new Response("Not Found", { status: 404 });
     }
 

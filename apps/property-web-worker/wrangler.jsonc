@@ -4,15 +4,24 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-09-05",
   "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 1 }
+  },
   "triggers": {
     // Weekly Monday 01:00 UTC — draft blog suggestion only (no auto-publish)
     "crons": ["0 1 * * 1"]
   },
   "assets": {
     "directory": "./dist",
+    // R2 already binds as ASSETS. This name is the static-asset Fetcher.
+    "binding": "STATIC_ASSETS",
     "not_found_handling": "single-page-application",
-    // Only invoke the Worker for API; SPA routes are served by assets (local + prod).
-    "run_worker_first": ["/api/*"]
+    // API and hashed chunks hit the Worker. Other routes stay on the asset platform,
+    // which still returns index.html for SPA navigations.
+    // Unknown /assets/* must 404: the platform would otherwise serve index.html.
+    "run_worker_first": ["/api/*", "/assets/*"]
   },
   "d1_databases": [
     {

@@ -20,12 +20,19 @@ describe("admin password + session crypto", () => {
     expect(await verifyPassword("wrong-password", serialized)).toBe(false);
   });
 
-  it("rejects stored PBKDF2 iteration counts above the cap", async () => {
-    const serialized = `pbkdf2-sha256$9000000$${btoa("salt-value-16b!")}$${btoa("hash-value-32bytes-pad-pad")}`;
-    expect(parsePasswordHash(serialized)).toBeNull();
+  it("rejects stored PBKDF2 iteration counts above the Workers maximum", async () => {
+    const salt = btoa("salt-value-16b!");
+    const hash = btoa("hash-value-32bytes-pad-pad");
+    const over = `pbkdf2-sha256$100001$${salt}$${hash}`;
+    const atCap = `pbkdf2-sha256$100000$${salt}$${hash}`;
+    const farOver = `pbkdf2-sha256$9000000$${salt}$${hash}`;
+    expect(parsePasswordHash(over)).toBeNull();
+    expect(parsePasswordHash(farOver)).toBeNull();
+    expect(parsePasswordHash(atCap)?.iterations).toBe(100_000);
     const spy = vi.spyOn(crypto.subtle, "deriveBits");
     try {
-      expect(await verifyPassword("whatever-password", serialized)).toBe(false);
+      expect(await verifyPassword("whatever-password", over)).toBe(false);
+      expect(await verifyPassword("whatever-password", farOver)).toBe(false);
       expect(spy).not.toHaveBeenCalled();
     } finally {
       spy.mockRestore();
