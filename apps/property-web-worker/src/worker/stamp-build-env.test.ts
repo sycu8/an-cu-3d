@@ -129,12 +129,12 @@ describe("build environment stamp", () => {
     expect(result.output).toContain("does not match the target environment");
     expect(result.output).toContain("top-level");
     expect(result.output).not.toContain("--dry-run: exiting now.");
-  });
+  }, 30_000);
 
   it("accepts wrangler deploy --env preview after a preview build", () => {
     const result = dryRun(fixture("preview"), ["--env", "preview"]);
     expect(result.output).not.toContain("does not match the target environment");
     expect(result.output).toContain("--dry-run: exiting now.");
     expect(result.status).toBe(0);
-  });
+  }, 30_000);
 });

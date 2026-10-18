@@ -32,7 +32,7 @@ import { loadPublicBlogPost, loadPublishedBlogPosts } from "./editorial-blog";
 import { createBuildJob, getBuildJob, listBuildJobs } from "./db/jobs";
 import {
   approveAllProjects,
-  getAdminDbProjectBySlug,
+  getBlogDbProjectBySlug,
   getDbProjectBySlug,
   listAdminDbProjects,
   listBlogDbProjects,
@@ -182,7 +182,7 @@ async function mergeAdminProjects(env: Env) {
   return mergeListedProjects(env, listAdminDbProjects);
 }
 
-/** Blog generator: admin rows except failed builds and Chờ xác minh placeholders. */
+/** Blog generator: published D1 rows without a placeholder fact, plus the seed catalog. */
 async function mergeBlogProjects(env: Env) {
   return mergeListedProjects(env, listBlogDbProjects);
 }
@@ -216,8 +216,9 @@ async function resolvePublicProject(env: Env, slug: string) {
   };
 }
 
-async function resolveAdminProject(env: Env, slug: string) {
-  return resolveListedProject(env, slug, getAdminDbProjectBySlug);
+/** Skip failed and placeholder D1 rows so a seed slug keeps the seed description. */
+async function resolveBlogProject(env: Env, slug: string) {
+  return resolveListedProject(env, slug, getBlogDbProjectBySlug);
 }
 
 function schedule(ctx: ExecutionContext | undefined, task: Promise<unknown>): void {
@@ -463,7 +464,7 @@ async function handleAdmin(
 
     const details = [];
     for (const p of selected) {
-      const full = await resolveAdminProject(env, p.slug);
+      const full = await resolveBlogProject(env, p.slug);
       details.push({
         name: p.name,
         slug: p.slug,

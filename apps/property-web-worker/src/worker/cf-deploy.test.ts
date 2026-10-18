@@ -2,9 +2,7 @@
 // @ts-expect-error node builtin is available under vitest
 import { execFileSync } from "node:child_process";
 // @ts-expect-error node builtin is available under vitest
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-// @ts-expect-error node builtin is available under vitest
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 // @ts-expect-error node builtin is available under vitest
 import path from "node:path";
 import { describe, expect, it } from "vitest";

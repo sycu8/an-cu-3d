@@ -6,6 +6,7 @@ import { join } from "node:path";
 // @ts-expect-error node builtin is available under vitest
 import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getProjectBySlug } from "../data/gamuda-projects";
 import worker from "./index";
 import { createAdminSession } from "./db/admin";
 import { createBuildJob } from "./db/jobs";
@@ -461,8 +462,9 @@ describe("admin project reads and approve-all", () => {
     expect(bySlug.get("qa-omit-status")).toBe("draft");
     expect((await listDbProjectSummaries(db)).map((project) => project.slug)).toEqual(["qa-published"]);
     const blogSlugs = (await listBlogDbProjects(db)).map((project) => project.slug);
-    expect(blogSlugs).toContain("qa-draft");
     expect(blogSlugs).toContain("qa-published");
+    expect(blogSlugs).not.toContain("qa-draft");
+    expect(blogSlugs).not.toContain("qa-active");
     expect(blogSlugs).not.toContain("qa-failed");
     expect(blogSlugs).not.toContain("qa-placeholder");
 
@@ -499,15 +501,86 @@ describe("admin project reads and approve-all", () => {
       new Request("https://ancu.test/api/admin/blog/generate", {
         method: "POST",
         headers: authHeaders(token),
-        body: JSON.stringify({ projectSlugs: ["qa-failed", "qa-draft", "qa-placeholder"] }),
+        body: JSON.stringify({
+          projectSlugs: ["qa-failed", "qa-draft", "qa-placeholder", "qa-published"],
+        }),
       }),
       env,
     );
     expect(generated.status).toBe(201);
     const blogProjects = vi.mocked(generateBlogDraft).mock.calls.at(-1)?.[1] ?? [];
-    expect(blogProjects).toEqual([expect.objectContaining({ slug: "qa-draft", name: "Draft Build" })]);
+    expect(blogProjects).toEqual([expect.objectContaining({ slug: "qa-published", name: "QA Published" })]);
+    expect(blogProjects.some((project) => project.slug === "qa-draft")).toBe(false);
     expect(blogProjects.some((project) => project.slug === "qa-failed")).toBe(false);
     expect(blogProjects.some((project) => project.slug === "qa-placeholder")).toBe(false);
+  });
+
+  it("passes the seed description when D1 is a failed stub or a published placeholder", async () => {
+    const db = openMemoryDb();
+    await seedDeveloper(db);
+    const failedDescription = "Engine crawl failed: HTTP 503";
+    const publishedStub = "Published placeholder must not be quoted";
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, description, city, district, address, handover,
+           price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_eaton_fail', 'dev_gamuda_land', 'eaton-park', 'Eaton Park Placeholder',
+           ?, ?, ?, ?, ?, ?, ?, ?, 'failed', 'estimated'
+         )`,
+      )
+      .bind(
+        PENDING,
+        failedDescription,
+        PENDING,
+        PENDING,
+        PENDING,
+        PENDING,
+        PENDING,
+        PENDING,
+      )
+      .run();
+    const prefix = `${PENDING} (CĐT)`;
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, description, city, district, address, handover,
+           price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_elysian_ph', 'dev_gamuda_land', 'elysian', 'Elysian Stub',
+           ?, ?, 'TP. Hồ Chí Minh', 'TP. Thủ Đức', '1 Đường Thật', '2027', '90 tr', '800',
+           'published', 'estimated'
+         )`,
+      )
+      .bind(prefix, publishedStub)
+      .run();
+
+    const env = buildEnv(db);
+    const token = await adminToken(db);
+    const { generateBlogDraft } = await import("./ai/pipeline");
+    vi.mocked(generateBlogDraft).mockClear();
+    const generated = await worker.fetch(
+      new Request("https://ancu.test/api/admin/blog/generate", {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ projectSlugs: ["eaton-park", "elysian"], publish: true }),
+      }),
+      env,
+    );
+    expect(generated.status).toBe(201);
+    const blogProjects = vi.mocked(generateBlogDraft).mock.calls.at(-1)?.[1] ?? [];
+    const detail = (slug: string) => blogProjects.find((project) => project.slug === slug);
+    expect(detail("eaton-park")).toMatchObject({
+      name: "Eaton Park",
+      description: getProjectBySlug("eaton-park")?.description,
+    });
+    expect(detail("elysian")).toMatchObject({
+      name: "Elysian",
+      description: getProjectBySlug("elysian")?.description,
+    });
+    expect(blogProjects.some((project) => project.description?.includes("HTTP 503"))).toBe(false);
+    expect(blogProjects.some((project) => project.description === publishedStub)).toBe(false);
   });
 
   it("keeps a failed eaton-park stub out of the weekly blog cron", async () => {
@@ -631,6 +704,44 @@ describe("admin project reads and approve-all", () => {
     expect(row("qa-active")?.published_at).toBeTruthy();
     expect(row("qa-failed-real")).toMatchObject({ status: "failed", published_at: null });
     expect(row("qa-placeholder-draft")).toMatchObject({ status: "draft", tagline: PENDING });
+
+    await db
+      .prepare(
+        `UPDATE projects
+         SET status = 'draft', published_at = '2020-01-01 00:00:00'
+         WHERE slug = 'qa-real-draft'`,
+      )
+      .run();
+    const nfdLabel = PENDING.normalize("NFD");
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, city, district, address, handover, price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_one_field', 'dev_gamuda_land', 'qa-one-field', 'One Pending Fact',
+           ?, 'HCM', 'Q1', '1 Street', '2028', '100 tr', '10', 'draft', 'estimated'
+         )`,
+      )
+      .bind(`${nfdLabel} `)
+      .run();
+    const again = await worker.fetch(
+      new Request("https://ancu.test/api/admin/projects/approve-all", {
+        method: "POST",
+        headers: authHeaders(token),
+      }),
+      env,
+    );
+    expect(again.status).toBe(200);
+    const againBody = (await again.json()) as { projectUpdates: number };
+    expect(againBody.projectUpdates).toBe(1);
+    const reapproved = await db
+      .prepare(`SELECT status, published_at FROM projects WHERE slug = 'qa-real-draft'`)
+      .first<{ status: string; published_at: string | null }>();
+    expect(reapproved).toEqual({ status: "published", published_at: "2020-01-01 00:00:00" });
+    const oneField = await db
+      .prepare(`SELECT status FROM projects WHERE slug = 'qa-one-field'`)
+      .first<{ status: string }>();
+    expect(oneField?.status).toBe("draft");
 
     const publicEaton = await worker.fetch(new Request("https://ancu.test/api/projects/eaton-park"), env);
     expect(publicEaton.status).toBe(200);
