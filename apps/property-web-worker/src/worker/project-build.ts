@@ -10,6 +10,30 @@ import {
   synthesizeProject,
 } from "./ai/pipeline";
 
+/** 401/5xx (and any other non-2xx) fail the build instead of being logged as success. */
+async function assertEngineOk(res: Response, action: string): Promise<void> {
+  if (!res.ok) {
+    const status = res.status;
+    await res.body?.cancel();
+    throw new Error(`${action} failed: HTTP ${status}`);
+  }
+  await res.body?.cancel();
+}
+
+function engineTarget(env: Env): { baseUrl: string; secret: string } | null {
+  const baseUrl = env.ENGINE_BASE_URL?.trim().replace(/\/$/, "") ?? "";
+  const secret = env.ENGINE_API_SECRET ?? "";
+  if (!baseUrl || !secret.trim()) return null;
+  return { baseUrl, secret };
+}
+
+function engineSkipMessage(env: Env): string {
+  const missing: string[] = [];
+  if (!env.ENGINE_BASE_URL?.trim()) missing.push("ENGINE_BASE_URL");
+  if (!env.ENGINE_API_SECRET?.trim()) missing.push("ENGINE_API_SECRET");
+  return `Engine calls skipped: web Worker has no ${missing.join(" or ")}`;
+}
+
 async function emit(
   env: Env,
   jobId: string,
@@ -65,31 +89,26 @@ export async function runProjectBuild(
       `Đã lấy ${crawled.length} snippet (không giới hạn thời gian tác vụ)`,
     );
 
-    // Optional engine crawl enrichment — never blocks failure of whole job
-    if (env.ENGINE_BASE_URL && env.ENGINE_API_SECRET) {
+    const engine = engineTarget(env);
+    if (!engine) {
+      const skipped = engineSkipMessage(env);
+      console.warn(JSON.stringify({ level: "warn", message: skipped }));
+      await emit(env, job.id, startedAt, "crawl", skipped);
+    } else {
       await emit(env, job.id, startedAt, "crawl", "Gọi floorplan-engine crawl (bổ sung)…");
-      try {
-        await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/sources/crawl`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            url: discovered.sources[0]?.url,
-            projectSlug: job.slug,
-          }),
-        });
-        await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
-      } catch (err) {
-        await emit(
-          env,
-          job.id,
-          startedAt,
-          "crawl",
-          `Engine crawl bỏ qua: ${err instanceof Error ? err.message : "error"}`,
-        );
-      }
+      const crawlRes = await fetch(`${engine.baseUrl}/sources/crawl`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${engine.secret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: discovered.sources[0]?.url,
+          projectSlug: job.slug,
+        }),
+      });
+      await assertEngineOk(crawlRes, "Engine crawl");
+      await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
     }
 
     await emit(env, job.id, startedAt, "synthesize", "AI Gateway đang tổng hợp thông tin dự án…");
@@ -162,12 +181,13 @@ export async function runProjectBuild(
       };
     }
 
-    if (env.ENGINE_BASE_URL && env.ENGINE_API_SECRET) {
+    let conversionError: string | null = null;
+    if (engine) {
       try {
-        await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/jobs`, {
+        const jobRes = await fetch(`${engine.baseUrl}/jobs`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
+            Authorization: `Bearer ${engine.secret}`,
             "Content-Type": "application/json",
             "X-AnCu-Admin-Build": "1",
           },
@@ -177,9 +197,11 @@ export async function runProjectBuild(
             note: "admin project build",
           }),
         });
+        await assertEngineOk(jobRes, "Engine conversion");
         await emit(env, job.id, startedAt, "floorplans", "Conversion job gửi tới engine (no admin timeout)");
-      } catch {
-        await emit(env, job.id, startedAt, "floorplans", "Conversion job engine bỏ qua");
+      } catch (err) {
+        conversionError = err instanceof Error ? err.message : "engine_jobs_failed";
+        await emit(env, job.id, startedAt, "floorplans", conversionError);
       }
     }
 
@@ -189,6 +211,25 @@ export async function runProjectBuild(
       await updateProjectCoverR2Key(env.DB, job.slug, cover.r2Key);
     }
     await emit(env, job.id, startedAt, "persist", `Đã lưu project id=${projectId}`);
+
+    if (conversionError) {
+      const result = {
+        projectId,
+        slug: job.slug,
+        path: `/projects/${job.slug}`,
+        persisted: true,
+        engineJobs: "failed",
+      };
+      await updateBuildJob(env.DB, job.id, {
+        status: "failed",
+        stage: "failed",
+        finishedAt: new Date().toISOString(),
+        error: conversionError,
+        resultJson: JSON.stringify(result),
+      });
+      await emit(env, job.id, startedAt, "failed", conversionError);
+      return;
+    }
 
     await emit(env, job.id, startedAt, "publish", "Xuất bản trang dự án…");
     const result = {

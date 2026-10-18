@@ -374,6 +374,21 @@ describe("admin db auth flow", () => {
     }
   });
 
+  it("rejects a stored hash above the Workers PBKDF2 maximum", async () => {
+    const overCap = `pbkdf2-sha256$100001$${btoa("salt-value-16b!")}$${btoa("not-a-real-password-hash")}`;
+    await db
+      .prepare(
+        `INSERT INTO admin_users (id, username, password_hash, must_change_password)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .bind("user-over-cap", "operator", overCap, 0)
+      .run();
+
+    const attempt = await loginAdmin(db, "operator", "correct-horse");
+    expect(attempt).toEqual({ ok: false, error: "invalid_credentials" });
+    expect((await readAdmin(db, "operator"))?.password_hash).toBe(overCap);
+  });
+
   it("creates the first admin once from ADMIN_BOOTSTRAP_TOKEN and then refuses", async () => {
     const secrets = { ADMIN_BOOTSTRAP_TOKEN: "0123456789abcdef0123456789abcdef" };
     const created = await bootstrapAdminWithToken(db, secrets, {

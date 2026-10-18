@@ -3,6 +3,12 @@
 export interface Env {
   DB: D1Database;
   ASSETS: R2Bucket;
+  /**
+   * Workers static assets (wrangler `assets.binding`).
+   * Distinct from the R2 bucket `ASSETS`. Used so missing `/assets/*` chunks
+   * can 404 instead of inheriting the SPA index.html fallback.
+   */
+  STATIC_ASSETS?: Fetcher;
   /** Cloudflare Images binding for resize/optimize from R2 bytes. */
   IMAGES?: ImagesBinding;
   APP_VERSION?: string;

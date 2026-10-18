@@ -15,6 +15,26 @@ if [[ -z "${CLOUDFLARE_API_TOKEN}" || -z "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
   exit 1
 fi
 
+# Never invent ENGINE_API_SECRET. An empty GitHub secret used to mint a new
+# value on every deploy and write it only onto the engine Worker.
+# Refuse whitespace, including a trailing newline. Do not trim and continue.
+ENGINE_SECRET="${ENGINE_API_SECRET-}"
+engine_secret_trimmed="${ENGINE_SECRET#"${ENGINE_SECRET%%[![:space:]]*}"}"
+engine_secret_trimmed="${engine_secret_trimmed%"${engine_secret_trimmed##*[![:space:]]}"}"
+if [[ -z "$ENGINE_SECRET" || -z "${ENGINE_SECRET//[[:space:]]/}" ]]; then
+  echo "ERROR: ENGINE_API_SECRET is missing. Set that GitHub secret before deploy. This script does not generate one." >&2
+  exit 1
+fi
+if [[ "$ENGINE_SECRET" != "$engine_secret_trimmed" || "$ENGINE_SECRET" =~ [[:space:]] ]]; then
+  echo "ERROR: ENGINE_API_SECRET must not contain whitespace or a trailing newline. Refusing to trim it." >&2
+  exit 1
+fi
+if [[ ${#ENGINE_SECRET} -lt 32 ]]; then
+  echo "ERROR: ENGINE_API_SECRET must be at least 32 characters. Refusing to deploy." >&2
+  exit 1
+fi
+unset engine_secret_trimmed
+
 log() { echo "$*" >&2; }
 
 has_line() {
@@ -158,16 +178,14 @@ log "Deploying floorplan engine…"
   pnpm exec wrangler deploy >&2
 )
 
-ENGINE_SECRET="${ENGINE_API_SECRET:-}"
-if [[ -z "$ENGINE_SECRET" ]]; then
-  ENGINE_SECRET="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
-  log "Generated ENGINE_API_SECRET (also add to GitHub secrets for stable reuse)"
-fi
-log "Setting ENGINE_API_SECRET on engine worker…"
-(
-  cd apps/ancu-floorplan-engine
-  printf '%s' "$ENGINE_SECRET" | pnpm exec wrangler secret put ENGINE_API_SECRET >&2
-) || true
+log "Setting ENGINE_API_SECRET on property web and floorplan engine…"
+for app in apps/property-web-worker apps/ancu-floorplan-engine; do
+  log "wrangler secret put ENGINE_API_SECRET ($app)"
+  (
+    cd "$app"
+    printf '%s' "$ENGINE_SECRET" | pnpm exec wrangler secret put ENGINE_API_SECRET >&2
+  )
+done
 
 log "Deploy complete."
 log "Workers: ancu-property-web , ancu-floorplan-engine"
