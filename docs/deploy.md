@@ -73,7 +73,7 @@ Admin UI uses **username/password** stored in D1 (`admin_users` / `admin_session
 
 Create the first operator only when `admin_users` is empty:
 
-1. **One-time token** — set `ADMIN_BOOTSTRAP_TOKEN`, then `POST /api/admin/bootstrap` with JSON `{"token","username","password"}`. A later call returns `admin_exists`. Unset the token after setup.
+1. **One-time token** — set `ADMIN_BOOTSTRAP_TOKEN` to at least 32 characters (shorter values disable bootstrap), then `POST /api/admin/bootstrap` with JSON `{"token","username","password"}`. A later call returns `admin_exists`. Unset the token after setup.
 2. **Initial hash** — set `ADMIN_BOOTSTRAP_USERNAME` and `ADMIN_INITIAL_PASSWORD_HASH`. The hash is a `pbkdf2-sha256$iterations$salt$hash` string (PBKDF2-SHA256, at least 100000 iterations), not a plaintext password. The first login for that username inserts the row and sets `must_change_password`. An existing row is left unchanged.
 
 If an admin row already exists, these secrets do not rotate it. Change that password in `/admin`, then delete rows from `admin_sessions`.

@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 // @ts-expect-error node builtin is available under vitest
 import { readFileSync } from "node:fs";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "../index";
 import { hashPassword, validateNewPassword } from "../auth";
 import type { Env } from "../types";
@@ -95,6 +95,10 @@ function createMemoryDb(): MemoryDb {
         const normalized = sql.replace(/\s+/g, " ").trim();
         if (/INSERT INTO admin_users/i.test(normalized)) {
           const [id, username, password_hash, must_change_password] = binds;
+          const conditional = /WHERE NOT EXISTS/i.test(normalized);
+          if (conditional && users.size > 0) {
+            return { success: true, meta: { changes: 0 } };
+          }
           users.set(String(id), {
             id,
             username,
@@ -103,7 +107,7 @@ function createMemoryDb(): MemoryDb {
             created_at: "now",
             updated_at: "now",
           });
-          return { success: true };
+          return { success: true, meta: { changes: 1 } };
         }
         if (/INSERT INTO admin_sessions/i.test(normalized)) {
           const [id, user_id, token_hash, expires_at] = binds;
@@ -317,10 +321,63 @@ describe("admin db auth flow", () => {
     expect(await readAdmin(db, "operator")).toBeNull();
   });
 
+  it("inserts only one admin when two bootstraps run together", async () => {
+    const token = "0123456789abcdef0123456789abcdef";
+    const secrets = { ADMIN_BOOTSTRAP_TOKEN: `  ${token}  ` };
+    const [first, second] = await Promise.all([
+      bootstrapAdminWithToken(db, secrets, {
+        token,
+        username: "operator-a",
+        password: "chosen-operator-secret-a",
+      }),
+      bootstrapAdminWithToken(db, secrets, {
+        token,
+        username: "operator-b",
+        password: "chosen-operator-secret-b",
+      }),
+    ]);
+    const results = [first, second];
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.filter((result) => !result.ok)).toEqual([
+      { ok: false, error: "admin_exists" },
+    ]);
+    const stored = [await readAdmin(db, "operator-a"), await readAdmin(db, "operator-b")].filter(
+      Boolean,
+    );
+    expect(stored).toHaveLength(1);
+  });
+
+  it("disables bootstrap when ADMIN_BOOTSTRAP_TOKEN is under 32 characters", async () => {
+    const result = await bootstrapAdminWithToken(
+      db,
+      { ADMIN_BOOTSTRAP_TOKEN: "  short-token  " },
+      {
+        token: "short-token",
+        username: "operator",
+        password: "chosen-operator-secret",
+      },
+    );
+    expect(result).toEqual({ ok: false, error: "bootstrap_disabled" });
+    expect(await readAdmin(db, "operator")).toBeNull();
+  });
+
+  it("spends a PBKDF2 proof when the username does not exist", async () => {
+    const spy = vi.spyOn(crypto.subtle, "deriveBits");
+    try {
+      const result = await loginAdmin(db, "missing-operator", "not-a-stored-password");
+      expect(result.ok).toBe(false);
+      expect(spy).toHaveBeenCalledTimes(1);
+      const params = spy.mock.calls[0]?.[0] as { iterations?: number };
+      expect(params.iterations).toBe(100_000);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("creates the first admin once from ADMIN_BOOTSTRAP_TOKEN and then refuses", async () => {
-    const secrets = { ADMIN_BOOTSTRAP_TOKEN: "one-time-setup-token" };
+    const secrets = { ADMIN_BOOTSTRAP_TOKEN: "0123456789abcdef0123456789abcdef" };
     const created = await bootstrapAdminWithToken(db, secrets, {
-      token: "one-time-setup-token",
+      token: "0123456789abcdef0123456789abcdef",
       username: "operator",
       password: "chosen-operator-secret",
     });
@@ -330,7 +387,7 @@ describe("admin db auth flow", () => {
     const hashAfterCreate = row?.password_hash;
 
     const again = await bootstrapAdminWithToken(db, secrets, {
-      token: "one-time-setup-token",
+      token: "0123456789abcdef0123456789abcdef",
       username: "operator",
       password: "another-operator-secret",
     });
@@ -348,7 +405,7 @@ describe("admin db auth flow", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: "one-time-setup-token",
+          token: "0123456789abcdef0123456789abcdef",
           username: "operator",
           password: "chosen-operator-secret",
         }),
@@ -357,7 +414,7 @@ describe("admin db auth flow", () => {
     );
     expect(disabled.status).toBe(404);
 
-    const env = { DB: db, ADMIN_BOOTSTRAP_TOKEN: "one-time-setup-token" } as unknown as Env;
+    const env = { DB: db, ADMIN_BOOTSTRAP_TOKEN: "0123456789abcdef0123456789abcdef" } as unknown as Env;
     const wrong = await worker.fetch(
       new Request("http://localhost/api/admin/bootstrap", {
         method: "POST",
@@ -378,7 +435,7 @@ describe("admin db auth flow", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: "one-time-setup-token",
+          token: "0123456789abcdef0123456789abcdef",
           username: "operator",
           password: "chosen-operator-secret",
         }),
@@ -394,7 +451,7 @@ describe("admin db auth flow", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          token: "one-time-setup-token",
+          token: "0123456789abcdef0123456789abcdef",
           username: "second",
           password: "another-operator-secret",
         }),
