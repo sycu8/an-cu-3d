@@ -28,6 +28,38 @@ type ProjectRow = {
 
 const PENDING = "Chờ xác minh";
 
+/** NFC + trim, then the label itself or a longer stub that starts with it. Null is not a stub. */
+export function isPlaceholderLabel(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.normalize("NFC").trim();
+  if (!normalized) return false;
+  const label = PENDING.normalize("NFC");
+  return normalized === label || normalized.startsWith(label);
+}
+
+type PlaceholderFields = {
+  tagline: string | null;
+  city: string | null;
+  district: string | null;
+  address: string | null;
+  handover: string | null;
+  price_range: string | null;
+  total_units: string | null;
+};
+
+/** One buyer-facing fact is enough. Seed rows legitimately leave some facts pending; those stay in the catalog. */
+export function hasPlaceholderField(row: PlaceholderFields): boolean {
+  return (
+    isPlaceholderLabel(row.tagline) ||
+    isPlaceholderLabel(row.city) ||
+    isPlaceholderLabel(row.district) ||
+    isPlaceholderLabel(row.address) ||
+    isPlaceholderLabel(row.handover) ||
+    isPlaceholderLabel(row.price_range) ||
+    isPlaceholderLabel(row.total_units)
+  );
+}
+
 export async function ensureGamudaDeveloper(db: D1Database): Promise<string> {
   const id = "dev_gamuda_land";
   await db
@@ -40,22 +72,30 @@ export async function ensureGamudaDeveloper(db: D1Database): Promise<string> {
   return id;
 }
 
+type ProjectListScope = "public" | "admin" | "blog";
+
+function listScope(scope: ProjectListScope): { where: string; binds: string[] } {
+  // Blog links only to published rows. Placeholder rows are dropped in JS so NFC and trim apply.
+  if (scope === "public" || scope === "blog") return { where: "WHERE p.status = 'published'", binds: [] };
+  return { where: "", binds: [] };
+}
+
 async function listProjectSummaries(
   db: D1Database,
-  publishedOnly: boolean,
+  scope: ProjectListScope,
 ): Promise<ProjectSummary[]> {
-  const where = publishedOnly ? "WHERE p.status = 'published'" : "";
-  const rows = await db
-    .prepare(
-      `SELECT p.*, d.name AS developer_name
+  const { where, binds } = listScope(scope);
+  const statement = db.prepare(
+    `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
        ${where}
        ORDER BY p.updated_at DESC`,
-    )
-    .all<ProjectRow>();
+  );
+  const rows = await (binds.length ? statement.bind(...binds) : statement).all<ProjectRow>();
+  const visible = (rows.results ?? []).filter((row) => scope !== "blog" || !hasPlaceholderField(row));
 
-  return (rows.results ?? []).map((p) => ({
+  return visible.map((p) => ({
     id: p.id,
     slug: p.slug,
     name: p.name,
@@ -82,12 +122,36 @@ async function listProjectSummaries(
 
 /** Buyer-facing list. Anything other than published stays off the public API. */
 export function listDbProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
-  return listProjectSummaries(db, true);
+  return listProjectSummaries(db, "public");
 }
 
 /** Admin list. Every status, including failed, draft, and active. */
 export function listAdminDbProjects(db: D1Database): Promise<ProjectSummary[]> {
-  return listProjectSummaries(db, false);
+  return listProjectSummaries(db, "admin");
+}
+
+/** Blog source list. Published rows only, minus any row with a Chờ xác minh fact. */
+export function listBlogDbProjects(db: D1Database): Promise<ProjectSummary[]> {
+  return listProjectSummaries(db, "blog");
+}
+
+/**
+ * Blog detail. Failed, draft, active, and placeholder rows are invisible so the caller
+ * can fall back to the seed instead of quoting a stub.
+ */
+export async function getBlogDbProjectBySlug(
+  db: D1Database,
+  slug: string,
+): Promise<ProjectDetail | null> {
+  const row = await db
+    .prepare(
+      `SELECT status, tagline, city, district, address, handover, price_range, total_units
+       FROM projects WHERE slug = ?`,
+    )
+    .bind(slug)
+    .first<PlaceholderFields & { status: string }>();
+  if (!row || row.status !== "published" || hasPlaceholderField(row)) return null;
+  return loadProjectBySlug(db, slug, true);
 }
 
 async function loadProjectBySlug(
@@ -286,7 +350,11 @@ export async function findStoredProjectId(db: D1Database, slug: string): Promise
   return row?.id ?? null;
 }
 
-/** The failed-build stub fills every buyer-facing fact with this label. */
+/**
+ * The failed-build stub fills every buyer-facing fact. A real synthesis often leaves
+ * price or handover as Chờ xác minh and must still be allowed to update a published row,
+ * so this stays "every field", while the blog and approve-all use any one field.
+ */
 export function isPlaceholderProject(data: {
   tagline: string;
   city: string;
@@ -297,13 +365,13 @@ export function isPlaceholderProject(data: {
   totalUnits: string;
 }): boolean {
   return (
-    data.tagline === PENDING &&
-    data.city === PENDING &&
-    data.district === PENDING &&
-    data.address === PENDING &&
-    data.handover === PENDING &&
-    data.priceRange === PENDING &&
-    data.totalUnits === PENDING
+    isPlaceholderLabel(data.tagline) &&
+    isPlaceholderLabel(data.city) &&
+    isPlaceholderLabel(data.district) &&
+    isPlaceholderLabel(data.address) &&
+    isPlaceholderLabel(data.handover) &&
+    isPlaceholderLabel(data.priceRange) &&
+    isPlaceholderLabel(data.totalUnits)
   );
 }
 
@@ -334,27 +402,33 @@ export async function approveAllProjects(db: D1Database): Promise<{
        WHERE source_class IN ('pending_verification')
           OR provenance LIKE '%pending verification%'`,
     ),
-    db
+  ]);
+  const candidates = await db
+    .prepare(
+      `SELECT id, tagline, city, district, address, handover, price_range, total_units
+       FROM projects
+       WHERE status NOT IN ('published', 'failed')`,
+    )
+    .all<PlaceholderFields & { id: string }>();
+  const ids = (candidates.results ?? []).filter((row) => !hasPlaceholderField(row)).map((row) => row.id);
+  let projectUpdates = 0;
+  if (ids.length) {
+    const updated = await db
       .prepare(
         `UPDATE projects
-         SET status = 'published', updated_at = datetime('now')
-         WHERE status NOT IN ('published', 'failed')
-           AND NOT (
-             tagline = ?
-             AND city = ?
-             AND district = ?
-             AND address = ?
-             AND handover = ?
-             AND price_range = ?
-             AND total_units = ?
-           )`,
+         SET status = 'published',
+             published_at = COALESCE(published_at, datetime('now')),
+             updated_at = datetime('now')
+         WHERE id IN (${ids.map(() => "?").join(", ")})`,
       )
-      .bind(PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING),
-  ]);
+      .bind(...ids)
+      .run();
+    projectUpdates = updated.meta.changes ?? 0;
+  }
   return {
     apartmentUpdates: result[0]?.meta.changes ?? 0,
     nearbyUpdates: result[1]?.meta.changes ?? 0,
-    projectUpdates: result[2]?.meta.changes ?? 0,
+    projectUpdates,
   };
 }
 

@@ -144,13 +144,14 @@ log "Building property web (assets)…"
 pnpm --filter @ancu/property-web-worker run build >&2
 
 log "Applying D1 migrations…"
+# A failed migration must stop the script before either Worker deploys.
 (
   cd apps/property-web-worker
-  pnpm exec wrangler d1 migrations apply DB --remote >&2 || true
+  pnpm exec wrangler d1 migrations apply DB --remote >&2
 )
 (
   cd apps/ancu-floorplan-engine
-  pnpm exec wrangler d1 migrations apply ENGINE_DB --remote >&2 || true
+  pnpm exec wrangler d1 migrations apply ENGINE_DB --remote >&2
 )
 
 log "Deploying property web…"

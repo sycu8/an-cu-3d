@@ -2,7 +2,7 @@
 // @ts-expect-error node builtin is available under vitest
 import { execFileSync } from "node:child_process";
 // @ts-expect-error node builtin is available under vitest
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 // @ts-expect-error node builtin is available under vitest
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -91,5 +91,22 @@ describe("require-engine-secret", () => {
       expect(result.stderr).toContain("ENGINE_API_SECRET");
       expect(result.stderr).not.toContain(secret);
     }
+  });
+});
+
+describe("cf-deploy migrations", () => {
+  it("does not swallow a failed D1 migration before the Workers deploy", () => {
+    const source = readFileSync(path.join(repoRoot(), "scripts/cf-deploy.sh"), "utf8");
+    const lines = String(source).split("\n");
+    const migrationLines = lines.filter((line) => line.includes("migrations apply"));
+    expect(migrationLines.map((line) => line.trim())).toEqual([
+      "pnpm exec wrangler d1 migrations apply DB --remote >&2",
+      "pnpm exec wrangler d1 migrations apply ENGINE_DB --remote >&2",
+    ]);
+    const firstMigration = lines.findIndex((line) => line.includes("migrations apply"));
+    const deployLine = lines.findIndex((line) => line.includes("Deploying property web"));
+    expect(firstMigration).toBeGreaterThan(-1);
+    expect(deployLine).toBeGreaterThan(firstMigration);
+    expect(lines.slice(0, firstMigration).some((line) => line.includes("set -e"))).toBe(true);
   });
 });
