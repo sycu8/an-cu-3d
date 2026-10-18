@@ -411,19 +411,22 @@ export async function approveAllProjects(db: D1Database): Promise<{
     )
     .all<PlaceholderFields & { id: string }>();
   const ids = (candidates.results ?? []).filter((row) => !hasPlaceholderField(row)).map((row) => row.id);
+  // D1 rejects a query with more than 100 bound parameters.
+  const D1_MAX_BOUND_PARAMETERS = 100;
   let projectUpdates = 0;
-  if (ids.length) {
+  for (let offset = 0; offset < ids.length; offset += D1_MAX_BOUND_PARAMETERS) {
+    const group = ids.slice(offset, offset + D1_MAX_BOUND_PARAMETERS);
     const updated = await db
       .prepare(
         `UPDATE projects
          SET status = 'published',
              published_at = COALESCE(published_at, datetime('now')),
              updated_at = datetime('now')
-         WHERE id IN (${ids.map(() => "?").join(", ")})`,
+         WHERE id IN (${group.map(() => "?").join(", ")})`,
       )
-      .bind(...ids)
+      .bind(...group)
       .run();
-    projectUpdates = updated.meta.changes ?? 0;
+    projectUpdates += updated.meta.changes ?? 0;
   }
   return {
     apartmentUpdates: result[0]?.meta.changes ?? 0,
