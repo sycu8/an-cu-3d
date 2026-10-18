@@ -8,6 +8,14 @@ export default function BlogPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const previousTitle = document.title;
+    document.title = "Blog AnCư — Hiểu căn nhà trước khi gọi là nhà";
+    return () => {
+      document.title = previousTitle;
+    };
+  }, []);
+
+  useEffect(() => {
     void (async () => {
       try {
         const res = await fetch("/api/blog");

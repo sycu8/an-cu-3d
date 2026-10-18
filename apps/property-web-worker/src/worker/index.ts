@@ -23,9 +23,9 @@ import {
 import {
   getPostBySlug,
   listAllPosts,
-  listPublishedPosts,
   upsertBlogPost,
 } from "./db/blog";
+import { loadPublicBlogPost, loadPublishedBlogPosts } from "./editorial-blog";
 import { createBuildJob, getBuildJob, listBuildJobs } from "./db/jobs";
 import { getDbProjectBySlug, listDbProjectSummaries } from "./db/projects";
 import { runProjectBuild } from "./project-build";
@@ -585,23 +585,15 @@ async function handleApi(
   }
 
   if (path === "/api/blog" && request.method === "GET") {
-    try {
-      const posts = await listPublishedPosts(env.DB);
-      return json({ posts }, requestId);
-    } catch {
-      return json({ posts: [] }, requestId);
-    }
+    const posts = await loadPublishedBlogPosts(env.DB);
+    return json({ posts }, requestId);
   }
 
   const blogMatch = path.match(/^\/api\/blog\/([^/]+)$/);
   if (blogMatch && request.method === "GET") {
-    try {
-      const post = await getPostBySlug(env.DB, decodeURIComponent(blogMatch[1]));
-      if (!post || post.status !== "published") return notFound("post_not_found", requestId);
-      return json({ post }, requestId);
-    } catch {
-      return notFound("post_not_found", requestId);
-    }
+    const post = await loadPublicBlogPost(env.DB, decodeURIComponent(blogMatch[1]));
+    if (!post) return notFound("post_not_found", requestId);
+    return json({ post }, requestId);
   }
 
   if (path.startsWith("/api/media/") && (request.method === "GET" || request.method === "HEAD")) {
