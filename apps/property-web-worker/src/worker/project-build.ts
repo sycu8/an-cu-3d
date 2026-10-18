@@ -1,7 +1,12 @@
 import type { ProjectBuildStage } from "@ancu/shared";
 import type { Env } from "./types";
 import { appendBuildEvent, updateBuildJob } from "./db/jobs";
-import { upsertSynthesizedProject, updateProjectCoverR2Key, type SynthesizedProject } from "./db/projects";
+import {
+  findStoredProjectId,
+  upsertSynthesizedProject,
+  updateProjectCoverR2Key,
+  type SynthesizedProject,
+} from "./db/projects";
 import {
   assist2dTo3d,
   crawlSources,
@@ -63,18 +68,19 @@ function failedProjectStub(
   };
 }
 
-async function persistFailedProject(
+/**
+ * Failed builds write a placeholder only when the slug is new.
+ * An existing row keeps its published fields and child rows; only the job is marked failed.
+ */
+async function recordFailedBuild(
   env: Env,
   job: { id: string; name: string; slug: string },
   startedAt: number,
-  sources: { label: string; url: string }[],
   message: string,
+  writeNewProject: () => Promise<string>,
 ): Promise<void> {
-  const projectId = await upsertSynthesizedProject(
-    env.DB,
-    failedProjectStub(job, sources, message),
-    "failed",
-  );
+  const existingId = await findStoredProjectId(env.DB, job.slug);
+  const projectId = existingId ?? (await writeNewProject());
   await updateBuildJob(env.DB, job.id, {
     status: "failed",
     stage: "failed",
@@ -83,11 +89,24 @@ async function persistFailedProject(
     resultJson: JSON.stringify({
       projectId,
       slug: job.slug,
-      persisted: true,
+      persisted: existingId == null,
+      preserved: existingId != null,
       status: "failed",
     }),
   });
   await emit(env, job.id, startedAt, "failed", message);
+}
+
+async function persistFailedProject(
+  env: Env,
+  job: { id: string; name: string; slug: string },
+  startedAt: number,
+  sources: { label: string; url: string }[],
+  message: string,
+): Promise<void> {
+  await recordFailedBuild(env, job, startedAt, message, () =>
+    upsertSynthesizedProject(env.DB, failedProjectStub(job, sources, message), "failed"),
+  );
 }
 
 async function emit(
@@ -281,31 +300,18 @@ export async function runProjectBuild(
     }
 
     await emit(env, job.id, startedAt, "persist", "Ghi D1 projects / amenities / units…");
-    const projectStatus = conversionError ? "failed" : "published";
-    const projectId = await upsertSynthesizedProject(env.DB, project, projectStatus);
+    if (conversionError) {
+      await recordFailedBuild(env, job, startedAt, conversionError, () =>
+        upsertSynthesizedProject(env.DB, project, "failed"),
+      );
+      return;
+    }
+
+    const projectId = await upsertSynthesizedProject(env.DB, project, "published");
     if (cover.r2Key && !String(cover.r2Key).endsWith(".json")) {
       await updateProjectCoverR2Key(env.DB, job.slug, cover.r2Key);
     }
     await emit(env, job.id, startedAt, "persist", `Đã lưu project id=${projectId}`);
-
-    if (conversionError) {
-      const result = {
-        projectId,
-        slug: job.slug,
-        path: `/projects/${job.slug}`,
-        persisted: true,
-        engineJobs: "failed",
-      };
-      await updateBuildJob(env.DB, job.id, {
-        status: "failed",
-        stage: "failed",
-        finishedAt: new Date().toISOString(),
-        error: conversionError,
-        resultJson: JSON.stringify(result),
-      });
-      await emit(env, job.id, startedAt, "failed", conversionError);
-      return;
-    }
 
     await emit(env, job.id, startedAt, "publish", "Xuất bản trang dự án…");
     const result = {

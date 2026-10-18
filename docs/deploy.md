@@ -11,7 +11,7 @@ Required before either deploy workflow runs `scripts/cf-deploy.sh`:
 
 - `ENGINE_API_SECRET` — one value, set as a GitHub secret. It must be at least 32 characters of printable ASCII (no spaces, tabs, CR, LF, or other characters). The script exits if it is missing, too short, or not printable ASCII. It does not trim or generate a replacement. After both Workers deploy, it runs `wrangler secret put ENGINE_API_SECRET` in `apps/property-web-worker` and `apps/ancu-floorplan-engine` with that same value.
 
-`ENGINE_BASE_URL` is not a secret. A deploy without `--env` and `--env production` use `https://ancu-floorplan-engine.sycu-lee.workers.dev`. `--env preview` uses `https://ancu-floorplan-engine-preview.sycu-lee.workers.dev`, matching `env.preview.name` in the engine wrangler config. `scripts/cf-deploy.sh` does not deploy the preview workers, so that host is only live after a preview deploy. `keep_vars` is false so a dashboard value cannot drop the var.
+`ENGINE_BASE_URL` is not a secret. A deploy without `--env` and `--env production` use `https://ancu-floorplan-engine.sycu-lee.workers.dev`. `env.preview` does not set `ENGINE_BASE_URL`: the preview engine Worker does not exist, and wrangler does not inherit top-level vars, so a preview build skips the engine crawl and `/jobs` calls instead of targeting a missing host. `keep_vars` is false so a dashboard value cannot drop the var on the environments that do set it.
 
 Optional later:
 
@@ -102,7 +102,7 @@ pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ID
 
 Apply D1 migrations (includes `0004_admin_auth.sql`) before using `/admin`.
 
-`scripts/cf-deploy.sh` writes the same `ENGINE_API_SECRET` onto both Workers. The property Worker reads `ENGINE_BASE_URL` from wrangler vars. A missing URL or secret is logged as a warning and the engine calls are skipped. A non-2xx engine response (including 401 and 5xx) fails the build job. A failed crawl or `/jobs` call still saves the project with status `failed` (not `published`) so it can be retried without appearing as a live listing.
+`scripts/cf-deploy.sh` writes the same `ENGINE_API_SECRET` onto both Workers. The property Worker reads `ENGINE_BASE_URL` from wrangler vars. A missing URL or secret is logged as a warning and the engine calls are skipped (this is the preview path, which has no `ENGINE_BASE_URL`). A non-2xx engine response (including 401 and 5xx) fails the build job. A failed crawl or `/jobs` call saves a `failed` placeholder only when that slug is new. Rebuilding an existing project records the failure on the build job and leaves the published row and its amenities, apartment types, nearby places, and sources unchanged. Public `GET /api/projects` and `GET /api/projects/:slug` return `published` rows only; any other status is omitted or 404.
 
 ### Smoke (admin + blog)
 

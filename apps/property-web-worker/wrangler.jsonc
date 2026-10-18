@@ -53,11 +53,10 @@
   "env": {
     "preview": {
       "name": "ancu-property-web-preview",
-      "vars": {
-        // Preview calls the preview engine (env.preview.name in the engine wrangler file).
-        // cf-deploy.sh deploys the top-level engine only, so this host is live after a preview deploy.
-        "ENGINE_BASE_URL": "https://ancu-floorplan-engine-preview.sycu-lee.workers.dev"
-      },
+      // No ENGINE_BASE_URL. ancu-floorplan-engine-preview does not exist, and
+      // wrangler does not copy top-level vars into this environment. Preview
+      // builds therefore hit engineSkipMessage and skip crawl and /jobs.
+
       "d1_databases": [
         {
           "binding": "DB",

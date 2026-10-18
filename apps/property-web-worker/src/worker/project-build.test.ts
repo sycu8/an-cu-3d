@@ -17,6 +17,7 @@ vi.mock("./db/jobs", () => ({
 }));
 
 vi.mock("./db/projects", () => ({
+  findStoredProjectId: vi.fn(async () => null),
   upsertSynthesizedProject: vi.fn(async () => "proj_test"),
   updateProjectCoverR2Key: vi.fn(async () => {}),
 }));

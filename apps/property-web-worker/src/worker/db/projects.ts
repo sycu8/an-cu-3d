@@ -40,13 +40,14 @@ export async function ensureGamudaDeveloper(db: D1Database): Promise<string> {
   return id;
 }
 
+/** Buyer-facing list. Anything other than published stays off the public API. */
 export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
   const rows = await db
     .prepare(
       `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
-       WHERE p.status IN ('active', 'published', 'draft')
+       WHERE p.status = 'published'
        ORDER BY p.updated_at DESC`,
     )
     .all<ProjectRow>();
@@ -76,6 +77,7 @@ export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSum
   }));
 }
 
+/** Buyer-facing detail. Non-published rows are invisible so the route can 404. */
 export async function getDbProjectBySlug(
   db: D1Database,
   slug: string,
@@ -85,7 +87,7 @@ export async function getDbProjectBySlug(
       `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
-       WHERE p.slug = ?`,
+       WHERE p.slug = ? AND p.status = 'published'`,
     )
     .bind(slug)
     .first<ProjectRow>();
@@ -244,6 +246,15 @@ export type SynthesizedProject = {
     };
   };
 };
+
+/** True for any stored slug, including failed. Used so a failed rebuild does not overwrite it. */
+export async function findStoredProjectId(db: D1Database, slug: string): Promise<string | null> {
+  const row = await db
+    .prepare(`SELECT id FROM projects WHERE slug = ?`)
+    .bind(slug)
+    .first<{ id: string }>();
+  return row?.id ?? null;
+}
 
 export async function upsertSynthesizedProject(
   db: D1Database,
