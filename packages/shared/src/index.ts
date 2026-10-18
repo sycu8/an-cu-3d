@@ -129,6 +129,7 @@ export {
   parseJsonFromLlm,
   imageViaGateway,
   factualQaViaGateway,
+  factualQaViaWorkersAi,
 } from "./ai-gateway.js";
 export type {
   AiGatewayConfig,

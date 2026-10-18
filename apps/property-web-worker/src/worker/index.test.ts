@@ -82,7 +82,7 @@ describe("worker security + health", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ status: "ok" });
+    expect(body).toMatchObject({ status: "ok", aiPath: "none", aiGateway: false });
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(response.headers.get("X-Frame-Options")).toBe("DENY");
     expect(response.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
@@ -108,6 +108,24 @@ describe("worker security + health", () => {
     const body = await response.json();
 
     expect(body).toMatchObject({ status: "ok", version: "1.2.3" });
+  });
+
+  it("reports the active AI path", async () => {
+    const direct = await worker.fetch(
+      new Request("http://localhost/api/health"),
+      { AI: { run: async () => ({ response: "" }) } } as unknown as Env,
+    );
+    expect(await direct.json()).toMatchObject({ aiPath: "workers_ai", aiGateway: false });
+
+    const gateway = await worker.fetch(
+      new Request("http://localhost/api/health"),
+      {
+        AI: { run: async () => ({ response: "" }) },
+        AI_GATEWAY_ACCOUNT_ID: "acc",
+        AI_GATEWAY_ID: "gw",
+      } as unknown as Env,
+    );
+    expect(await gateway.json()).toMatchObject({ aiPath: "ai_gateway", aiGateway: true });
   });
 
   it("returns 405 JSON for non-GET API requests", async () => {

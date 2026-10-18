@@ -1,10 +1,13 @@
 import {
   chatViaGateway,
+  chatViaWorkersAi,
   factualQaViaGateway,
+  factualQaViaWorkersAi,
   imageViaGateway,
   parseJsonFromLlm,
   slugifyProjectName,
   type AiGatewayConfig,
+  type ChatMessage,
   type ChatResult,
 } from "@ancu/shared";
 import { crawlSeedForSlug, PROJECT_CRAWL_SEEDS } from "../../data/project-crawl-seeds";
@@ -73,6 +76,34 @@ export function getAiGatewayConfig(env: Env): AiGatewayConfig | null {
     gatewayId: env.AI_GATEWAY_ID,
     token: env.AI_GATEWAY_TOKEN,
   };
+}
+
+export type ActiveAiPath = "ai_gateway" | "workers_ai" | "none";
+
+/** Gateway when its vars are set; otherwise the Workers AI binding; otherwise none. */
+export function activeAiPath(env: Env): ActiveAiPath {
+  if (getAiGatewayConfig(env)) return "ai_gateway";
+  if (env.AI) return "workers_ai";
+  return "none";
+}
+
+async function chatText(
+  env: Env,
+  useCase: "blog" | "qa_factual",
+  messages: ChatMessage[],
+): Promise<ChatResult> {
+  const gateway = getAiGatewayConfig(env);
+  if (gateway) return chatViaGateway(gateway, useCase, messages);
+  if (env.AI) {
+    return chatViaWorkersAi(
+      {
+        run: (model, input) => env.AI!.run(model, input),
+      },
+      useCase,
+      messages,
+    );
+  }
+  throw new Error("AI not configured");
 }
 
 async function fetchSourceSnippet(url: string): Promise<string> {
@@ -302,11 +333,10 @@ export async function generateBlogDraft(
     coverPrompt: `Warm architectural interior photography of a modern HCMC apartment showroom, deep teal and warm clay accents, natural daylight, no text`,
   };
 
-  const gateway = getAiGatewayConfig(env);
-  if (!gateway) return fallback;
+  if (activeAiPath(env) === "none") return fallback;
 
   try {
-    const chat = await chatViaGateway(gateway, "blog", [
+    const chat = await chatText(env, "blog", [
       {
         role: "system",
         content: `Viết bài blog tiếng Việt cho AnCư 3D (showroom trực quan, không rao bán). Không bịa số liệu. Trả JSON: title, excerpt, bodyMarkdown, seoTitle, seoDescription, coverPrompt.`,
@@ -435,17 +465,23 @@ export async function runFactualQa(
   claims: string,
   sources: string,
 ): Promise<{ ok: boolean; issues: string[]; raw?: string; source: string }> {
-  const gateway = getAiGatewayConfig(env);
-  if (!gateway) {
+  if (activeAiPath(env) === "none") {
     return {
       ok: true,
       issues: [],
       source: "fallback",
-      raw: "AI Gateway not configured — skipped factual QA",
+      raw: "AI not configured — skipped factual QA",
     };
   }
   try {
-    const chat = await factualQaViaGateway(gateway, claims, sources);
+    const gateway = getAiGatewayConfig(env);
+    const chat = gateway
+      ? await factualQaViaGateway(gateway, claims, sources)
+      : await factualQaViaWorkersAi(
+          { run: (model, input) => env.AI!.run(model, input) },
+          claims,
+          sources,
+        );
     try {
       const parsed = parseJsonFromLlm(chat.text) as { ok?: boolean; issues?: string[] };
       return {
@@ -462,10 +498,10 @@ export async function runFactualQa(
         source: chat.source,
       };
     }
-  } catch (err) {
+  } catch {
     return {
       ok: false,
-      issues: [err instanceof Error ? err.message : "QA failed"],
+      issues: ["AI request failed"],
       source: "error",
     };
   }

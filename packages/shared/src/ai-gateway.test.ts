@@ -102,4 +102,29 @@ describe("ai-gateway helpers", () => {
     }
     expect(gatewayBodies[0]?.max_tokens).toBe(2048);
   });
+
+  it("hides the model id when a chat request fails", async () => {
+    await expect(
+      chatViaWorkersAi(
+        {
+          run: async () => {
+            throw new Error("500 @cf/meta/llama-3.1-8b-instruct-fp8 unavailable");
+          },
+        },
+        "blog",
+        [{ role: "user", content: "draft" }],
+      ),
+    ).rejects.toThrow("AI request failed");
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () =>
+      new Response("model @cf/meta/llama-3.1-8b-instruct-fp8 failed", { status: 500 });
+    try {
+      await expect(
+        chatViaGateway(config, "qa_factual", [{ role: "user", content: "claim" }]),
+      ).rejects.toThrow("AI request failed");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
