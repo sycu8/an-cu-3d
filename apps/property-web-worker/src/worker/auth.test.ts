@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createSessionToken,
   extractBearerToken,
@@ -18,6 +18,18 @@ describe("admin password + session crypto", () => {
     expect(parsed?.iterations).toBeGreaterThanOrEqual(100_000);
     expect(await verifyPassword("correct-horse", serialized)).toBe(true);
     expect(await verifyPassword("wrong-password", serialized)).toBe(false);
+  });
+
+  it("rejects stored PBKDF2 iteration counts above the cap", async () => {
+    const serialized = `pbkdf2-sha256$9000000$${btoa("salt-value-16b!")}$${btoa("hash-value-32bytes-pad-pad")}`;
+    expect(parsePasswordHash(serialized)).toBeNull();
+    const spy = vi.spyOn(crypto.subtle, "deriveBits");
+    try {
+      expect(await verifyPassword("whatever-password", serialized)).toBe(false);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("rejects weak replacement passwords", () => {

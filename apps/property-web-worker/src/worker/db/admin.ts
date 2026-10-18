@@ -3,11 +3,14 @@ import {
   hashPassword,
   hashSessionToken,
   parsePasswordHash,
+  performPasswordProof,
   sessionExpiresAt,
   timingSafeEqual,
   validateNewPassword,
   verifyPassword,
 } from "../auth";
+
+const MIN_BOOTSTRAP_TOKEN_LENGTH = 32;
 
 export type AdminUserRow = {
   id: string;
@@ -52,33 +55,26 @@ async function adminExists(db: D1Database): Promise<boolean> {
   return Boolean(row);
 }
 
-async function insertAdminUser(
+/**
+ * One statement so two concurrent bootstraps cannot both insert.
+ * Returns true only when this call inserted the single row.
+ */
+async function insertFirstAdmin(
   db: D1Database,
   username: string,
   passwordHash: string,
   mustChangePassword: boolean,
-): Promise<AdminUserRow> {
+): Promise<boolean> {
   const id = crypto.randomUUID();
-  try {
-    await db
-      .prepare(
-        `INSERT INTO admin_users (id, username, password_hash, must_change_password)
-         VALUES (?, ?, ?, ?)`,
-      )
-      .bind(id, username, passwordHash, mustChangePassword ? 1 : 0)
-      .run();
-  } catch (err) {
-    const raced = await db.prepare(usernameLookupSql()).bind(username).first<AdminUserRow>();
-    if (raced) return raced;
-    throw err;
-  }
-
-  const created = await db
-    .prepare(`SELECT * FROM admin_users WHERE id = ?`)
-    .bind(id)
-    .first<AdminUserRow>();
-  if (!created) throw new Error("failed_to_bootstrap_admin");
-  return created;
+  const result = await db
+    .prepare(
+      `INSERT INTO admin_users (id, username, password_hash, must_change_password)
+       SELECT ?, ?, ?, ?
+       WHERE NOT EXISTS (SELECT 1 FROM admin_users)`,
+    )
+    .bind(id, username, passwordHash, mustChangePassword ? 1 : 0)
+    .run();
+  return result.meta?.changes === 1;
 }
 
 /**
@@ -92,11 +88,12 @@ export async function bootstrapInitialAdmin(
   const username = secrets?.ADMIN_BOOTSTRAP_USERNAME?.trim() ?? "";
   const passwordHash = secrets?.ADMIN_INITIAL_PASSWORD_HASH?.trim() ?? "";
   if (!username || !passwordHash) return;
-  if (await adminExists(db)) return;
   if (!parsePasswordHash(passwordHash)) {
+    // A bad secret must not lock out an operator who already exists.
+    if (await adminExists(db)) return;
     throw new Error("invalid_bootstrap_hash");
   }
-  await insertAdminUser(db, username, passwordHash, true);
+  await insertFirstAdmin(db, username, passwordHash, true);
 }
 
 async function bootstrapTokenMatches(provided: string, expected: string): Promise<boolean> {
@@ -126,8 +123,10 @@ export async function bootstrapAdminWithToken(
         | "password_matches_username";
     }
 > {
-  const expected = secrets?.ADMIN_BOOTSTRAP_TOKEN ?? "";
-  if (!expected) return { ok: false, error: "bootstrap_disabled" };
+  const expected = secrets?.ADMIN_BOOTSTRAP_TOKEN?.trim() ?? "";
+  if (expected.length < MIN_BOOTSTRAP_TOKEN_LENGTH) {
+    return { ok: false, error: "bootstrap_disabled" };
+  }
 
   const token = input.token ?? "";
   const username = input.username?.trim() ?? "";
@@ -138,7 +137,6 @@ export async function bootstrapAdminWithToken(
   if (!(await bootstrapTokenMatches(token, expected))) {
     return { ok: false, error: "invalid_credentials" };
   }
-  if (await adminExists(db)) return { ok: false, error: "admin_exists" };
   if (username.length > 64 || /\s/.test(username)) {
     return { ok: false, error: "username_required" };
   }
@@ -147,20 +145,10 @@ export async function bootstrapAdminWithToken(
     return { ok: false, error: passwordError };
   }
 
-  if (await adminExists(db)) return { ok: false, error: "admin_exists" };
   const passwordHash = await hashPassword(password);
-  if (await adminExists(db)) return { ok: false, error: "admin_exists" };
-  try {
-    const created = await insertAdminUser(db, username, passwordHash, false);
-    if (created.password_hash !== passwordHash) {
-      // Lost the insert race; do not treat the existing hash as ours.
-      return { ok: false, error: "admin_exists" };
-    }
-    return { ok: true, username: created.username };
-  } catch (err) {
-    if (await adminExists(db)) return { ok: false, error: "admin_exists" };
-    throw err;
-  }
+  const inserted = await insertFirstAdmin(db, username, passwordHash, false);
+  if (!inserted) return { ok: false, error: "admin_exists" };
+  return { ok: true, username };
 }
 
 export async function findAdminByUsername(
@@ -245,7 +233,10 @@ export async function loginAdmin(
   }
 
   const user = await findAdminByUsername(db, username);
-  if (!user) return { ok: false, error: "invalid_credentials" };
+  if (!user) {
+    await performPasswordProof(password);
+    return { ok: false, error: "invalid_credentials" };
+  }
 
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) return { ok: false, error: "invalid_credentials" };

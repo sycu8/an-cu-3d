@@ -1,6 +1,8 @@
 /** Admin username/password + opaque session tokens (Workers Web Crypto). */
 
 const PBKDF2_ITERATIONS = 100_000;
+/** Reject stored hashes above this so a row cannot pin the Worker on PBKDF2. */
+const PBKDF2_MAX_ITERATIONS = 600_000;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type PasswordHashRecord = {
@@ -46,7 +48,9 @@ export function parsePasswordHash(serialized: string): PasswordHashRecord | null
   const [algorithm, iterationsRaw, saltB64, hashB64] = parts;
   if (algorithm !== "pbkdf2-sha256" || !saltB64 || !hashB64) return null;
   const iterations = Number(iterationsRaw);
-  if (!Number.isFinite(iterations) || iterations < 10_000) return null;
+  if (!Number.isInteger(iterations) || iterations < 10_000 || iterations > PBKDF2_MAX_ITERATIONS) {
+    return null;
+  }
   return { algorithm, iterations, saltB64, hashB64 };
 }
 
@@ -76,6 +80,12 @@ export async function hashPassword(password: string): Promise<string> {
     saltB64: bytesToB64(salt),
     hashB64: bytesToB64(hash),
   });
+}
+
+/** Same PBKDF2 cost as a real check, so a missing user does not return faster. */
+export async function performPasswordProof(password: string): Promise<void> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  await derivePbkdf2(password, salt, PBKDF2_ITERATIONS);
 }
 
 export async function verifyPassword(password: string, serialized: string): Promise<boolean> {
