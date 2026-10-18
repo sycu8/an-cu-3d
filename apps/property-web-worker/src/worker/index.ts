@@ -8,6 +8,7 @@ import {
 import {
   assist2dTo3d,
   editImageAsset,
+  activeAiPath,
   generateBlogDraft,
   generateImageAsset,
   runFactualQa,
@@ -602,7 +603,8 @@ async function handleApi(
       status: "ok",
       service: "ancu-property-web",
       db: dbStatus,
-      aiGateway: Boolean(env.AI_GATEWAY_ACCOUNT_ID && env.AI_GATEWAY_ID),
+      aiGateway: activeAiPath(env) === "ai_gateway",
+      aiPath: activeAiPath(env),
       r2: Boolean(env.ASSETS),
       images: Boolean(env.IMAGES),
       timestamp: new Date().toISOString(),

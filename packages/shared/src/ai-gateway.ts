@@ -42,6 +42,12 @@ export const DEFAULT_MODELS: Record<AiUseCase, string> = {
  */
 const DEFAULT_CHAT_MAX_TOKENS = 2048;
 
+/** Upstream failures often include the model id. Callers only see this message. */
+function genericAiError(err: unknown): Error {
+  if (err instanceof Error && err.message === "AI request failed") return err;
+  return new Error("AI request failed");
+}
+
 export function gatewayChatUrl(config: AiGatewayConfig, model: string): string {
   return `https://gateway.ai.cloudflare.com/v1/${config.accountId}/${config.gatewayId}/workers-ai/${encodeURIComponent(model)}`;
 }
@@ -58,42 +64,43 @@ export async function chatViaGateway(
 ): Promise<ChatResult> {
   const started = Date.now();
   const model = options?.model ?? DEFAULT_MODELS[useCase];
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (config.token) headers.Authorization = `Bearer ${config.token}`;
+  try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (config.token) headers.Authorization = `Bearer ${config.token}`;
 
-  const res = await fetch(gatewayChatUrl(config, model), {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      messages,
-      max_tokens: options?.maxTokens ?? DEFAULT_CHAT_MAX_TOKENS,
-    }),
-  });
+    const res = await fetch(gatewayChatUrl(config, model), {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        messages,
+        max_tokens: options?.maxTokens ?? DEFAULT_CHAT_MAX_TOKENS,
+      }),
+    });
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`AI Gateway ${useCase} failed (${res.status}): ${errText.slice(0, 200)}`);
+    if (!res.ok) throw new Error("AI request failed");
+
+    const data = (await res.json()) as {
+      result?: { response?: string };
+      response?: string;
+      choices?: { message?: { content?: string } }[];
+    };
+
+    const text =
+      data.result?.response ??
+      data.response ??
+      data.choices?.[0]?.message?.content ??
+      "";
+
+    return {
+      text: String(text).trim(),
+      model,
+      useCase,
+      latencyMs: Date.now() - started,
+      source: "ai_gateway",
+    };
+  } catch (err) {
+    throw genericAiError(err);
   }
-
-  const data = (await res.json()) as {
-    result?: { response?: string };
-    response?: string;
-    choices?: { message?: { content?: string } }[];
-  };
-
-  const text =
-    data.result?.response ??
-    data.response ??
-    data.choices?.[0]?.message?.content ??
-    "";
-
-  return {
-    text: String(text).trim(),
-    model,
-    useCase,
-    latencyMs: Date.now() - started,
-    source: "ai_gateway",
-  };
 }
 
 export async function chatViaWorkersAi(
@@ -104,17 +111,21 @@ export async function chatViaWorkersAi(
 ): Promise<ChatResult> {
   const started = Date.now();
   const model = options?.model ?? DEFAULT_MODELS[useCase];
-  const result = (await ai.run(model, {
-    messages,
-    max_tokens: options?.maxTokens ?? DEFAULT_CHAT_MAX_TOKENS,
-  })) as { response?: string };
-  return {
-    text: String(result.response ?? "").trim(),
-    model,
-    useCase,
-    latencyMs: Date.now() - started,
-    source: "workers_ai",
-  };
+  try {
+    const result = (await ai.run(model, {
+      messages,
+      max_tokens: options?.maxTokens ?? DEFAULT_CHAT_MAX_TOKENS,
+    })) as { response?: string };
+    return {
+      text: String(result.response ?? "").trim(),
+      model,
+      useCase,
+      latencyMs: Date.now() - started,
+      source: "workers_ai",
+    };
+  } catch (err) {
+    throw genericAiError(err);
+  }
 }
 
 export function parseJsonFromLlm(text: string): unknown {
@@ -200,12 +211,8 @@ export async function imageViaGateway(
 }
 
 /** Cheap factual QA — flag claims not grounded in provided sources. */
-export async function factualQaViaGateway(
-  config: AiGatewayConfig,
-  claims: string,
-  sources: string,
-): Promise<ChatResult> {
-  return chatViaGateway(config, "qa_factual", [
+function factualQaMessages(claims: string, sources: string): ChatMessage[] {
+  return [
     {
       role: "system",
       content:
@@ -215,5 +222,21 @@ export async function factualQaViaGateway(
       role: "user",
       content: `SOURCES:\n${sources}\n\nCLAIMS:\n${claims}`,
     },
-  ]);
+  ];
+}
+
+export async function factualQaViaGateway(
+  config: AiGatewayConfig,
+  claims: string,
+  sources: string,
+): Promise<ChatResult> {
+  return chatViaGateway(config, "qa_factual", factualQaMessages(claims, sources));
+}
+
+export async function factualQaViaWorkersAi(
+  ai: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> },
+  claims: string,
+  sources: string,
+): Promise<ChatResult> {
+  return chatViaWorkersAi(ai, "qa_factual", factualQaMessages(claims, sources));
 }
