@@ -5,6 +5,7 @@ import {
   hashPassword,
   validateNewPassword,
 } from "./auth";
+import { allowAuthAttempt, clientAddress } from "./auth-rate-limit";
 import {
   assist2dTo3d,
   editImageAsset,
@@ -201,6 +202,9 @@ async function handleAdmin(
     if (!username || !password) {
       return json({ error: "credentials_required" }, requestId, 400, "no-store");
     }
+    if (!allowAuthAttempt(clientAddress(request), "login")) {
+      return json({ error: "rate_limited" }, requestId, 429, "no-store");
+    }
     try {
       const result = await loginAdmin(env.DB, username, password, {
         ADMIN_BOOTSTRAP_USERNAME: env.ADMIN_BOOTSTRAP_USERNAME,
@@ -231,6 +235,9 @@ async function handleAdmin(
       body = (await request.json()) as { token?: string; username?: string; password?: string };
     } catch {
       return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    if (!allowAuthAttempt(clientAddress(request), "bootstrap")) {
+      return json({ error: "rate_limited" }, requestId, 429, "no-store");
     }
     try {
       const result = await bootstrapAdminWithToken(
