@@ -37,6 +37,9 @@ jobs:
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy == true))
+    concurrency:
+      group: cloudflare-deploy
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

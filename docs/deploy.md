@@ -14,12 +14,11 @@ Optional later:
 
 ## CI deploy workflow
 
-`.github/workflows/ci.yml` runs typecheck, tests, and build on pull requests and on pushes to `main` and `cursor/**`. The `deploy` job runs `scripts/cf-deploy.sh` only when `github.ref` is `refs/heads/main`: on a push to `main`, or a manual **Run workflow** started from `main` with `deploy` set to true. That input defaults to false, so a manual run does not deploy unless someone opts in, and it never deploys any other branch. Pull requests and other branches do not deploy; they run `wrangler deploy --dry-run` at most.
+`.github/workflows/ci.yml` is the only workflow that deploys on a push to `main`, and only after typecheck, tests, and build succeed. The `deploy` job runs `scripts/cf-deploy.sh` only when `github.ref` is `refs/heads/main`: on that push, or a manual **Run workflow** started from `main` with `deploy` set to true. That input defaults to false. Pull requests and other branches do not deploy; they run `wrangler deploy --dry-run` at most.
 
-`.github/workflows/deploy.yml` runs on `workflow_dispatch` and pushes to `main`. Its `deploy` job also requires `github.ref == refs/heads/main`. The confirm field is empty until someone types `deploy`; it is not pre-filled. When that job runs it still:
+`.github/workflows/deploy.yml` is manual-only. It does not run on push. Its `deploy` job requires `github.ref == refs/heads/main` and a typed confirm of `deploy` (the field is not pre-filled), then runs `scripts/cf-deploy.sh`.
 
-1. Install, typecheck, test, build (all packages)
-2. Deploy `@ancu/property-web-worker` and `@ancu/floorplan-engine` with `environment: production`
+Both deploy paths use the concurrency group `cloudflare-deploy` with `cancel-in-progress: false`. A second production deploy waits; it does not cancel one that is already running.
 
 Do not hardcode account IDs or API tokens in the repository.
 

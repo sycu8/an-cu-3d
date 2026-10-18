@@ -6,8 +6,6 @@ on:
       confirm:
         description: "Type deploy to confirm"
         required: true
-  push:
-    branches: [main]
 
 concurrency:
   group: cloudflare-deploy
@@ -15,7 +13,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.inputs.confirm == 'deploy')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'deploy'
     runs-on: ubuntu-latest
     permissions:
       contents: read

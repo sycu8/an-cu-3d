@@ -88,14 +88,29 @@ test("keeps the workflow_dispatch deploy input and Cloudflare secret names", () 
   assert.equal(deploy.match(/secrets\./g)?.length, secrets.length);
 });
 
-test("deploy.yml deploys only from main and does not pre-fill confirm", () => {
+test("only ci.yml deploys on push to main, and an in-progress deploy is not cancelled", () => {
+  const deploy = jobBody("deploy");
+  assert.match(deploy, /needs: build/);
+  assert.match(deploy, /group: cloudflare-deploy/);
+  assert.match(deploy, /cancel-in-progress: false/);
+  assert.match(ci, /github\.event_name == 'push'/);
+  assert.match(deploy, /github\.event_name == 'push'/);
+
+  assert.match(deployWorkflow, /workflow_dispatch:/);
+  assert.doesNotMatch(deployWorkflow, /^\s*push:/m);
+  assert.doesNotMatch(deployWorkflow, /github\.event_name == 'push'/);
+  assert.match(deployWorkflow, /group: cloudflare-deploy/);
+  assert.match(deployWorkflow, /cancel-in-progress: false/);
+  assert.match(
+    deployWorkflow,
+    /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.confirm == 'deploy'/,
+  );
+});
+
+test("deploy.yml is manual-only from main and does not pre-fill confirm", () => {
   assert.match(deployWorkflow, /description: "Type deploy to confirm"/);
   assert.match(deployWorkflow, /required: true/);
   assert.doesNotMatch(deployWorkflow, /default:\s*deploy/);
-  assert.match(
-    deployWorkflow,
-    /if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| github\.event\.inputs\.confirm == 'deploy'\)/,
-  );
   assert.match(deployWorkflow, /\n {2}deploy:\n/);
   assert.doesNotMatch(deployWorkflow, /^\s*environment:/m);
 
