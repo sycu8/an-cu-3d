@@ -14,9 +14,9 @@ Optional later:
 
 ## CI deploy workflow
 
-`.github/workflows/ci.yml` runs typecheck, tests, and build on pull requests and on pushes to `main` and `cursor/**`. The `deploy` job runs `scripts/cf-deploy.sh` only on a push to `main`, or a manual **Run workflow** with `deploy` left on (default true). Pull requests and other branches do not deploy; they run `wrangler deploy --dry-run` at most.
+`.github/workflows/ci.yml` runs typecheck, tests, and build on pull requests and on pushes to `main` and `cursor/**`. The `deploy` job runs `scripts/cf-deploy.sh` only when `github.ref` is `refs/heads/main`: on a push to `main`, or a manual **Run workflow** started from `main` with `deploy` set to true. That input defaults to false, so a manual run does not deploy unless someone opts in, and it never deploys any other branch. Pull requests and other branches do not deploy; they run `wrangler deploy --dry-run` at most.
 
-`.github/workflows/deploy.yml` runs on `workflow_dispatch` and pushes to `main`:
+`.github/workflows/deploy.yml` runs on `workflow_dispatch` and pushes to `main`. Its `deploy` job also requires `github.ref == refs/heads/main`. The confirm field is empty until someone types `deploy`; it is not pre-filled. When that job runs it still:
 
 1. Install, typecheck, test, build (all packages)
 2. Deploy `@ancu/property-web-worker` and `@ancu/floorplan-engine` with `environment: production`

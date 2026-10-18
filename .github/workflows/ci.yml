@@ -9,7 +9,7 @@ on:
       deploy:
         description: "Also deploy to Cloudflare"
         type: boolean
-        default: true
+        default: false
 
 jobs:
   build:
@@ -36,9 +36,7 @@ jobs:
 
   deploy:
     needs: build
-    if: >
-      (github.event_name == 'workflow_dispatch' && inputs.deploy == true) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.deploy == true))
     runs-on: ubuntu-latest
     permissions:
       contents: read

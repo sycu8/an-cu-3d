@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ci = readFileSync(resolve(root, ".github/workflows/ci.yml"), "utf8");
+const deployWorkflow = readFileSync(resolve(root, ".github/workflows/deploy.yml"), "utf8");
 
 function jobBody(name) {
   const marker = `\n  ${name}:\n`;
@@ -26,15 +27,14 @@ test("keeps the build and deploy job names", () => {
   assert.doesNotMatch(ci, /^\s*environment:/m);
 });
 
-test("deploy job runs only on push to main or manual workflow_dispatch", () => {
+test("deploy job runs only on main, and a manual run must opt in", () => {
   const deploy = jobBody("deploy");
-  assert.match(deploy, /github\.event_name == 'workflow_dispatch'/);
-  assert.match(deploy, /inputs\.deploy == true/);
-  assert.match(deploy, /github\.event_name == 'push'/);
-  assert.match(deploy, /github\.ref == 'refs\/heads\/main'/);
+  assert.match(
+    deploy,
+    /if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| \(github\.event_name == 'workflow_dispatch' && inputs\.deploy == true\)\)/,
+  );
   assert.match(deploy, /scripts\/cf-deploy\.sh/);
   assert.doesNotMatch(deploy, /cursor/);
-  assert.doesNotMatch(deploy, /refs\/heads\/(?!main')/);
   assert.doesNotMatch(deploy, /--dry-run/);
 });
 
@@ -69,7 +69,8 @@ test("keeps the workflow_dispatch deploy input and Cloudflare secret names", () 
   assert.match(ci, /workflow_dispatch:/);
   assert.match(ci, /description: "Also deploy to Cloudflare"/);
   assert.match(ci, /type: boolean/);
-  assert.match(ci, /default: true/);
+  assert.match(ci, /default: false/);
+  assert.doesNotMatch(ci, /default: true/);
 
   const secrets = [
     "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}",
@@ -85,4 +86,29 @@ test("keeps the workflow_dispatch deploy input and Cloudflare secret names", () 
     assert.ok(deploy.includes(line), `missing ${line}`);
   }
   assert.equal(deploy.match(/secrets\./g)?.length, secrets.length);
+});
+
+test("deploy.yml deploys only from main and does not pre-fill confirm", () => {
+  assert.match(deployWorkflow, /description: "Type deploy to confirm"/);
+  assert.match(deployWorkflow, /required: true/);
+  assert.doesNotMatch(deployWorkflow, /default:\s*deploy/);
+  assert.match(
+    deployWorkflow,
+    /if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| github\.event\.inputs\.confirm == 'deploy'\)/,
+  );
+  assert.match(deployWorkflow, /\n {2}deploy:\n/);
+  assert.doesNotMatch(deployWorkflow, /^\s*environment:/m);
+
+  const secrets = [
+    "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}",
+    "CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}",
+    "CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}",
+    "CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}",
+    "API_TOKEN: ${{ secrets.API_TOKEN }}",
+    "ACCOUNT_ID: ${{ secrets.ACCOUNT_ID }}",
+    "ENGINE_API_SECRET: ${{ secrets.ENGINE_API_SECRET }}",
+  ];
+  for (const line of secrets) {
+    assert.ok(deployWorkflow.includes(line), `missing ${line}`);
+  }
 });

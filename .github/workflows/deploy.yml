@@ -6,7 +6,6 @@ on:
       confirm:
         description: "Type deploy to confirm"
         required: true
-        default: deploy
   push:
     branches: [main]
 
@@ -16,7 +15,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name == 'push' || github.event.inputs.confirm == 'deploy'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.inputs.confirm == 'deploy')
     runs-on: ubuntu-latest
     permissions:
       contents: read
