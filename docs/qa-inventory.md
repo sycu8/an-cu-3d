@@ -81,8 +81,8 @@ No other roles (no buyer login, no agent CRM).
 ### `/blog`, `/blog/:slug`
 
 - **Controls:** Post list / post body.
-- **AC:** Empty published list OK; unpublished slug 404.
-- **Edges:** Markdown may render raw (known limitation).
+- **AC:** Four curated published posts are listed even when D1 has no rows; D1 status wins when that slug already exists (archived stays hidden); unknown slug 404.
+- **Edges:** Body markdown renders as headings, lists, quotes, and in-app links. No raw HTML.
 
 ### `/admin`
 
@@ -97,7 +97,7 @@ No other roles (no buyer login, no agent CRM).
 | `GET /api/health` | ok + db + security headers | DB unavailable reflected |
 | `GET /api/projects` | seed ∪ D1 by slug | D1 error → seed only |
 | `GET /api/projects/:slug` | D1 prefer, else seed | unknown → 404 |
-| `GET /api/blog` | published posts | DB fail → `[]` |
+| `GET /api/blog` | published D1 posts, plus curated posts whose slug is absent | DB fail → curated posts |
 | Admin mutating | Bearer required | missing secret → 401 |
 
 ## Workflows

@@ -101,6 +101,8 @@ node scripts/smoke.mjs
 
 Weekly cron (`0 1 * * 1`) only creates **draft** blog posts — never auto-publishes.
 
+Curated posts live in `apps/property-web-worker/src/data/blog-posts.ts`. The next worker deploy serves them on `GET /api/blog`. When D1 is reachable, a missing slug is inserted as `published` (an existing row, including archived, is not overwritten).
+
 
 ## Media (R2 + Images)
 

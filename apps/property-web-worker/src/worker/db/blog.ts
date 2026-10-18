@@ -84,6 +84,8 @@ export async function upsertBlogPost(
     coverUrl?: string | null;
     coverR2Key?: string | null;
     publish?: boolean;
+    /** Kept on first publish. Later publishes do not move an existing timestamp. */
+    publishedAt?: string | null;
   },
 ): Promise<void> {
   await db
@@ -91,7 +93,7 @@ export async function upsertBlogPost(
       `INSERT INTO blog_posts (
          id, slug, title, excerpt, body_markdown, cover_r2_key, cover_url,
          project_slugs_json, status, locale, seo_title, seo_description, published_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN datetime('now') ELSE NULL END, datetime('now'))
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN COALESCE(?, datetime('now')) ELSE NULL END, datetime('now'))
        ON CONFLICT(slug) DO UPDATE SET
          title = excluded.title,
          excerpt = excluded.excerpt,
@@ -102,7 +104,7 @@ export async function upsertBlogPost(
          status = excluded.status,
          seo_title = excluded.seo_title,
          seo_description = excluded.seo_description,
-         published_at = CASE WHEN excluded.status = 'published' THEN COALESCE(blog_posts.published_at, datetime('now')) ELSE blog_posts.published_at END,
+         published_at = CASE WHEN excluded.status = 'published' THEN COALESCE(blog_posts.published_at, excluded.published_at, datetime('now')) ELSE blog_posts.published_at END,
          updated_at = datetime('now')`,
     )
     .bind(
@@ -119,6 +121,7 @@ export async function upsertBlogPost(
       post.seoTitle ?? null,
       post.seoDescription ?? null,
       post.publish || post.status === "published" ? 1 : 0,
+      post.publishedAt ?? null,
     )
     .run();
 }

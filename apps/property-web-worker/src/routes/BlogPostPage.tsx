@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import { mediaUrl, type BlogPost } from "@ancu/shared";
+import { BlogMarkdown } from "../components/BlogMarkdown";
 import "./BlogPage.css";
 
 export default function BlogPostPage() {
@@ -21,6 +22,19 @@ export default function BlogPostPage() {
       }
     })();
   }, [slug]);
+
+  useEffect(() => {
+    if (!post) return;
+    const previousTitle = document.title;
+    const meta = document.querySelector('meta[name="description"]');
+    const previousDescription = meta?.getAttribute("content") ?? null;
+    document.title = post.seoTitle?.trim() || post.title;
+    if (meta && post.seoDescription) meta.setAttribute("content", post.seoDescription);
+    return () => {
+      document.title = previousTitle;
+      if (meta && previousDescription != null) meta.setAttribute("content", previousDescription);
+    };
+  }, [post]);
 
   if (error) {
     return (
@@ -52,8 +66,8 @@ export default function BlogPostPage() {
       </p>
       {coverSrc && <img className="blog-cover" src={coverSrc} alt="" />}
       <h1>{post.title}</h1>
-      <p>{post.excerpt}</p>
-      <div className="prose">{post.bodyMarkdown}</div>
+      <p className="blog-excerpt">{post.excerpt}</p>
+      <BlogMarkdown source={post.bodyMarkdown} />
     </div>
   );
 }
