@@ -17,23 +17,10 @@ fi
 
 # Never invent ENGINE_API_SECRET. An empty GitHub secret used to mint a new
 # value on every deploy and write it only onto the engine Worker.
-# Refuse whitespace, including a trailing newline. Do not trim and continue.
+# shellcheck disable=SC1091
+source "$ROOT/scripts/require-engine-secret.sh"
+require_engine_api_secret "${ENGINE_API_SECRET-}"
 ENGINE_SECRET="${ENGINE_API_SECRET-}"
-engine_secret_trimmed="${ENGINE_SECRET#"${ENGINE_SECRET%%[![:space:]]*}"}"
-engine_secret_trimmed="${engine_secret_trimmed%"${engine_secret_trimmed##*[![:space:]]}"}"
-if [[ -z "$ENGINE_SECRET" || -z "${ENGINE_SECRET//[[:space:]]/}" ]]; then
-  echo "ERROR: ENGINE_API_SECRET is missing. Set that GitHub secret before deploy. This script does not generate one." >&2
-  exit 1
-fi
-if [[ "$ENGINE_SECRET" != "$engine_secret_trimmed" || "$ENGINE_SECRET" =~ [[:space:]] ]]; then
-  echo "ERROR: ENGINE_API_SECRET must not contain whitespace or a trailing newline. Refusing to trim it." >&2
-  exit 1
-fi
-if [[ ${#ENGINE_SECRET} -lt 32 ]]; then
-  echo "ERROR: ENGINE_API_SECRET must be at least 32 characters. Refusing to deploy." >&2
-  exit 1
-fi
-unset engine_secret_trimmed
 
 log() { echo "$*" >&2; }
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { crawlSources, synthesizeProject } from "./ai/pipeline";
 import { upsertSynthesizedProject } from "./db/projects";
 import { runProjectBuild } from "./project-build";
 import type { Env } from "./types";
@@ -16,6 +17,7 @@ vi.mock("./db/jobs", () => ({
 }));
 
 vi.mock("./db/projects", () => ({
+  findStoredProjectId: vi.fn(async () => null),
   upsertSynthesizedProject: vi.fn(async () => "proj_test"),
   updateProjectCoverR2Key: vi.fn(async () => {}),
 }));
@@ -92,6 +94,12 @@ describe("project build engine calls", () => {
     expect(events.some((message) => message.includes("HTTP 401"))).toBe(true);
     expect(failedWith(401)).toBe(true);
     expect(jobPatches.some((patch) => patch.status === "completed")).toBe(false);
+    expect(synthesizeProject).not.toHaveBeenCalled();
+    expect(upsertSynthesizedProject).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "failed",
+    );
   });
 
   it("fails the job on engine crawl 500 and does not log enqueue", async () => {
@@ -124,6 +132,11 @@ describe("project build engine calls", () => {
     expect(jobPatches.some((patch) => patch.status === "failed")).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(upsertSynthesizedProject).toHaveBeenCalledTimes(1);
+    expect(upsertSynthesizedProject).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "published",
+    );
   });
 
   it("persists the project when the engine /jobs call fails", async () => {
@@ -143,6 +156,11 @@ describe("project build engine calls", () => {
     expect(failedWith(502)).toBe(true);
     expect(jobPatches.some((patch) => patch.status === "completed")).toBe(false);
     expect(upsertSynthesizedProject).toHaveBeenCalledTimes(1);
+    expect(upsertSynthesizedProject).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ name: "Test" }),
+      "failed",
+    );
     const failed = jobPatches.find((patch) => patch.status === "failed");
     expect(String(failed?.resultJson)).toContain("proj_test");
     expect(String(failed?.resultJson)).toContain('"persisted":true');
@@ -178,5 +196,22 @@ describe("project build engine calls", () => {
     expect(events.some((message) => message.includes("ENGINE_BASE_URL"))).toBe(true);
     expect(jobPatches.some((patch) => patch.status === "completed")).toBe(true);
     warn.mockRestore();
+  });
+
+  it("saves a failed project when the source crawl throws", async () => {
+    vi.mocked(crawlSources).mockRejectedValueOnce(new Error("crawl down"));
+
+    await runProjectBuild(env, { id: "job-crawl-throw", name: "Celadon", slug: "celadon" });
+
+    expect(synthesizeProject).not.toHaveBeenCalled();
+    expect(upsertSynthesizedProject).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ slug: "celadon" }),
+      "failed",
+    );
+    expect(jobPatches.some((patch) => patch.status === "failed" && patch.error === "crawl down")).toBe(
+      true,
+    );
+    expect(jobPatches.some((patch) => patch.status === "completed")).toBe(false);
   });
 });

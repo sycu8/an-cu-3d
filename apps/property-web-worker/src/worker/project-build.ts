@@ -1,7 +1,12 @@
 import type { ProjectBuildStage } from "@ancu/shared";
 import type { Env } from "./types";
 import { appendBuildEvent, updateBuildJob } from "./db/jobs";
-import { upsertSynthesizedProject, updateProjectCoverR2Key } from "./db/projects";
+import {
+  findStoredProjectId,
+  upsertSynthesizedProject,
+  updateProjectCoverR2Key,
+  type SynthesizedProject,
+} from "./db/projects";
 import {
   assist2dTo3d,
   crawlSources,
@@ -32,6 +37,76 @@ function engineSkipMessage(env: Env): string {
   if (!env.ENGINE_BASE_URL?.trim()) missing.push("ENGINE_BASE_URL");
   if (!env.ENGINE_API_SECRET?.trim()) missing.push("ENGINE_API_SECRET");
   return `Engine calls skipped: web Worker has no ${missing.join(" or ")}`;
+}
+
+function failedProjectStub(
+  job: { name: string; slug: string },
+  sources: { label: string; url: string }[],
+  note: string,
+): SynthesizedProject {
+  return {
+    name: job.name,
+    slug: job.slug,
+    tagline: "Chờ xác minh",
+    description: note,
+    city: "Chờ xác minh",
+    district: "Chờ xác minh",
+    address: "Chờ xác minh",
+    handover: "Chờ xác minh",
+    priceRange: "Chờ xác minh",
+    totalUnits: "Chờ xác minh",
+    amenities: [],
+    apartmentTypes: [],
+    nearbyPlaces: [],
+    sources,
+    researchNotes: note,
+    showroom: {
+      lightingDefault: "day",
+      materialPaletteLabel: "Chờ xác minh",
+      hotspots: [],
+    },
+  };
+}
+
+/**
+ * Failed builds write a placeholder only when the slug is new.
+ * An existing row keeps its published fields and child rows; only the job is marked failed.
+ */
+async function recordFailedBuild(
+  env: Env,
+  job: { id: string; name: string; slug: string },
+  startedAt: number,
+  message: string,
+  writeNewProject: () => Promise<string>,
+): Promise<void> {
+  const existingId = await findStoredProjectId(env.DB, job.slug);
+  const projectId = existingId ?? (await writeNewProject());
+  await updateBuildJob(env.DB, job.id, {
+    status: "failed",
+    stage: "failed",
+    finishedAt: new Date().toISOString(),
+    error: message,
+    resultJson: JSON.stringify({
+      projectId,
+      slug: job.slug,
+      persisted: existingId == null,
+      preserved: existingId != null,
+      status: "failed",
+    }),
+  });
+  await emit(env, job.id, startedAt, "failed", message);
+}
+
+async function persistFailedProject(
+  env: Env,
+  job: { id: string; name: string; slug: string },
+  startedAt: number,
+  sources: { label: string; url: string }[],
+  message: string,
+): Promise<void> {
+  await recordFailedBuild(env, job, startedAt, message, () =>
+    upsertSynthesizedProject(env.DB, failedProjectStub(job, sources, message), "failed"),
+  );
 }
 
 async function emit(
@@ -80,7 +155,14 @@ export async function runProjectBuild(
     );
 
     await emit(env, job.id, startedAt, "crawl", "Đang crawl / lấy nội dung nguồn…");
-    const crawled = await crawlSources(discovered.sources);
+    let crawled: { label: string; url: string; snippet: string }[];
+    try {
+      crawled = await crawlSources(discovered.sources);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "crawl_failed";
+      await persistFailedProject(env, job, startedAt, [], message);
+      return;
+    }
     await emit(
       env,
       job.id,
@@ -96,19 +178,31 @@ export async function runProjectBuild(
       await emit(env, job.id, startedAt, "crawl", skipped);
     } else {
       await emit(env, job.id, startedAt, "crawl", "Gọi floorplan-engine crawl (bổ sung)…");
-      const crawlRes = await fetch(`${engine.baseUrl}/sources/crawl`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${engine.secret}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: discovered.sources[0]?.url,
-          projectSlug: job.slug,
-        }),
-      });
-      await assertEngineOk(crawlRes, "Engine crawl");
-      await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
+      try {
+        const crawlRes = await fetch(`${engine.baseUrl}/sources/crawl`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${engine.secret}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: discovered.sources[0]?.url,
+            projectSlug: job.slug,
+          }),
+        });
+        await assertEngineOk(crawlRes, "Engine crawl");
+        await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "engine_crawl_failed";
+        await persistFailedProject(
+          env,
+          job,
+          startedAt,
+          crawled.map((source) => ({ label: source.label, url: source.url })),
+          message,
+        );
+        return;
+      }
     }
 
     await emit(env, job.id, startedAt, "synthesize", "AI Gateway đang tổng hợp thông tin dự án…");
@@ -206,30 +300,18 @@ export async function runProjectBuild(
     }
 
     await emit(env, job.id, startedAt, "persist", "Ghi D1 projects / amenities / units…");
-    const projectId = await upsertSynthesizedProject(env.DB, project);
+    if (conversionError) {
+      await recordFailedBuild(env, job, startedAt, conversionError, () =>
+        upsertSynthesizedProject(env.DB, project, "failed"),
+      );
+      return;
+    }
+
+    const projectId = await upsertSynthesizedProject(env.DB, project, "published");
     if (cover.r2Key && !String(cover.r2Key).endsWith(".json")) {
       await updateProjectCoverR2Key(env.DB, job.slug, cover.r2Key);
     }
     await emit(env, job.id, startedAt, "persist", `Đã lưu project id=${projectId}`);
-
-    if (conversionError) {
-      const result = {
-        projectId,
-        slug: job.slug,
-        path: `/projects/${job.slug}`,
-        persisted: true,
-        engineJobs: "failed",
-      };
-      await updateBuildJob(env.DB, job.id, {
-        status: "failed",
-        stage: "failed",
-        finishedAt: new Date().toISOString(),
-        error: conversionError,
-        resultJson: JSON.stringify(result),
-      });
-      await emit(env, job.id, startedAt, "failed", conversionError);
-      return;
-    }
 
     await emit(env, job.id, startedAt, "publish", "Xuất bản trang dự án…");
     const result = {

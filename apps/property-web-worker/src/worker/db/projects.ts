@@ -40,13 +40,17 @@ export async function ensureGamudaDeveloper(db: D1Database): Promise<string> {
   return id;
 }
 
-export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
+async function listProjectSummaries(
+  db: D1Database,
+  publishedOnly: boolean,
+): Promise<ProjectSummary[]> {
+  const where = publishedOnly ? "WHERE p.status = 'published'" : "";
   const rows = await db
     .prepare(
       `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
-       WHERE p.status IN ('active', 'published', 'draft')
+       ${where}
        ORDER BY p.updated_at DESC`,
     )
     .all<ProjectRow>();
@@ -76,16 +80,28 @@ export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSum
   }));
 }
 
-export async function getDbProjectBySlug(
+/** Buyer-facing list. Anything other than published stays off the public API. */
+export function listDbProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
+  return listProjectSummaries(db, true);
+}
+
+/** Admin list. Every status, including failed, draft, and active. */
+export function listAdminDbProjects(db: D1Database): Promise<ProjectSummary[]> {
+  return listProjectSummaries(db, false);
+}
+
+async function loadProjectBySlug(
   db: D1Database,
   slug: string,
+  publishedOnly: boolean,
 ): Promise<ProjectDetail | null> {
+  const statusSql = publishedOnly ? " AND p.status = 'published'" : "";
   const p = await db
     .prepare(
       `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
-       WHERE p.slug = ?`,
+       WHERE p.slug = ?${statusSql}`,
     )
     .bind(slug)
     .first<ProjectRow>();
@@ -197,6 +213,22 @@ export async function getDbProjectBySlug(
   };
 }
 
+/** Buyer-facing detail. Non-published rows are invisible so the route can 404. */
+export function getDbProjectBySlug(
+  db: D1Database,
+  slug: string,
+): Promise<ProjectDetail | null> {
+  return loadProjectBySlug(db, slug, true);
+}
+
+/** Admin detail. Returns the row for any status and includes that status. */
+export function getAdminDbProjectBySlug(
+  db: D1Database,
+  slug: string,
+): Promise<ProjectDetail | null> {
+  return loadProjectBySlug(db, slug, false);
+}
+
 function parseShowroomJson(raw: string | null): ProjectDetail["showroom"] | undefined {
   if (!raw) return undefined;
   try {
@@ -245,10 +277,100 @@ export type SynthesizedProject = {
   };
 };
 
+/** True for any stored slug, including failed. Used so a failed rebuild does not overwrite it. */
+export async function findStoredProjectId(db: D1Database, slug: string): Promise<string | null> {
+  const row = await db
+    .prepare(`SELECT id FROM projects WHERE slug = ?`)
+    .bind(slug)
+    .first<{ id: string }>();
+  return row?.id ?? null;
+}
+
+/** The failed-build stub fills every buyer-facing fact with this label. */
+export function isPlaceholderProject(data: {
+  tagline: string;
+  city: string;
+  district: string;
+  address: string;
+  handover: string;
+  priceRange: string;
+  totalUnits: string;
+}): boolean {
+  return (
+    data.tagline === PENDING &&
+    data.city === PENDING &&
+    data.district === PENDING &&
+    data.address === PENDING &&
+    data.handover === PENDING &&
+    data.priceRange === PENDING &&
+    data.totalUnits === PENDING
+  );
+}
+
+/**
+ * Publish draft and active rows. Failed builds and Chờ xác minh placeholders stay unpublished
+ * so they cannot replace a live or seed page.
+ */
+export async function approveAllProjects(db: D1Database): Promise<{
+  apartmentUpdates: number;
+  nearbyUpdates: number;
+  projectUpdates: number;
+}> {
+  const result = await db.batch([
+    db.prepare(
+      `UPDATE apartment_types
+       SET source_class = 'estimated',
+           provenance = COALESCE(provenance, 'Admin approved sample linkage'),
+           validation_summary = 'Đã duyệt hiển thị showroom — số liệu vẫn Chờ xác minh nếu chưa có nguồn',
+           updated_at = datetime('now')
+       WHERE source_class IN ('pending_verification')
+          OR provenance LIKE '%pending verification%'
+          OR validation_summary LIKE '%pending%'`,
+    ),
+    db.prepare(
+      `UPDATE nearby_places
+       SET source_class = 'estimated',
+           provenance = COALESCE(provenance, 'Admin approved sample linkage')
+       WHERE source_class IN ('pending_verification')
+          OR provenance LIKE '%pending verification%'`,
+    ),
+    db
+      .prepare(
+        `UPDATE projects
+         SET status = 'published', updated_at = datetime('now')
+         WHERE status NOT IN ('published', 'failed')
+           AND NOT (
+             tagline = ?
+             AND city = ?
+             AND district = ?
+             AND address = ?
+             AND handover = ?
+             AND price_range = ?
+             AND total_units = ?
+           )`,
+      )
+      .bind(PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING),
+  ]);
+  return {
+    apartmentUpdates: result[0]?.meta.changes ?? 0,
+    nearbyUpdates: result[1]?.meta.changes ?? 0,
+    projectUpdates: result[2]?.meta.changes ?? 0,
+  };
+}
+
 export async function upsertSynthesizedProject(
   db: D1Database,
   data: SynthesizedProject,
+  status: "published" | "failed" = "published",
 ): Promise<string> {
+  if (isPlaceholderProject(data)) {
+    const existing = await db
+      .prepare(`SELECT id, status FROM projects WHERE slug = ?`)
+      .bind(data.slug)
+      .first<{ id: string; status: string }>();
+    if (existing?.status === "published") return existing.id;
+  }
+
   const developerId = await ensureGamudaDeveloper(db);
   const projectId = `proj_${data.slug}`;
 
@@ -258,7 +380,10 @@ export async function upsertSynthesizedProject(
          id, developer_id, slug, name, tagline, description, city, district, address,
          latitude, longitude, handover, price_range, total_units, status, source_class,
          provenance, confidence, research_json, published_at, showroom_json, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', 'estimated', ?, ?, ?, datetime('now'), ?, datetime('now'))
+       ) VALUES (
+         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'estimated', ?, ?, ?,
+         CASE WHEN ? = 'published' THEN datetime('now') ELSE NULL END, ?, datetime('now')
+       )
        ON CONFLICT(slug) DO UPDATE SET
          name = excluded.name,
          tagline = excluded.tagline,
@@ -271,11 +396,11 @@ export async function upsertSynthesizedProject(
          handover = excluded.handover,
          price_range = excluded.price_range,
          total_units = excluded.total_units,
-         status = 'published',
+         status = excluded.status,
          provenance = excluded.provenance,
          confidence = excluded.confidence,
          research_json = excluded.research_json,
-         published_at = datetime('now'),
+         published_at = CASE WHEN excluded.status = 'published' THEN datetime('now') ELSE NULL END,
          showroom_json = excluded.showroom_json,
          updated_at = datetime('now')`,
     )
@@ -294,9 +419,11 @@ export async function upsertSynthesizedProject(
       data.handover,
       data.priceRange,
       data.totalUnits,
+      status,
       data.researchNotes,
       0.45,
       JSON.stringify({ notes: data.researchNotes, sources: data.sources }),
+      status,
       JSON.stringify(data.showroom),
     )
     .run();
