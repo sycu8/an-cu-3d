@@ -54,7 +54,9 @@
     "preview": {
       "name": "ancu-property-web-preview",
       "vars": {
-        "ENGINE_BASE_URL": "https://ancu-floorplan-engine.sycu-lee.workers.dev"
+        // Preview calls the preview engine (env.preview.name in the engine wrangler file).
+        // cf-deploy.sh deploys the top-level engine only, so this host is live after a preview deploy.
+        "ENGINE_BASE_URL": "https://ancu-floorplan-engine-preview.sycu-lee.workers.dev"
       },
       "d1_databases": [
         {

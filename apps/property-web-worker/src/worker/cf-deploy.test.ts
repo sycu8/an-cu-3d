@@ -42,13 +42,54 @@ describe("cf-deploy ENGINE_API_SECRET fail-fast", () => {
     ["whitespace", " \n"],
     ["31 characters", "a".repeat(31)],
     ["trailing newline", `${"b".repeat(32)}\n`],
+    ["tab", `${"e".repeat(16)}\t${"e".repeat(16)}`],
+    ["crlf", `${"f".repeat(32)}\r\n`],
     ["leading space", ` ${"c".repeat(32)}`],
     ["internal space", `${"d".repeat(16)} ${"d".repeat(15)}`],
+    ["non-ascii", `${"g".repeat(31)}é`],
   ])("exits before deploy when the secret is %s", (_label, secret) => {
     const result = runDeploy(secret);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain("ENGINE_API_SECRET");
     expect(result.stderr).not.toContain("Deploying property web");
     expect(result.stderr).not.toContain("token_urlsafe");
+  });
+});
+
+describe("require-engine-secret", () => {
+  function runCheck(secret: string): { status: number; stderr: string } {
+    try {
+      execFileSync("bash", ["scripts/require-engine-secret.sh"], {
+        cwd: repoRoot(),
+        env: {
+          PATH: process.env.PATH ?? "",
+          ENGINE_API_SECRET: secret,
+        },
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 5_000,
+      });
+      return { status: 0, stderr: "" };
+    } catch (err) {
+      const error = err as { status?: number; stderr?: string };
+      return { status: error.status ?? 1, stderr: String(error.stderr ?? "") };
+    }
+  }
+
+  it("accepts a 32-character printable ASCII secret", () => {
+    const secret = "Aa1!".repeat(8);
+    const result = runCheck(secret);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.stderr).not.toContain(secret);
+  });
+
+  it("rejects a tab, a CRLF, and a non-ascii character", () => {
+    for (const secret of [`${"e".repeat(16)}\t${"e".repeat(15)}`, `${"f".repeat(30)}\r\n`, `${"g".repeat(31)}é`]) {
+      const result = runCheck(secret);
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("ENGINE_API_SECRET");
+      expect(result.stderr).not.toContain(secret);
+    }
   });
 });

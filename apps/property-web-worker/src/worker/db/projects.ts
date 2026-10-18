@@ -248,6 +248,7 @@ export type SynthesizedProject = {
 export async function upsertSynthesizedProject(
   db: D1Database,
   data: SynthesizedProject,
+  status: "published" | "failed" = "published",
 ): Promise<string> {
   const developerId = await ensureGamudaDeveloper(db);
   const projectId = `proj_${data.slug}`;
@@ -258,7 +259,10 @@ export async function upsertSynthesizedProject(
          id, developer_id, slug, name, tagline, description, city, district, address,
          latitude, longitude, handover, price_range, total_units, status, source_class,
          provenance, confidence, research_json, published_at, showroom_json, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', 'estimated', ?, ?, ?, datetime('now'), ?, datetime('now'))
+       ) VALUES (
+         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'estimated', ?, ?, ?,
+         CASE WHEN ? = 'published' THEN datetime('now') ELSE NULL END, ?, datetime('now')
+       )
        ON CONFLICT(slug) DO UPDATE SET
          name = excluded.name,
          tagline = excluded.tagline,
@@ -271,11 +275,11 @@ export async function upsertSynthesizedProject(
          handover = excluded.handover,
          price_range = excluded.price_range,
          total_units = excluded.total_units,
-         status = 'published',
+         status = excluded.status,
          provenance = excluded.provenance,
          confidence = excluded.confidence,
          research_json = excluded.research_json,
-         published_at = datetime('now'),
+         published_at = CASE WHEN excluded.status = 'published' THEN datetime('now') ELSE NULL END,
          showroom_json = excluded.showroom_json,
          updated_at = datetime('now')`,
     )
@@ -294,9 +298,11 @@ export async function upsertSynthesizedProject(
       data.handover,
       data.priceRange,
       data.totalUnits,
+      status,
       data.researchNotes,
       0.45,
       JSON.stringify({ notes: data.researchNotes, sources: data.sources }),
+      status,
       JSON.stringify(data.showroom),
     )
     .run();

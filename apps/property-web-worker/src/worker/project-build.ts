@@ -1,7 +1,7 @@
 import type { ProjectBuildStage } from "@ancu/shared";
 import type { Env } from "./types";
 import { appendBuildEvent, updateBuildJob } from "./db/jobs";
-import { upsertSynthesizedProject, updateProjectCoverR2Key } from "./db/projects";
+import { upsertSynthesizedProject, updateProjectCoverR2Key, type SynthesizedProject } from "./db/projects";
 import {
   assist2dTo3d,
   crawlSources,
@@ -32,6 +32,62 @@ function engineSkipMessage(env: Env): string {
   if (!env.ENGINE_BASE_URL?.trim()) missing.push("ENGINE_BASE_URL");
   if (!env.ENGINE_API_SECRET?.trim()) missing.push("ENGINE_API_SECRET");
   return `Engine calls skipped: web Worker has no ${missing.join(" or ")}`;
+}
+
+function failedProjectStub(
+  job: { name: string; slug: string },
+  sources: { label: string; url: string }[],
+  note: string,
+): SynthesizedProject {
+  return {
+    name: job.name,
+    slug: job.slug,
+    tagline: "Chờ xác minh",
+    description: note,
+    city: "Chờ xác minh",
+    district: "Chờ xác minh",
+    address: "Chờ xác minh",
+    handover: "Chờ xác minh",
+    priceRange: "Chờ xác minh",
+    totalUnits: "Chờ xác minh",
+    amenities: [],
+    apartmentTypes: [],
+    nearbyPlaces: [],
+    sources,
+    researchNotes: note,
+    showroom: {
+      lightingDefault: "day",
+      materialPaletteLabel: "Chờ xác minh",
+      hotspots: [],
+    },
+  };
+}
+
+async function persistFailedProject(
+  env: Env,
+  job: { id: string; name: string; slug: string },
+  startedAt: number,
+  sources: { label: string; url: string }[],
+  message: string,
+): Promise<void> {
+  const projectId = await upsertSynthesizedProject(
+    env.DB,
+    failedProjectStub(job, sources, message),
+    "failed",
+  );
+  await updateBuildJob(env.DB, job.id, {
+    status: "failed",
+    stage: "failed",
+    finishedAt: new Date().toISOString(),
+    error: message,
+    resultJson: JSON.stringify({
+      projectId,
+      slug: job.slug,
+      persisted: true,
+      status: "failed",
+    }),
+  });
+  await emit(env, job.id, startedAt, "failed", message);
 }
 
 async function emit(
@@ -80,7 +136,14 @@ export async function runProjectBuild(
     );
 
     await emit(env, job.id, startedAt, "crawl", "Đang crawl / lấy nội dung nguồn…");
-    const crawled = await crawlSources(discovered.sources);
+    let crawled: { label: string; url: string; snippet: string }[];
+    try {
+      crawled = await crawlSources(discovered.sources);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "crawl_failed";
+      await persistFailedProject(env, job, startedAt, [], message);
+      return;
+    }
     await emit(
       env,
       job.id,
@@ -96,19 +159,31 @@ export async function runProjectBuild(
       await emit(env, job.id, startedAt, "crawl", skipped);
     } else {
       await emit(env, job.id, startedAt, "crawl", "Gọi floorplan-engine crawl (bổ sung)…");
-      const crawlRes = await fetch(`${engine.baseUrl}/sources/crawl`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${engine.secret}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          url: discovered.sources[0]?.url,
-          projectSlug: job.slug,
-        }),
-      });
-      await assertEngineOk(crawlRes, "Engine crawl");
-      await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
+      try {
+        const crawlRes = await fetch(`${engine.baseUrl}/sources/crawl`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${engine.secret}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: discovered.sources[0]?.url,
+            projectSlug: job.slug,
+          }),
+        });
+        await assertEngineOk(crawlRes, "Engine crawl");
+        await emit(env, job.id, startedAt, "crawl", "Engine crawl đã enqueue");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "engine_crawl_failed";
+        await persistFailedProject(
+          env,
+          job,
+          startedAt,
+          crawled.map((source) => ({ label: source.label, url: source.url })),
+          message,
+        );
+        return;
+      }
     }
 
     await emit(env, job.id, startedAt, "synthesize", "AI Gateway đang tổng hợp thông tin dự án…");
@@ -206,7 +281,8 @@ export async function runProjectBuild(
     }
 
     await emit(env, job.id, startedAt, "persist", "Ghi D1 projects / amenities / units…");
-    const projectId = await upsertSynthesizedProject(env.DB, project);
+    const projectStatus = conversionError ? "failed" : "published";
+    const projectId = await upsertSynthesizedProject(env.DB, project, projectStatus);
     if (cover.r2Key && !String(cover.r2Key).endsWith(".json")) {
       await updateProjectCoverR2Key(env.DB, job.slug, cover.r2Key);
     }
