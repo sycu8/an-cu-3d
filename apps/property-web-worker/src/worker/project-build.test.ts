@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { upsertSynthesizedProject } from "./db/projects";
 import { runProjectBuild } from "./project-build";
 import type { Env } from "./types";
 
@@ -75,6 +76,7 @@ describe("project build engine calls", () => {
   beforeEach(() => {
     events.length = 0;
     jobPatches.length = 0;
+    vi.clearAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -121,5 +123,60 @@ describe("project build engine calls", () => {
     expect(jobPatches.some((patch) => patch.status === "completed")).toBe(true);
     expect(jobPatches.some((patch) => patch.status === "failed")).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(upsertSynthesizedProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists the project when the engine /jobs call fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/jobs")) return new Response("nope", { status: 502 });
+        return new Response("{}", { status: 202 });
+      }),
+    );
+
+    await runProjectBuild(env, { id: "job-jobs", name: "Celadon", slug: "celadon" });
+
+    expect(events.some((message) => message === "Engine crawl đã enqueue")).toBe(true);
+    expect(events.some((message) => message.includes("Engine conversion failed: HTTP 502"))).toBe(true);
+    expect(failedWith(502)).toBe(true);
+    expect(jobPatches.some((patch) => patch.status === "completed")).toBe(false);
+    expect(upsertSynthesizedProject).toHaveBeenCalledTimes(1);
+    const failed = jobPatches.find((patch) => patch.status === "failed");
+    expect(String(failed?.resultJson)).toContain("proj_test");
+    expect(String(failed?.resultJson)).toContain('"persisted":true');
+  });
+
+  it("warns and still finishes when the web Worker has no engine secret", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const noSecret = { ...env, ENGINE_API_SECRET: "   " } as Env;
+
+    await runProjectBuild(noSecret, { id: "job-nosecret", name: "Celadon", slug: "celadon" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+    expect(String(warn.mock.calls[0]?.[0])).toContain("ENGINE_API_SECRET");
+    expect(events.some((message) => message.includes("ENGINE_API_SECRET"))).toBe(true);
+    expect(jobPatches.some((patch) => patch.status === "completed")).toBe(true);
+    expect(upsertSynthesizedProject).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it("warns when ENGINE_BASE_URL is missing", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const noUrl = { ...env, ENGINE_BASE_URL: "" } as Env;
+
+    await runProjectBuild(noUrl, { id: "job-nourl", name: "Celadon", slug: "celadon" });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(String(warn.mock.calls[0]?.[0])).toContain("ENGINE_BASE_URL");
+    expect(events.some((message) => message.includes("ENGINE_BASE_URL"))).toBe(true);
+    expect(jobPatches.some((patch) => patch.status === "completed")).toBe(true);
+    warn.mockRestore();
   });
 });

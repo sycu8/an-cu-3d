@@ -105,8 +105,11 @@ function plainNotFound(): Response {
 async function hashedAssetResponse(request: Request, env: Env): Promise<Response> {
   if (!env.STATIC_ASSETS) return plainNotFound();
   const asset = await env.STATIC_ASSETS.fetch(request);
-  const contentType = asset.headers.get("content-type") ?? "";
-  if (!asset.ok || contentType.toLowerCase().includes("text/html")) {
+  const contentType = (asset.headers.get("content-type") ?? "").toLowerCase();
+  // Prod chunks use max-age=0, must-revalidate. A 304 is a hit, not a missing file.
+  // Only a real 404, or the SPA index.html fallback (HTML 200), becomes 404.
+  const spaHtmlFallback = asset.status === 200 && contentType.includes("text/html");
+  if (asset.status === 404 || spaHtmlFallback) {
     await asset.body?.cancel();
     return plainNotFound();
   }

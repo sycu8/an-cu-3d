@@ -270,6 +270,40 @@ describe("worker security + health", () => {
     expect(asset.status).toBe(200);
     expect(asset.headers.get("content-type")).toContain("javascript");
     expect(await asset.text()).toContain("export const chunk");
+
+    const revalidated = {
+      STATIC_ASSETS: {
+        fetch: async () =>
+          new Response(null, {
+            status: 304,
+            headers: {
+              etag: '"chunk-real"',
+              "cache-control": "public, max-age=0, must-revalidate",
+            },
+          }),
+      },
+    } as unknown as Env;
+    const notModified = await worker.fetch(
+      new Request("http://localhost/assets/index-real.js", {
+        headers: { "if-none-match": '"chunk-real"' },
+      }),
+      revalidated,
+    );
+    expect(notModified.status).toBe(304);
+    expect(notModified.headers.get("etag")).toBe('"chunk-real"');
+    expect(await notModified.text()).toBe("");
+
+    const errored = {
+      STATIC_ASSETS: {
+        fetch: async () => new Response("upstream", { status: 502 }),
+      },
+    } as unknown as Env;
+    const upstream = await worker.fetch(
+      new Request("http://localhost/assets/index-real.js"),
+      errored,
+    );
+    expect(upstream.status).toBe(502);
+    expect(await upstream.text()).toBe("upstream");
   });
 
   it("rejects admin routes without a session bearer", async () => {

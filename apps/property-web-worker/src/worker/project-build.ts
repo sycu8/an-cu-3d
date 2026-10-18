@@ -20,6 +20,20 @@ async function assertEngineOk(res: Response, action: string): Promise<void> {
   await res.body?.cancel();
 }
 
+function engineTarget(env: Env): { baseUrl: string; secret: string } | null {
+  const baseUrl = env.ENGINE_BASE_URL?.trim().replace(/\/$/, "") ?? "";
+  const secret = env.ENGINE_API_SECRET ?? "";
+  if (!baseUrl || !secret.trim()) return null;
+  return { baseUrl, secret };
+}
+
+function engineSkipMessage(env: Env): string {
+  const missing: string[] = [];
+  if (!env.ENGINE_BASE_URL?.trim()) missing.push("ENGINE_BASE_URL");
+  if (!env.ENGINE_API_SECRET?.trim()) missing.push("ENGINE_API_SECRET");
+  return `Engine calls skipped: web Worker has no ${missing.join(" or ")}`;
+}
+
 async function emit(
   env: Env,
   jobId: string,
@@ -75,12 +89,17 @@ export async function runProjectBuild(
       `Đã lấy ${crawled.length} snippet (không giới hạn thời gian tác vụ)`,
     );
 
-    if (env.ENGINE_BASE_URL && env.ENGINE_API_SECRET) {
+    const engine = engineTarget(env);
+    if (!engine) {
+      const skipped = engineSkipMessage(env);
+      console.warn(JSON.stringify({ level: "warn", message: skipped }));
+      await emit(env, job.id, startedAt, "crawl", skipped);
+    } else {
       await emit(env, job.id, startedAt, "crawl", "Gọi floorplan-engine crawl (bổ sung)…");
-      const crawlRes = await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/sources/crawl`, {
+      const crawlRes = await fetch(`${engine.baseUrl}/sources/crawl`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
+          Authorization: `Bearer ${engine.secret}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -162,22 +181,28 @@ export async function runProjectBuild(
       };
     }
 
-    if (env.ENGINE_BASE_URL && env.ENGINE_API_SECRET) {
-      const jobRes = await fetch(`${env.ENGINE_BASE_URL.replace(/\/$/, "")}/jobs`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.ENGINE_API_SECRET}`,
-          "Content-Type": "application/json",
-          "X-AnCu-Admin-Build": "1",
-        },
-        body: JSON.stringify({
-          projectSlug: job.slug,
-          bypassRateLimit: true,
-          note: "admin project build",
-        }),
-      });
-      await assertEngineOk(jobRes, "Engine conversion");
-      await emit(env, job.id, startedAt, "floorplans", "Conversion job gửi tới engine (no admin timeout)");
+    let conversionError: string | null = null;
+    if (engine) {
+      try {
+        const jobRes = await fetch(`${engine.baseUrl}/jobs`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${engine.secret}`,
+            "Content-Type": "application/json",
+            "X-AnCu-Admin-Build": "1",
+          },
+          body: JSON.stringify({
+            projectSlug: job.slug,
+            bypassRateLimit: true,
+            note: "admin project build",
+          }),
+        });
+        await assertEngineOk(jobRes, "Engine conversion");
+        await emit(env, job.id, startedAt, "floorplans", "Conversion job gửi tới engine (no admin timeout)");
+      } catch (err) {
+        conversionError = err instanceof Error ? err.message : "engine_jobs_failed";
+        await emit(env, job.id, startedAt, "floorplans", conversionError);
+      }
     }
 
     await emit(env, job.id, startedAt, "persist", "Ghi D1 projects / amenities / units…");
@@ -186,6 +211,25 @@ export async function runProjectBuild(
       await updateProjectCoverR2Key(env.DB, job.slug, cover.r2Key);
     }
     await emit(env, job.id, startedAt, "persist", `Đã lưu project id=${projectId}`);
+
+    if (conversionError) {
+      const result = {
+        projectId,
+        slug: job.slug,
+        path: `/projects/${job.slug}`,
+        persisted: true,
+        engineJobs: "failed",
+      };
+      await updateBuildJob(env.DB, job.id, {
+        status: "failed",
+        stage: "failed",
+        finishedAt: new Date().toISOString(),
+        error: conversionError,
+        resultJson: JSON.stringify(result),
+      });
+      await emit(env, job.id, startedAt, "failed", conversionError);
+      return;
+    }
 
     await emit(env, job.id, startedAt, "publish", "Xuất bản trang dự án…");
     const result = {

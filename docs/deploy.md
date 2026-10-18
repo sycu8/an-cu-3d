@@ -9,7 +9,9 @@ Required repository secrets:
 
 Required before either deploy workflow runs `scripts/cf-deploy.sh`:
 
-- `ENGINE_API_SECRET` — one value, set as a GitHub secret. The script exits if it is missing or whitespace and does not generate a replacement. After both Workers deploy, it runs `wrangler secret put ENGINE_API_SECRET` in `apps/property-web-worker` and `apps/ancu-floorplan-engine` with that same value.
+- `ENGINE_API_SECRET` — one value, set as a GitHub secret. It must be at least 32 characters and must not contain whitespace or a trailing newline. The script exits if it is missing, too short, or padded with whitespace. It does not trim or generate a replacement. After both Workers deploy, it runs `wrangler secret put ENGINE_API_SECRET` in `apps/property-web-worker` and `apps/ancu-floorplan-engine` with that same value.
+
+`ENGINE_BASE_URL` is not a secret. `apps/property-web-worker/wrangler.jsonc` sets it to `https://ancu-floorplan-engine.sycu-lee.workers.dev` on the top-level, preview, and production configs. `keep_vars` is false so a dashboard value cannot drop that var on deploy.
 
 Optional later:
 
@@ -100,7 +102,7 @@ pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ID
 
 Apply D1 migrations (includes `0004_admin_auth.sql`) before using `/admin`.
 
-`scripts/cf-deploy.sh` writes the same `ENGINE_API_SECRET` onto both Workers. The admin build calls the floorplan engine with that secret and treats a non-2xx response (including 401 and 5xx) as a failed job.
+`scripts/cf-deploy.sh` writes the same `ENGINE_API_SECRET` onto both Workers. The property Worker reads `ENGINE_BASE_URL` from wrangler vars. A missing URL or secret is logged as a warning and the engine calls are skipped. A non-2xx engine response (including 401 and 5xx) fails the build job. A failed `/jobs` call still saves the synthesized project so the floorplan step can be retried.
 
 ### Smoke (admin + blog)
 
