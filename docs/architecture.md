@@ -63,7 +63,7 @@ No account IDs, database IDs, or secrets in git. Wrangler uses env-specific IDs 
 | Env | Purpose |
 | --- | --- |
 | `local` | `wrangler dev` + local D1/R2 emulation |
-| `preview` | PR / staging Worker names + isolated D1/R2 |
+| `preview` | PR / staging Worker names. Property preview D1/R2 names are `ancu-property-db-preview` and `ancu-property-assets-preview` (not created until a preview deploy needs them). |
 | `production` | Live public web; engine remains auth-gated |
 
 Config format: **`wrangler.jsonc`** per app (P3).

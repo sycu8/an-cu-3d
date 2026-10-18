@@ -7,8 +7,15 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import worker from "./index";
+import { createAdminSession } from "./db/admin";
 import { createBuildJob } from "./db/jobs";
-import { getDbProjectBySlug, listDbProjectSummaries } from "./db/projects";
+import {
+  getAdminDbProjectBySlug,
+  getDbProjectBySlug,
+  listAdminDbProjects,
+  listDbProjectSummaries,
+  upsertSynthesizedProject,
+} from "./db/projects";
 import { runProjectBuild } from "./project-build";
 import type { Env } from "./types";
 
@@ -45,6 +52,15 @@ vi.mock("./ai/pipeline", () => ({
     },
   })),
   runFactualQa: vi.fn(async () => ({ ok: true, source: "test", issues: [] })),
+  generateBlogDraft: vi.fn(async () => ({
+    title: "Draft",
+    excerpt: "e",
+    bodyMarkdown: "b",
+    seoTitle: "s",
+    seoDescription: "d",
+    coverPrompt: "c",
+  })),
+  generateImageAsset: vi.fn(async () => ({ r2Key: "blog/cover", note: "test" })),
   assist2dTo3d: vi.fn(async () => ({
     assistJsonKey: "assist.json",
     materials: { floor: "#fff", wall: "#fff", cabinet: "#fff", accent: "#fff" },
@@ -103,13 +119,20 @@ function openMemoryDb(): D1Database {
       },
       async run() {
         const info = stmt.run(...binds);
-        return { success: true, meta: { changes: info.changes } };
+        return { success: true, meta: { changes: Number(info.changes) } };
       },
     };
     return api;
   }
 
-  return { prepare } as unknown as D1Database;
+  return {
+    prepare,
+    async batch(statements: { run: () => Promise<{ success: boolean; meta: { changes: number } }> }[]) {
+      const results = [];
+      for (const statement of statements) results.push(await statement.run());
+      return results;
+    },
+  } as unknown as D1Database;
 }
 
 function buildEnv(db: D1Database): Env {
@@ -361,5 +384,240 @@ describe("project build against in-memory D1", () => {
     expect(hiddenFailed.status).toBe(404);
     const hiddenDraft = await worker.fetch(new Request("https://ancu.test/api/projects/qa-draft"), env);
     expect(hiddenDraft.status).toBe(404);
+  });
+});
+
+const PENDING = "Chờ xác minh";
+
+async function seedDeveloper(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO developers (id, slug, name) VALUES ('dev_gamuda_land', 'gamuda-land', 'Gamuda Land')`,
+    )
+    .run();
+}
+
+async function adminToken(db: D1Database): Promise<string> {
+  await db
+    .prepare(
+      `INSERT INTO admin_users (id, username, password_hash, must_change_password)
+       VALUES ('admin_qa', 'qa-admin', 'unused', 0)`,
+    )
+    .run();
+  const { token } = await createAdminSession(db, "admin_qa");
+  return token;
+}
+
+function authHeaders(token: string): HeadersInit {
+  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+}
+
+describe("admin project reads and approve-all", () => {
+  it("lists and loads every status for admin while public reads stay published-only", async () => {
+    const db = openMemoryDb();
+    await seedDeveloper(db);
+    await db
+      .prepare(
+        `INSERT INTO projects (id, developer_id, slug, name, tagline, status, source_class)
+         VALUES
+           ('proj_pub', 'dev_gamuda_land', 'qa-published', 'QA Published', 'Live', 'published', 'estimated'),
+           ('proj_fail', 'dev_gamuda_land', 'qa-failed', 'Failed Build', 'Live fail', 'failed', 'estimated'),
+           ('proj_draft', 'dev_gamuda_land', 'qa-draft', 'Draft Build', 'Not yet', 'draft', 'estimated')`,
+      )
+      .run();
+    await db
+      .prepare(
+        `INSERT INTO projects (id, developer_id, slug, name, tagline, status, source_class)
+         VALUES ('proj_active', 'dev_gamuda_land', 'qa-active', 'Active Listing', 'Ready', 'published', 'estimated')`,
+      )
+      .run();
+    await db.prepare(`UPDATE projects SET status = 'active' WHERE slug = 'qa-active'`).run();
+    await db
+      .prepare(
+        `INSERT INTO projects (id, developer_id, slug, name)
+         VALUES ('proj_omit', 'dev_gamuda_land', 'qa-omit-status', 'Omitted Status')`,
+      )
+      .run();
+
+    const admin = await listAdminDbProjects(db);
+    const bySlug = new Map(admin.map((project) => [project.slug, project.status]));
+    expect(bySlug.get("qa-published")).toBe("published");
+    expect(bySlug.get("qa-failed")).toBe("failed");
+    expect(bySlug.get("qa-draft")).toBe("draft");
+    expect(bySlug.get("qa-active")).toBe("active");
+    expect(bySlug.get("qa-omit-status")).toBe("draft");
+    expect((await listDbProjectSummaries(db)).map((project) => project.slug)).toEqual(["qa-published"]);
+
+    expect(await getAdminDbProjectBySlug(db, "qa-failed")).toMatchObject({
+      name: "Failed Build",
+      status: "failed",
+    });
+    expect(await getAdminDbProjectBySlug(db, "qa-draft")).toMatchObject({ status: "draft" });
+    expect(await getAdminDbProjectBySlug(db, "qa-active")).toMatchObject({ status: "active" });
+    expect(await getDbProjectBySlug(db, "qa-failed")).toBeNull();
+    expect(await getDbProjectBySlug(db, "qa-draft")).toBeNull();
+    expect(await getDbProjectBySlug(db, "qa-active")).toBeNull();
+    expect(await getDbProjectBySlug(db, "qa-omit-status")).toBeNull();
+
+    const env = buildEnv(db);
+    const token = await adminToken(db);
+    const listed = await worker.fetch(
+      new Request("https://ancu.test/api/admin/projects", { headers: authHeaders(token) }),
+      env,
+    );
+    expect(listed.status).toBe(200);
+    const body = (await listed.json()) as { projects: { slug: string; status?: string }[] };
+    const failed = body.projects.find((project) => project.slug === "qa-failed");
+    expect(failed?.status).toBe("failed");
+    expect(body.projects.some((project) => project.slug === "qa-draft" && project.status === "draft")).toBe(
+      true,
+    );
+    expect(body.projects.some((project) => project.slug === "qa-active" && project.status === "active")).toBe(
+      true,
+    );
+
+    const { generateBlogDraft } = await import("./ai/pipeline");
+    const generated = await worker.fetch(
+      new Request("https://ancu.test/api/admin/blog/generate", {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ projectSlugs: ["qa-failed"] }),
+      }),
+      env,
+    );
+    expect(generated.status).toBe(201);
+    expect(generateBlogDraft).toHaveBeenCalledWith(
+      expect.anything(),
+      [expect.objectContaining({ slug: "qa-failed", name: "Failed Build" })],
+    );
+  });
+
+  it("does not publish a failed placeholder or overwrite a published row", async () => {
+    const db = openMemoryDb();
+    await seedDeveloper(db);
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, description, city, status, source_class
+         ) VALUES (
+           'proj_pub', 'dev_gamuda_land', 'qa-published', 'Stay Published', 'Keep me',
+           'Live description', 'HCM', 'published', 'verified_public'
+         )`,
+      )
+      .run();
+    await db
+      .prepare(
+        `INSERT INTO amenities (id, project_id, category, name) VALUES ('am_keep', 'proj_pub', 'park', 'Công viên thật')`,
+      )
+      .run();
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, description, city, district, address,
+           handover, price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_eaton_fail', 'dev_gamuda_land', 'eaton-park', 'Eaton Park Placeholder',
+           ?, 'crawl down', ?, ?, ?, ?, ?, ?, 'failed', 'estimated'
+         )`,
+      )
+      .bind(PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING)
+      .run();
+    await db
+      .prepare(
+        `INSERT INTO projects (id, developer_id, slug, name, tagline, city, status, source_class)
+         VALUES ('proj_real_draft', 'dev_gamuda_land', 'qa-real-draft', 'Real Draft', 'A real draft', 'HCM', 'draft', 'estimated')`,
+      )
+      .run();
+    await db
+      .prepare(
+        `INSERT INTO projects (id, developer_id, slug, name, tagline, city, status, source_class)
+         VALUES ('proj_active', 'dev_gamuda_land', 'qa-active', 'Active Listing', 'Ready', 'HCM', 'published', 'estimated')`,
+      )
+      .run();
+    await db.prepare(`UPDATE projects SET status = 'active' WHERE slug = 'qa-active'`).run();
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, city, district, address, handover, price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_ph_draft', 'dev_gamuda_land', 'qa-placeholder-draft', 'Stub',
+           ?, ?, ?, ?, ?, ?, ?, 'draft', 'estimated'
+         )`,
+      )
+      .bind(PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING)
+      .run();
+
+    const env = buildEnv(db);
+    const token = await adminToken(db);
+    const approved = await worker.fetch(
+      new Request("https://ancu.test/api/admin/projects/approve-all", {
+        method: "POST",
+        headers: authHeaders(token),
+      }),
+      env,
+    );
+    expect(approved.status).toBe(200);
+    const approvedBody = (await approved.json()) as { projectUpdates: number };
+    expect(approvedBody.projectUpdates).toBe(2);
+
+    const statuses = await db
+      .prepare(`SELECT slug, name, tagline, status FROM projects ORDER BY slug`)
+      .all<{ slug: string; name: string; tagline: string; status: string }>();
+    const row = (slug: string) => statuses.results?.find((item) => item.slug === slug);
+    expect(row("qa-published")).toMatchObject({
+      name: "Stay Published",
+      tagline: "Keep me",
+      status: "published",
+    });
+    expect(row("eaton-park")).toMatchObject({ status: "failed", tagline: PENDING });
+    expect(row("qa-real-draft")?.status).toBe("published");
+    expect(row("qa-active")?.status).toBe("published");
+    expect(row("qa-placeholder-draft")).toMatchObject({ status: "draft", tagline: PENDING });
+
+    const publicEaton = await worker.fetch(new Request("https://ancu.test/api/projects/eaton-park"), env);
+    expect(publicEaton.status).toBe(200);
+    const eatonBody = (await publicEaton.json()) as { source: string; project: { tagline?: string; name: string } };
+    expect(eatonBody.source).toBe("seed");
+    expect(eatonBody.project.tagline).not.toBe(PENDING);
+    expect(eatonBody.project.name).toBe("Eaton Park");
+
+    const publicDraft = await worker.fetch(new Request("https://ancu.test/api/projects/qa-real-draft"), env);
+    expect(publicDraft.status).toBe(200);
+    const hiddenStub = await worker.fetch(
+      new Request("https://ancu.test/api/projects/qa-placeholder-draft"),
+      env,
+    );
+    expect(hiddenStub.status).toBe(404);
+
+    await upsertSynthesizedProject(
+      db,
+      {
+        name: "OVERWRITE",
+        slug: "qa-published",
+        tagline: PENDING,
+        description: "should not land",
+        city: PENDING,
+        district: PENDING,
+        address: PENDING,
+        handover: PENDING,
+        priceRange: PENDING,
+        totalUnits: PENDING,
+        amenities: [],
+        apartmentTypes: [],
+        nearbyPlaces: [],
+        sources: [],
+        researchNotes: "placeholder",
+        showroom: { lightingDefault: "day", materialPaletteLabel: PENDING, hotspots: [] },
+      },
+      "failed",
+    );
+    const kept = await db
+      .prepare(`SELECT name, tagline, status FROM projects WHERE slug = 'qa-published'`)
+      .first<{ name: string; tagline: string; status: string }>();
+    expect(kept).toMatchObject({ name: "Stay Published", tagline: "Keep me", status: "published" });
+    const amenity = await db
+      .prepare(`SELECT name FROM amenities WHERE project_id = 'proj_pub'`)
+      .first<{ name: string }>();
+    expect(amenity?.name).toBe("Công viên thật");
   });
 });

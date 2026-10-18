@@ -60,15 +60,19 @@
       "d1_databases": [
         {
           "binding": "DB",
-          "database_name": "ancu-property-db",
-          // CI replaces preview database_id
+          // Not created. A preview deploy must not bind production ancu-property-db.
+          // Create it first, then replace database_id with the id wrangler prints:
+          //   wrangler d1 create ancu-property-db-preview
+          "database_name": "ancu-property-db-preview",
           "database_id": "00000000-0000-0000-0000-000000000002"
         }
       ],
       "r2_buckets": [
         {
           "binding": "ASSETS",
-          "bucket_name": "ancu-property-assets"
+          // Not created. Preview must not write production ancu-property-assets.
+          //   wrangler r2 bucket create ancu-property-assets-preview
+          "bucket_name": "ancu-property-assets-preview"
         }
       ],
       "images": {

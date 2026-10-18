@@ -30,7 +30,13 @@ import {
 } from "./db/blog";
 import { loadPublicBlogPost, loadPublishedBlogPosts } from "./editorial-blog";
 import { createBuildJob, getBuildJob, listBuildJobs } from "./db/jobs";
-import { getDbProjectBySlug, listDbProjectSummaries } from "./db/projects";
+import {
+  approveAllProjects,
+  getAdminDbProjectBySlug,
+  getDbProjectBySlug,
+  listAdminDbProjects,
+  listDbProjectSummaries,
+} from "./db/projects";
 import { runProjectBuild } from "./project-build";
 import { serveMedia, withMediaUrl } from "./media";
 import { toPublicDetail, toPublicSummary } from "./public-project";
@@ -135,11 +141,14 @@ function logRequest(
   );
 }
 
-async function mergeProjects(env: Env) {
+async function mergeListedProjects(
+  env: Env,
+  list: typeof listDbProjectSummaries,
+) {
   const seed = getProjectSummaries();
   let dbProjects: Awaited<ReturnType<typeof listDbProjectSummaries>> = [];
   try {
-    dbProjects = await listDbProjectSummaries(env.DB);
+    dbProjects = await list(env.DB);
   } catch {
     dbProjects = [];
   }
@@ -160,16 +169,25 @@ async function mergeProjects(env: Env) {
 
 /** Buyer-facing list: pending / secondary research / provenance stripped. */
 async function mergePublicProjects(env: Env) {
-  const merged = await mergeProjects(env);
+  const merged = await mergeListedProjects(env, listDbProjectSummaries);
   return {
     projects: merged.projects.map(toPublicSummary),
     source: merged.source,
   };
 }
 
-async function resolveProject(env: Env, slug: string) {
+/** Admin and blog lookup: D1 rows of every status, each with its status. */
+async function mergeAdminProjects(env: Env) {
+  return mergeListedProjects(env, listAdminDbProjects);
+}
+
+async function resolveListedProject(
+  env: Env,
+  slug: string,
+  load: typeof getDbProjectBySlug,
+) {
   try {
-    const fromDb = await getDbProjectBySlug(env.DB, slug);
+    const fromDb = await load(env.DB, slug);
     if (fromDb) {
       return { project: fromDb, source: "d1" as const };
     }
@@ -184,12 +202,16 @@ async function resolveProject(env: Env, slug: string) {
 }
 
 async function resolvePublicProject(env: Env, slug: string) {
-  const resolved = await resolveProject(env, slug);
+  const resolved = await resolveListedProject(env, slug, getDbProjectBySlug);
   if (!resolved) return null;
   return {
     project: toPublicDetail(resolved.project),
     source: resolved.source,
   };
+}
+
+async function resolveAdminProject(env: Env, slug: string) {
+  return resolveListedProject(env, slug, getAdminDbProjectBySlug);
 }
 
 function schedule(ctx: ExecutionContext | undefined, task: Promise<unknown>): void {
@@ -379,7 +401,7 @@ async function handleAdmin(
   }
 
   if (path === "/api/admin/projects" && request.method === "GET") {
-    const merged = await mergeProjects(env);
+    const merged = await mergeAdminProjects(env);
     const jobs = await listBuildJobs(env.DB).catch(() => []);
     return json({ ...merged, jobs }, requestId, 200, "no-store");
   }
@@ -422,7 +444,7 @@ async function handleAdmin(
   }
 
   if (path === "/api/admin/blog/generate" && request.method === "POST") {
-    const merged = await mergeProjects(env);
+    const merged = await mergeAdminProjects(env);
     let body: { projectSlugs?: string[]; publish?: boolean } = {};
     try {
       body = (await request.json()) as typeof body;
@@ -435,7 +457,7 @@ async function handleAdmin(
 
     const details = [];
     for (const p of selected) {
-      const full = await resolveProject(env, p.slug);
+      const full = await resolveAdminProject(env, p.slug);
       details.push({
         name: p.name,
         slug: p.slug,
@@ -572,41 +594,8 @@ async function handleAdmin(
   }
 
   if (path === "/api/admin/projects/approve-all" && request.method === "POST") {
-    const result = await env.DB.batch([
-      env.DB.prepare(
-        `UPDATE apartment_types
-         SET source_class = 'estimated',
-             provenance = COALESCE(provenance, 'Admin approved sample linkage'),
-             validation_summary = 'Đã duyệt hiển thị showroom — số liệu vẫn Chờ xác minh nếu chưa có nguồn',
-             updated_at = datetime('now')
-         WHERE source_class IN ('pending_verification')
-            OR provenance LIKE '%pending verification%'
-            OR validation_summary LIKE '%pending%'`,
-      ),
-      env.DB.prepare(
-        `UPDATE nearby_places
-         SET source_class = 'estimated',
-             provenance = COALESCE(provenance, 'Admin approved sample linkage')
-         WHERE source_class IN ('pending_verification')
-            OR provenance LIKE '%pending verification%'`,
-      ),
-      env.DB.prepare(
-        `UPDATE projects
-         SET status = 'published', updated_at = datetime('now')
-         WHERE status != 'published'`,
-      ),
-    ]);
-    return json(
-      {
-        ok: true,
-        apartmentUpdates: result[0].meta.changes ?? 0,
-        nearbyUpdates: result[1].meta.changes ?? 0,
-        projectUpdates: result[2].meta.changes ?? 0,
-      },
-      requestId,
-      200,
-      "no-store",
-    );
+    const result = await approveAllProjects(env.DB);
+    return json({ ok: true, ...result }, requestId, 200, "no-store");
   }
 
 
@@ -685,7 +674,7 @@ export default {
     ctx.waitUntil(
       (async () => {
         try {
-          const merged = await mergeProjects(env);
+          const merged = await mergeAdminProjects(env);
           const details = merged.projects.slice(0, 5).map((p) => ({
             name: p.name,
             slug: p.slug,

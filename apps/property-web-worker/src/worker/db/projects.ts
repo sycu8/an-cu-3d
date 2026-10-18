@@ -40,14 +40,17 @@ export async function ensureGamudaDeveloper(db: D1Database): Promise<string> {
   return id;
 }
 
-/** Buyer-facing list. Anything other than published stays off the public API. */
-export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
+async function listProjectSummaries(
+  db: D1Database,
+  publishedOnly: boolean,
+): Promise<ProjectSummary[]> {
+  const where = publishedOnly ? "WHERE p.status = 'published'" : "";
   const rows = await db
     .prepare(
       `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
-       WHERE p.status = 'published'
+       ${where}
        ORDER BY p.updated_at DESC`,
     )
     .all<ProjectRow>();
@@ -77,17 +80,28 @@ export async function listDbProjectSummaries(db: D1Database): Promise<ProjectSum
   }));
 }
 
-/** Buyer-facing detail. Non-published rows are invisible so the route can 404. */
-export async function getDbProjectBySlug(
+/** Buyer-facing list. Anything other than published stays off the public API. */
+export function listDbProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
+  return listProjectSummaries(db, true);
+}
+
+/** Admin list. Every status, including failed, draft, and active. */
+export function listAdminDbProjects(db: D1Database): Promise<ProjectSummary[]> {
+  return listProjectSummaries(db, false);
+}
+
+async function loadProjectBySlug(
   db: D1Database,
   slug: string,
+  publishedOnly: boolean,
 ): Promise<ProjectDetail | null> {
+  const statusSql = publishedOnly ? " AND p.status = 'published'" : "";
   const p = await db
     .prepare(
       `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
-       WHERE p.slug = ? AND p.status = 'published'`,
+       WHERE p.slug = ?${statusSql}`,
     )
     .bind(slug)
     .first<ProjectRow>();
@@ -199,6 +213,22 @@ export async function getDbProjectBySlug(
   };
 }
 
+/** Buyer-facing detail. Non-published rows are invisible so the route can 404. */
+export function getDbProjectBySlug(
+  db: D1Database,
+  slug: string,
+): Promise<ProjectDetail | null> {
+  return loadProjectBySlug(db, slug, true);
+}
+
+/** Admin detail. Returns the row for any status and includes that status. */
+export function getAdminDbProjectBySlug(
+  db: D1Database,
+  slug: string,
+): Promise<ProjectDetail | null> {
+  return loadProjectBySlug(db, slug, false);
+}
+
 function parseShowroomJson(raw: string | null): ProjectDetail["showroom"] | undefined {
   if (!raw) return undefined;
   try {
@@ -256,11 +286,91 @@ export async function findStoredProjectId(db: D1Database, slug: string): Promise
   return row?.id ?? null;
 }
 
+/** The failed-build stub fills every buyer-facing fact with this label. */
+export function isPlaceholderProject(data: {
+  tagline: string;
+  city: string;
+  district: string;
+  address: string;
+  handover: string;
+  priceRange: string;
+  totalUnits: string;
+}): boolean {
+  return (
+    data.tagline === PENDING &&
+    data.city === PENDING &&
+    data.district === PENDING &&
+    data.address === PENDING &&
+    data.handover === PENDING &&
+    data.priceRange === PENDING &&
+    data.totalUnits === PENDING
+  );
+}
+
+/**
+ * Publish draft and active rows. Failed builds and Chờ xác minh placeholders stay unpublished
+ * so they cannot replace a live or seed page.
+ */
+export async function approveAllProjects(db: D1Database): Promise<{
+  apartmentUpdates: number;
+  nearbyUpdates: number;
+  projectUpdates: number;
+}> {
+  const result = await db.batch([
+    db.prepare(
+      `UPDATE apartment_types
+       SET source_class = 'estimated',
+           provenance = COALESCE(provenance, 'Admin approved sample linkage'),
+           validation_summary = 'Đã duyệt hiển thị showroom — số liệu vẫn Chờ xác minh nếu chưa có nguồn',
+           updated_at = datetime('now')
+       WHERE source_class IN ('pending_verification')
+          OR provenance LIKE '%pending verification%'
+          OR validation_summary LIKE '%pending%'`,
+    ),
+    db.prepare(
+      `UPDATE nearby_places
+       SET source_class = 'estimated',
+           provenance = COALESCE(provenance, 'Admin approved sample linkage')
+       WHERE source_class IN ('pending_verification')
+          OR provenance LIKE '%pending verification%'`,
+    ),
+    db
+      .prepare(
+        `UPDATE projects
+         SET status = 'published', updated_at = datetime('now')
+         WHERE status NOT IN ('published', 'failed')
+           AND NOT (
+             tagline = ?
+             AND city = ?
+             AND district = ?
+             AND address = ?
+             AND handover = ?
+             AND price_range = ?
+             AND total_units = ?
+           )`,
+      )
+      .bind(PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING),
+  ]);
+  return {
+    apartmentUpdates: result[0]?.meta.changes ?? 0,
+    nearbyUpdates: result[1]?.meta.changes ?? 0,
+    projectUpdates: result[2]?.meta.changes ?? 0,
+  };
+}
+
 export async function upsertSynthesizedProject(
   db: D1Database,
   data: SynthesizedProject,
   status: "published" | "failed" = "published",
 ): Promise<string> {
+  if (isPlaceholderProject(data)) {
+    const existing = await db
+      .prepare(`SELECT id, status FROM projects WHERE slug = ?`)
+      .bind(data.slug)
+      .first<{ id: string; status: string }>();
+    if (existing?.status === "published") return existing.id;
+  }
+
   const developerId = await ensureGamudaDeveloper(db);
   const projectId = `proj_${data.slug}`;
 

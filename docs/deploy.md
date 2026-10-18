@@ -13,6 +13,13 @@ Required before either deploy workflow runs `scripts/cf-deploy.sh`:
 
 `ENGINE_BASE_URL` is not a secret. A deploy without `--env` and `--env production` use `https://ancu-floorplan-engine.sycu-lee.workers.dev`. `env.preview` does not set `ENGINE_BASE_URL`: the preview engine Worker does not exist, and wrangler does not inherit top-level vars, so a preview build skips the engine crawl and `/jobs` calls instead of targeting a missing host. `keep_vars` is false so a dashboard value cannot drop the var on the environments that do set it.
 
+`env.preview` binds `DB` to `ancu-property-db-preview` and `ASSETS` to `ancu-property-assets-preview`. Those resources are not created by this repo. `scripts/cf-deploy.sh` deploys the top-level Worker only and does not create them. Before any preview deploy, create them and put the printed D1 id in `env.preview`:
+
+```bash
+pnpm --filter @ancu/property-web-worker exec wrangler d1 create ancu-property-db-preview
+pnpm --filter @ancu/property-web-worker exec wrangler r2 bucket create ancu-property-assets-preview
+```
+
 Optional later:
 
 - Preview/production D1 database IDs if not injected by `wrangler d1 create` output into env-specific config
@@ -100,9 +107,9 @@ pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ACCO
 pnpm --filter @ancu/property-web-worker exec wrangler secret put AI_GATEWAY_ID
 ```
 
-Apply D1 migrations (includes `0004_admin_auth.sql`) before using `/admin`.
+Apply D1 migrations (includes `0004_admin_auth.sql` and `0005_project_status_default_draft.sql`) before using `/admin`.
 
-`scripts/cf-deploy.sh` writes the same `ENGINE_API_SECRET` onto both Workers. The property Worker reads `ENGINE_BASE_URL` from wrangler vars. A missing URL or secret is logged as a warning and the engine calls are skipped (this is the preview path, which has no `ENGINE_BASE_URL`). A non-2xx engine response (including 401 and 5xx) fails the build job. A failed crawl or `/jobs` call saves a `failed` placeholder only when that slug is new. Rebuilding an existing project records the failure on the build job and leaves the published row and its amenities, apartment types, nearby places, and sources unchanged. Public `GET /api/projects` and `GET /api/projects/:slug` return `published` rows only; any other status is omitted or 404.
+`scripts/cf-deploy.sh` writes the same `ENGINE_API_SECRET` onto both Workers. The property Worker reads `ENGINE_BASE_URL` from wrangler vars. A missing URL or secret is logged as a warning and the engine calls are skipped (this is the preview path, which has no `ENGINE_BASE_URL`). A non-2xx engine response (including 401 and 5xx) fails the build job. A failed crawl or `/jobs` call saves a `failed` placeholder only when that slug is new. Rebuilding an existing project records the failure on the build job and leaves the published row and its amenities, apartment types, nearby places, and sources unchanged. Public `GET /api/projects` and `GET /api/projects/:slug` return `published` rows only; any other status is omitted or 404. `GET /api/admin/projects` and the blog generator use separate queries with no status filter, and each row includes its status. A project inserted without `status` is stored as `draft` (migration `0005` rewrites the legacy `active` column default; the build pipeline still sets `published` or `failed` itself). `POST /api/admin/projects/approve-all` publishes draft and active rows, and leaves `failed` rows and `Chờ xác minh` placeholders unpublished so they cannot replace a live page.
 
 ### Smoke (admin + blog)
 
