@@ -29,12 +29,18 @@ export type ChatResult = {
 
 export const DEFAULT_MODELS: Record<AiUseCase, string> = {
   research: "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-  blog: "@cf/meta/llama-3.1-8b-instruct",
+  blog: "@cf/meta/llama-3.1-8b-instruct-fp8",
   image_gen: "@cf/black-forest-labs/flux-1-schnell",
   image_edit: "@cf/runwayml/stable-diffusion-v1-5-img2img",
   vision_2d: "@cf/meta/llama-3.2-11b-vision-instruct",
-  qa_factual: "@cf/meta/llama-3.1-8b-instruct",
+  qa_factual: "@cf/meta/llama-3.1-8b-instruct-fp8",
 };
+
+/**
+ * Workers AI text models default max_tokens to 256, which cuts off blog JSON.
+ * 2048 covers title, excerpt, markdown body, and SEO fields in one response.
+ */
+const DEFAULT_CHAT_MAX_TOKENS = 2048;
 
 export function gatewayChatUrl(config: AiGatewayConfig, model: string): string {
   return `https://gateway.ai.cloudflare.com/v1/${config.accountId}/${config.gatewayId}/workers-ai/${encodeURIComponent(model)}`;
@@ -58,7 +64,10 @@ export async function chatViaGateway(
   const res = await fetch(gatewayChatUrl(config, model), {
     method: "POST",
     headers,
-    body: JSON.stringify({ messages, max_tokens: options?.maxTokens ?? 2048 }),
+    body: JSON.stringify({
+      messages,
+      max_tokens: options?.maxTokens ?? DEFAULT_CHAT_MAX_TOKENS,
+    }),
   });
 
   if (!res.ok) {
@@ -91,11 +100,14 @@ export async function chatViaWorkersAi(
   ai: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> },
   useCase: AiUseCase,
   messages: ChatMessage[],
-  options?: { model?: string },
+  options?: { model?: string; maxTokens?: number },
 ): Promise<ChatResult> {
   const started = Date.now();
   const model = options?.model ?? DEFAULT_MODELS[useCase];
-  const result = (await ai.run(model, { messages })) as { response?: string };
+  const result = (await ai.run(model, {
+    messages,
+    max_tokens: options?.maxTokens ?? DEFAULT_CHAT_MAX_TOKENS,
+  })) as { response?: string };
   return {
     text: String(result.response ?? "").trim(),
     model,
