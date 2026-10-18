@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "test": "vitest run --config vitest.unit.config.ts",
+    "test:e2e": "playwright test",
     "lint": "echo \"no lint yet\"",
     "deploy": "wrangler deploy",
     "test:app": "vitest run",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.2.0",
     "@cloudflare/workers-types": "^5.20260906.1",
+    "@playwright/test": "^1.64.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@types/three": "^0.175.0",

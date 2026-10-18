@@ -31,6 +31,9 @@ apps/*/src/env.d.ts
 *.log
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
+blob-report/
 
 # local data
 .local/
