@@ -1,12 +1,21 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { stampBuildEnvironment } from "./stamp-build-env.mjs";
 
 export default defineConfig({
   plugins: [react(), cloudflare({
     // Local QA must not require Cloudflare API token / remote AI proxy
     remoteBindings: false,
-  })],
+  }), {
+    name: "stamp-build-environment",
+    apply: "build",
+    closeBundle() {
+      // Vite loads this config in Node. This tsconfig has no @types/node.
+      // @ts-expect-error process is provided by the Node runtime that loads vite.config.ts
+      stampBuildEnvironment("dist", process.env.CLOUDFLARE_ENV);
+    },
+  }],
   build: {
     outDir: "dist",
     emptyOutDir: true,

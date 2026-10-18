@@ -35,6 +35,7 @@ import {
   getAdminDbProjectBySlug,
   getDbProjectBySlug,
   listAdminDbProjects,
+  listBlogDbProjects,
   listDbProjectSummaries,
 } from "./db/projects";
 import { runProjectBuild } from "./project-build";
@@ -176,9 +177,14 @@ async function mergePublicProjects(env: Env) {
   };
 }
 
-/** Admin and blog lookup: D1 rows of every status, each with its status. */
+/** Admin list: D1 rows of every status, each with its status. */
 async function mergeAdminProjects(env: Env) {
   return mergeListedProjects(env, listAdminDbProjects);
+}
+
+/** Blog generator: admin rows except failed builds and Chờ xác minh placeholders. */
+async function mergeBlogProjects(env: Env) {
+  return mergeListedProjects(env, listBlogDbProjects);
 }
 
 async function resolveListedProject(
@@ -444,7 +450,7 @@ async function handleAdmin(
   }
 
   if (path === "/api/admin/blog/generate" && request.method === "POST") {
-    const merged = await mergeAdminProjects(env);
+    const merged = await mergeBlogProjects(env);
     let body: { projectSlugs?: string[]; publish?: boolean } = {};
     try {
       body = (await request.json()) as typeof body;
@@ -674,7 +680,7 @@ export default {
     ctx.waitUntil(
       (async () => {
         try {
-          const merged = await mergeAdminProjects(env);
+          const merged = await mergeBlogProjects(env);
           const details = merged.projects.slice(0, 5).map((p) => ({
             name: p.name,
             slug: p.slug,

@@ -13,6 +13,7 @@ import {
   getAdminDbProjectBySlug,
   getDbProjectBySlug,
   listAdminDbProjects,
+  listBlogDbProjects,
   listDbProjectSummaries,
   upsertSynthesizedProject,
 } from "./db/projects";
@@ -438,6 +439,18 @@ describe("admin project reads and approve-all", () => {
          VALUES ('proj_omit', 'dev_gamuda_land', 'qa-omit-status', 'Omitted Status')`,
       )
       .run();
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, city, district, address, handover,
+           price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_ph', 'dev_gamuda_land', 'qa-placeholder', 'Stub',
+           ?, ?, ?, ?, ?, ?, ?, 'draft', 'estimated'
+         )`,
+      )
+      .bind(PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING)
+      .run();
 
     const admin = await listAdminDbProjects(db);
     const bySlug = new Map(admin.map((project) => [project.slug, project.status]));
@@ -447,6 +460,11 @@ describe("admin project reads and approve-all", () => {
     expect(bySlug.get("qa-active")).toBe("active");
     expect(bySlug.get("qa-omit-status")).toBe("draft");
     expect((await listDbProjectSummaries(db)).map((project) => project.slug)).toEqual(["qa-published"]);
+    const blogSlugs = (await listBlogDbProjects(db)).map((project) => project.slug);
+    expect(blogSlugs).toContain("qa-draft");
+    expect(blogSlugs).toContain("qa-published");
+    expect(blogSlugs).not.toContain("qa-failed");
+    expect(blogSlugs).not.toContain("qa-placeholder");
 
     expect(await getAdminDbProjectBySlug(db, "qa-failed")).toMatchObject({
       name: "Failed Build",
@@ -481,15 +499,46 @@ describe("admin project reads and approve-all", () => {
       new Request("https://ancu.test/api/admin/blog/generate", {
         method: "POST",
         headers: authHeaders(token),
-        body: JSON.stringify({ projectSlugs: ["qa-failed"] }),
+        body: JSON.stringify({ projectSlugs: ["qa-failed", "qa-draft", "qa-placeholder"] }),
       }),
       env,
     );
     expect(generated.status).toBe(201);
-    expect(generateBlogDraft).toHaveBeenCalledWith(
-      expect.anything(),
-      [expect.objectContaining({ slug: "qa-failed", name: "Failed Build" })],
+    const blogProjects = vi.mocked(generateBlogDraft).mock.calls.at(-1)?.[1] ?? [];
+    expect(blogProjects).toEqual([expect.objectContaining({ slug: "qa-draft", name: "Draft Build" })]);
+    expect(blogProjects.some((project) => project.slug === "qa-failed")).toBe(false);
+    expect(blogProjects.some((project) => project.slug === "qa-placeholder")).toBe(false);
+  });
+
+  it("keeps a failed eaton-park stub out of the weekly blog cron", async () => {
+    const db = openMemoryDb();
+    await seedDeveloper(db);
+    await db
+      .prepare(
+        `INSERT INTO projects (
+           id, developer_id, slug, name, tagline, city, district, address, handover,
+           price_range, total_units, status, source_class
+         ) VALUES (
+           'proj_eaton_fail', 'dev_gamuda_land', 'eaton-park', 'Eaton Park Placeholder',
+           ?, ?, ?, ?, ?, ?, ?, 'failed', 'estimated'
+         )`,
+      )
+      .bind(PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING)
+      .run();
+    const { generateBlogDraft } = await import("./ai/pipeline");
+    vi.mocked(generateBlogDraft).mockClear();
+    const tasks: Promise<unknown>[] = [];
+    await worker.scheduled({} as ScheduledController, buildEnv(db), {
+      waitUntil(task: Promise<unknown>) {
+        tasks.push(task);
+      },
+    } as ExecutionContext);
+    await Promise.all(tasks);
+    const blogProjects = vi.mocked(generateBlogDraft).mock.calls.at(-1)?.[1] ?? [];
+    expect(blogProjects.some((project) => project.slug === "eaton-park" && project.name === "Eaton Park")).toBe(
+      true,
     );
+    expect(blogProjects.some((project) => project.name === "Eaton Park Placeholder")).toBe(false);
   });
 
   it("does not publish a failed placeholder or overwrite a published row", async () => {
@@ -537,6 +586,12 @@ describe("admin project reads and approve-all", () => {
     await db.prepare(`UPDATE projects SET status = 'active' WHERE slug = 'qa-active'`).run();
     await db
       .prepare(
+        `INSERT INTO projects (id, developer_id, slug, name, tagline, city, status, source_class)
+         VALUES ('proj_failed_real', 'dev_gamuda_land', 'qa-failed-real', 'Failed Real', 'A real failed rebuild', 'HCM', 'failed', 'estimated')`,
+      )
+      .run();
+    await db
+      .prepare(
         `INSERT INTO projects (
            id, developer_id, slug, name, tagline, city, district, address, handover, price_range, total_units, status, source_class
          ) VALUES (
@@ -561,8 +616,8 @@ describe("admin project reads and approve-all", () => {
     expect(approvedBody.projectUpdates).toBe(2);
 
     const statuses = await db
-      .prepare(`SELECT slug, name, tagline, status FROM projects ORDER BY slug`)
-      .all<{ slug: string; name: string; tagline: string; status: string }>();
+      .prepare(`SELECT slug, name, tagline, status, published_at FROM projects ORDER BY slug`)
+      .all<{ slug: string; name: string; tagline: string; status: string; published_at: string | null }>();
     const row = (slug: string) => statuses.results?.find((item) => item.slug === slug);
     expect(row("qa-published")).toMatchObject({
       name: "Stay Published",
@@ -571,7 +626,10 @@ describe("admin project reads and approve-all", () => {
     });
     expect(row("eaton-park")).toMatchObject({ status: "failed", tagline: PENDING });
     expect(row("qa-real-draft")?.status).toBe("published");
+    expect(row("qa-real-draft")?.published_at).toBeTruthy();
     expect(row("qa-active")?.status).toBe("published");
+    expect(row("qa-active")?.published_at).toBeTruthy();
+    expect(row("qa-failed-real")).toMatchObject({ status: "failed", published_at: null });
     expect(row("qa-placeholder-draft")).toMatchObject({ status: "draft", tagline: PENDING });
 
     const publicEaton = await worker.fetch(new Request("https://ancu.test/api/projects/eaton-park"), env);

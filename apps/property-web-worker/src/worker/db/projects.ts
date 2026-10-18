@@ -40,20 +40,39 @@ export async function ensureGamudaDeveloper(db: D1Database): Promise<string> {
   return id;
 }
 
+type ProjectListScope = "public" | "admin" | "blog";
+
+function listScope(scope: ProjectListScope): { where: string; binds: string[] } {
+  if (scope === "admin") return { where: "", binds: [] };
+  if (scope === "public") return { where: "WHERE p.status = 'published'", binds: [] };
+  return {
+    where: `WHERE p.status != 'failed'
+      AND NOT (
+        tagline = ?
+        AND city = ?
+        AND district = ?
+        AND address = ?
+        AND handover = ?
+        AND price_range = ?
+        AND total_units = ?
+      )`,
+    binds: [PENDING, PENDING, PENDING, PENDING, PENDING, PENDING, PENDING],
+  };
+}
+
 async function listProjectSummaries(
   db: D1Database,
-  publishedOnly: boolean,
+  scope: ProjectListScope,
 ): Promise<ProjectSummary[]> {
-  const where = publishedOnly ? "WHERE p.status = 'published'" : "";
-  const rows = await db
-    .prepare(
-      `SELECT p.*, d.name AS developer_name
+  const { where, binds } = listScope(scope);
+  const statement = db.prepare(
+    `SELECT p.*, d.name AS developer_name
        FROM projects p
        JOIN developers d ON d.id = p.developer_id
        ${where}
        ORDER BY p.updated_at DESC`,
-    )
-    .all<ProjectRow>();
+  );
+  const rows = await (binds.length ? statement.bind(...binds) : statement).all<ProjectRow>();
 
   return (rows.results ?? []).map((p) => ({
     id: p.id,
@@ -82,12 +101,17 @@ async function listProjectSummaries(
 
 /** Buyer-facing list. Anything other than published stays off the public API. */
 export function listDbProjectSummaries(db: D1Database): Promise<ProjectSummary[]> {
-  return listProjectSummaries(db, true);
+  return listProjectSummaries(db, "public");
 }
 
 /** Admin list. Every status, including failed, draft, and active. */
 export function listAdminDbProjects(db: D1Database): Promise<ProjectSummary[]> {
-  return listProjectSummaries(db, false);
+  return listProjectSummaries(db, "admin");
+}
+
+/** Blog source list. Drops failed builds and Chờ xác minh placeholders so posts do not link to 404 stubs. */
+export function listBlogDbProjects(db: D1Database): Promise<ProjectSummary[]> {
+  return listProjectSummaries(db, "blog");
 }
 
 async function loadProjectBySlug(
@@ -337,7 +361,9 @@ export async function approveAllProjects(db: D1Database): Promise<{
     db
       .prepare(
         `UPDATE projects
-         SET status = 'published', updated_at = datetime('now')
+         SET status = 'published',
+             published_at = COALESCE(published_at, datetime('now')),
+             updated_at = datetime('now')
          WHERE status NOT IN ('published', 'failed')
            AND NOT (
              tagline = ?
