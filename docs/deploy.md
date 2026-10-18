@@ -69,7 +69,21 @@ pnpm --filter @ancu/floorplan-engine exec wrangler types
 
 ## Admin auth + AI Gateway secrets (property-web)
 
-Admin UI uses **username/password** stored in D1 (`admin_users` / `admin_sessions`). The default operator account is bootstrapped on first login and **must change password** before other admin APIs work.
+Admin UI uses **username/password** stored in D1 (`admin_users` / `admin_sessions`). Login checks that stored hash only. It does not create a default account, and a failed login does not rewrite `password_hash`.
+
+Create the first operator only when `admin_users` is empty:
+
+1. **One-time token** — set `ADMIN_BOOTSTRAP_TOKEN`, then `POST /api/admin/bootstrap` with JSON `{"token","username","password"}`. A later call returns `admin_exists`. Unset the token after setup.
+2. **Initial hash** — set `ADMIN_BOOTSTRAP_USERNAME` and `ADMIN_INITIAL_PASSWORD_HASH`. The hash is a `pbkdf2-sha256$iterations$salt$hash` string (PBKDF2-SHA256, at least 100000 iterations), not a plaintext password. The first login for that username inserts the row and sets `must_change_password`. An existing row is left unchanged.
+
+If an admin row already exists, these secrets do not rotate it. Change that password in `/admin`, then delete rows from `admin_sessions`.
+
+```bash
+pnpm --filter @ancu/property-web-worker exec wrangler secret put ADMIN_BOOTSTRAP_TOKEN
+# Alternative when bootstrapping from a precomputed hash:
+# pnpm --filter @ancu/property-web-worker exec wrangler secret put ADMIN_BOOTSTRAP_USERNAME
+# pnpm --filter @ancu/property-web-worker exec wrangler secret put ADMIN_INITIAL_PASSWORD_HASH
+```
 
 No `ADMIN_SECRET` Worker secret is required for admin UI auth.
 
@@ -92,8 +106,8 @@ WEB_BASE_URL=https://ancu-property-web.example.com \
 ENGINE_BASE_URL=https://ancu-floorplan-engine.example.com \
 node scripts/smoke.mjs
 
-# Optional authenticated admin check
-ADMIN_USER=Sycule96 ADMIN_PASSWORD='…' \
+# Optional authenticated admin check — use the rotated operator.
+ADMIN_USER='<operator>' ADMIN_PASSWORD='<password>' \
 WEB_BASE_URL=https://ancu-property-web.example.com \
 ENGINE_BASE_URL=https://ancu-floorplan-engine.example.com \
 node scripts/smoke.mjs

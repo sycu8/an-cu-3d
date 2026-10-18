@@ -1,8 +1,5 @@
 /** Admin username/password + opaque session tokens (Workers Web Crypto). */
 
-export const DEFAULT_ADMIN_USERNAME = "Sycule96";
-export const DEFAULT_ADMIN_PASSWORD = "admin";
-
 const PBKDF2_ITERATIONS = 100_000;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -114,7 +111,6 @@ export function extractBearerToken(authorization: string | null): string | null 
 }
 
 export function validateNewPassword(password: string, username: string): string | null {
-  if (password === DEFAULT_ADMIN_PASSWORD) return "password_is_default";
   if (password.toLowerCase() === username.toLowerCase()) return "password_matches_username";
   if (password.length < 8) return "password_too_short";
   return null;

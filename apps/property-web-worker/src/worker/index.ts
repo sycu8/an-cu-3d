@@ -13,6 +13,7 @@ import {
   runFactualQa,
 } from "./ai/pipeline";
 import {
+  bootstrapAdminWithToken,
   changeAdminPassword,
   createAdminSession,
   deleteAdminSession,
@@ -200,7 +201,10 @@ async function handleAdmin(
       return json({ error: "credentials_required" }, requestId, 400, "no-store");
     }
     try {
-      const result = await loginAdmin(env.DB, username, password);
+      const result = await loginAdmin(env.DB, username, password, {
+        ADMIN_BOOTSTRAP_USERNAME: env.ADMIN_BOOTSTRAP_USERNAME,
+        ADMIN_INITIAL_PASSWORD_HASH: env.ADMIN_INITIAL_PASSWORD_HASH,
+      });
       if (!result.ok) {
         return json({ error: result.error }, requestId, 401, "no-store");
       }
@@ -216,6 +220,41 @@ async function handleAdmin(
       );
     } catch (err) {
       console.error("admin login failed", err);
+      return json({ error: "auth_unavailable" }, requestId, 503, "no-store");
+    }
+  }
+
+  if (path === "/api/admin/bootstrap" && request.method === "POST") {
+    let body: { token?: string; username?: string; password?: string };
+    try {
+      body = (await request.json()) as { token?: string; username?: string; password?: string };
+    } catch {
+      return json({ error: "invalid_json" }, requestId, 400, "no-store");
+    }
+    try {
+      const result = await bootstrapAdminWithToken(
+        env.DB,
+        { ADMIN_BOOTSTRAP_TOKEN: env.ADMIN_BOOTSTRAP_TOKEN },
+        {
+          token: body.token ?? "",
+          username: body.username ?? "",
+          password: body.password ?? "",
+        },
+      );
+      if (!result.ok) {
+        const status =
+          result.error === "bootstrap_disabled"
+            ? 404
+            : result.error === "admin_exists"
+              ? 409
+              : result.error === "invalid_credentials"
+                ? 401
+                : 400;
+        return json({ error: result.error }, requestId, status, "no-store");
+      }
+      return json({ ok: true, username: result.username }, requestId, 201, "no-store");
+    } catch (err) {
+      console.error("admin bootstrap failed", err);
       return json({ error: "auth_unavailable" }, requestId, 503, "no-store");
     }
   }

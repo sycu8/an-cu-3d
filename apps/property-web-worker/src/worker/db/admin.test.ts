@@ -1,23 +1,29 @@
-import { beforeEach, describe, expect, it } from "vitest";
+// Unit tests run on Node. The worker tsconfig only loads Cloudflare types.
+// @ts-expect-error node builtin is available under vitest
+import { execFileSync } from "node:child_process";
+// @ts-expect-error node builtin is available under vitest
+import { readFileSync } from "node:fs";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import worker from "../index";
+import { hashPassword, validateNewPassword } from "../auth";
+import type { Env } from "../types";
 import {
-  DEFAULT_ADMIN_PASSWORD,
-  DEFAULT_ADMIN_USERNAME,
-  hashPassword,
-  validateNewPassword,
-} from "../auth";
-import {
+  bootstrapAdminWithToken,
   changeAdminPassword,
-  ensureDefaultAdmin,
   loginAdmin,
   resolveAdminSession,
+  type AdminUserRow,
 } from "./admin";
 
 type Row = Record<string, unknown>;
 
+type MemoryDb = D1Database & { userUpdateCount: () => number };
+
 /** Minimal in-memory D1 stand-in for admin auth unit tests. */
-function createMemoryDb() {
+function createMemoryDb(): MemoryDb {
   const users = new Map<string, Row>();
   const sessions = new Map<string, Row>();
+  let userUpdates = 0;
 
   function matchWhere(row: Row, where: string, binds: unknown[]): boolean {
     if (!where.trim()) return true;
@@ -57,6 +63,9 @@ function createMemoryDb() {
       },
       async first<T>() {
         const normalized = sql.replace(/\s+/g, " ").trim();
+        if (/SELECT id FROM admin_users LIMIT 1/i.test(normalized)) {
+          return (users.values().next().value as T | undefined) ?? null;
+        }
         if (/SELECT \* FROM admin_users WHERE (?:lower\(username\)|username)/i.test(normalized)) {
           const username = String(binds[0] ?? "");
           for (const row of users.values()) {
@@ -85,12 +94,12 @@ function createMemoryDb() {
       async run() {
         const normalized = sql.replace(/\s+/g, " ").trim();
         if (/INSERT INTO admin_users/i.test(normalized)) {
-          const [id, username, password_hash] = binds;
+          const [id, username, password_hash, must_change_password] = binds;
           users.set(String(id), {
             id,
             username,
             password_hash,
-            must_change_password: 1,
+            must_change_password: must_change_password == null ? 1 : Number(must_change_password),
             created_at: "now",
             updated_at: "now",
           });
@@ -108,6 +117,7 @@ function createMemoryDb() {
           return { success: true };
         }
         if (/UPDATE admin_users/i.test(normalized)) {
+          userUpdates += 1;
           const [password_hash, id] = binds;
           const row = users.get(String(id));
           if (row) {
@@ -133,35 +143,272 @@ function createMemoryDb() {
     return api;
   }
 
-  return { prepare } as unknown as D1Database;
+  return { prepare, userUpdateCount: () => userUpdates } as unknown as MemoryDb;
+}
+
+/**
+ * Credentials removed from apps/property-web-worker/src/worker/auth.ts:3-4.
+ * Loaded from that historical blob so this file does not copy the values.
+ */
+const AUTH_TS_DEFAULTS_COMMIT = "fe211f5c4e7aab20ff6c2ea2750a505f60782afb";
+
+function readHistoricalAuthSource(): string {
+  const spec = `${AUTH_TS_DEFAULTS_COMMIT}:apps/property-web-worker/src/worker/auth.ts`;
+  const gitEnv = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
+  const show = () =>
+    execFileSync("git", ["show", spec], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      env: gitEnv,
+    });
+  try {
+    return show();
+  } catch {
+    try {
+      execFileSync("git", ["fetch", "--depth=1", "origin", AUTH_TS_DEFAULTS_COMMIT], {
+        stdio: "ignore",
+        env: gitEnv,
+      });
+    } catch {
+      throw new Error("unable to load historical auth.ts:3-4");
+    }
+    try {
+      return show();
+    } catch {
+      throw new Error("unable to load historical auth.ts:3-4");
+    }
+  }
+}
+
+let cachedRemovedCredentials: { username: string; password: string } | undefined;
+
+function credentialsRemovedFromAuthTs(): { username: string; password: string } {
+  if (cachedRemovedCredentials) return cachedRemovedCredentials;
+  const lines = readHistoricalAuthSource().split(/\r?\n/);
+  const username = /=\s*"([^"]*)"/.exec(lines[2] ?? "")?.[1];
+  const password = /=\s*"([^"]*)"/.exec(lines[3] ?? "")?.[1];
+  if (!username || !password) throw new Error("unable to parse historical auth.ts:3-4");
+  cachedRemovedCredentials = { username, password };
+  return cachedRemovedCredentials;
+}
+
+async function seedAdmin(
+  db: D1Database,
+  username: string,
+  password: string,
+  mustChange = 0,
+): Promise<{ id: string; passwordHash: string }> {
+  const id = crypto.randomUUID();
+  const passwordHash = await hashPassword(password);
+  await db
+    .prepare(
+      `INSERT INTO admin_users (id, username, password_hash, must_change_password)
+       VALUES (?, ?, ?, ?)`,
+    )
+    .bind(id, username, passwordHash, mustChange)
+    .run();
+  return { id, passwordHash };
+}
+
+async function readAdmin(db: D1Database, username: string): Promise<AdminUserRow | null> {
+  return (
+    (await db
+      .prepare(`SELECT * FROM admin_users WHERE lower(username) = lower(?) LIMIT 1`)
+      .bind(username)
+      .first<AdminUserRow>()) ?? null
+  );
 }
 
 describe("admin db auth flow", () => {
-  let db: D1Database;
+  let db: MemoryDb;
+
+  beforeAll(() => {
+    credentialsRemovedFromAuthTs();
+  }, 20_000);
 
   beforeEach(() => {
     db = createMemoryDb();
   });
 
-  it("bootstraps default admin and requires password change", async () => {
-    const user = await ensureDefaultAdmin(db);
-    expect(user.username).toBe(DEFAULT_ADMIN_USERNAME);
-    expect(user.must_change_password).toBe(1);
+  it("rejects credentials previously hardcoded at auth.ts:3-4 and does not reset the hash", async () => {
+    const historical = credentialsRemovedFromAuthTs();
+    const storedPassword = "stored-operator-secret";
+    const seeded = await seedAdmin(db, historical.username, storedPassword, 0);
+    const before = await readAdmin(db, historical.username);
+    expect(before?.password_hash).toBe(seeded.passwordHash);
 
-    const bad = await loginAdmin(db, DEFAULT_ADMIN_USERNAME, "wrong");
+    const attempt = await loginAdmin(db, historical.username, historical.password);
+    expect(attempt.ok).toBe(false);
+    if (!attempt.ok) expect(attempt.error).toBe("invalid_credentials");
+
+    const after = await readAdmin(db, historical.username);
+    expect(after?.password_hash).toBe(seeded.passwordHash);
+    expect(db.userUpdateCount()).toBe(0);
+
+    const real = await loginAdmin(db, historical.username, storedPassword);
+    expect(real.ok).toBe(true);
+    const afterSuccess = await readAdmin(db, historical.username);
+    expect(afterSuccess?.password_hash).toBe(seeded.passwordHash);
+    expect(db.userUpdateCount()).toBe(0);
+  });
+
+  it("does not create an admin when auth.ts:3-4 is submitted and no bootstrap secret is set", async () => {
+    const historical = credentialsRemovedFromAuthTs();
+    const attempt = await loginAdmin(db, historical.username, historical.password);
+    expect(attempt.ok).toBe(false);
+    expect(await readAdmin(db, historical.username)).toBeNull();
+    expect(db.userUpdateCount()).toBe(0);
+
+    const response = await worker.fetch(
+      new Request("http://localhost/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: historical.username,
+          password: historical.password,
+        }),
+      }),
+      { DB: db } as unknown as Env,
+    );
+    expect(response.status).toBe(401);
+    const body = (await response.json()) as { error?: string };
+    expect(body.error).toBe("invalid_credentials");
+    expect(await readAdmin(db, historical.username)).toBeNull();
+  });
+
+  it("bootstraps the first admin from ADMIN_INITIAL_PASSWORD_HASH and never overwrites it", async () => {
+    const password = "bootstrap-secret-1";
+    const hash = await hashPassword(password);
+    const secrets = {
+      ADMIN_BOOTSTRAP_USERNAME: "operator",
+      ADMIN_INITIAL_PASSWORD_HASH: hash,
+    };
+
+    const bad = await loginAdmin(db, "operator", "wrong-password", secrets);
     expect(bad.ok).toBe(false);
+    const created = await readAdmin(db, "operator");
+    expect(created?.password_hash).toBe(hash);
+    expect(created?.must_change_password).toBe(1);
+    expect(db.userUpdateCount()).toBe(0);
 
-    const good = await loginAdmin(db, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
+    const good = await loginAdmin(db, "operator", password, secrets);
     expect(good.ok).toBe(true);
     if (!good.ok) return;
     expect(good.mustChangePassword).toBe(true);
+    expect((await readAdmin(db, "operator"))?.password_hash).toBe(hash);
 
-    const session = await resolveAdminSession(db, good.token);
-    expect(session?.user.username).toBe(DEFAULT_ADMIN_USERNAME);
+    const replacement = await hashPassword("other-password-value");
+    const overwritten = await loginAdmin(db, "operator", "other-password-value", {
+      ADMIN_BOOTSTRAP_USERNAME: "operator",
+      ADMIN_INITIAL_PASSWORD_HASH: replacement,
+    });
+    expect(overwritten.ok).toBe(false);
+    expect((await readAdmin(db, "operator"))?.password_hash).toBe(hash);
+    expect(db.userUpdateCount()).toBe(0);
+  });
+
+  it("rejects a plaintext bootstrap secret instead of storing it as the password", async () => {
+    await expect(
+      loginAdmin(db, "operator", "plaintext-secret", {
+        ADMIN_BOOTSTRAP_USERNAME: "operator",
+        ADMIN_INITIAL_PASSWORD_HASH: "plaintext-secret",
+      }),
+    ).rejects.toThrow(/invalid_bootstrap_hash/);
+    expect(await readAdmin(db, "operator")).toBeNull();
+  });
+
+  it("creates the first admin once from ADMIN_BOOTSTRAP_TOKEN and then refuses", async () => {
+    const secrets = { ADMIN_BOOTSTRAP_TOKEN: "one-time-setup-token" };
+    const created = await bootstrapAdminWithToken(db, secrets, {
+      token: "one-time-setup-token",
+      username: "operator",
+      password: "chosen-operator-secret",
+    });
+    expect(created).toEqual({ ok: true, username: "operator" });
+    const row = await readAdmin(db, "operator");
+    expect(row?.must_change_password).toBe(0);
+    const hashAfterCreate = row?.password_hash;
+
+    const again = await bootstrapAdminWithToken(db, secrets, {
+      token: "one-time-setup-token",
+      username: "operator",
+      password: "another-operator-secret",
+    });
+    expect(again).toEqual({ ok: false, error: "admin_exists" });
+    expect((await readAdmin(db, "operator"))?.password_hash).toBe(hashAfterCreate);
+
+    const login = await loginAdmin(db, "operator", "chosen-operator-secret");
+    expect(login.ok).toBe(true);
+    expect((await readAdmin(db, "operator"))?.password_hash).toBe(hashAfterCreate);
+  });
+
+  it("serves POST /api/admin/bootstrap only while the token secret is set and no admin exists", async () => {
+    const disabled = await worker.fetch(
+      new Request("http://localhost/api/admin/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: "one-time-setup-token",
+          username: "operator",
+          password: "chosen-operator-secret",
+        }),
+      }),
+      { DB: db } as unknown as Env,
+    );
+    expect(disabled.status).toBe(404);
+
+    const env = { DB: db, ADMIN_BOOTSTRAP_TOKEN: "one-time-setup-token" } as unknown as Env;
+    const wrong = await worker.fetch(
+      new Request("http://localhost/api/admin/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: "not-the-token",
+          username: "operator",
+          password: "chosen-operator-secret",
+        }),
+      }),
+      env,
+    );
+    expect(wrong.status).toBe(401);
+    expect(await readAdmin(db, "operator")).toBeNull();
+
+    const ok = await worker.fetch(
+      new Request("http://localhost/api/admin/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: "one-time-setup-token",
+          username: "operator",
+          password: "chosen-operator-secret",
+        }),
+      }),
+      env,
+    );
+    expect(ok.status).toBe(201);
+    const created = (await ok.json()) as { ok?: boolean; username?: string };
+    expect(created).toEqual({ ok: true, username: "operator" });
+
+    const conflict = await worker.fetch(
+      new Request("http://localhost/api/admin/bootstrap", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: "one-time-setup-token",
+          username: "second",
+          password: "another-operator-secret",
+        }),
+      }),
+      env,
+    );
+    expect(conflict.status).toBe(409);
+    expect(await readAdmin(db, "second")).toBeNull();
   });
 
   it("changes password and invalidates prior sessions", async () => {
-    const login = await loginAdmin(db, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
+    const current = "current-operator-secret";
+    await seedAdmin(db, "operator", current, 0);
+    const login = await loginAdmin(db, "operator", current);
     expect(login.ok).toBe(true);
     if (!login.ok) return;
 
@@ -172,31 +419,56 @@ describe("admin db auth flow", () => {
     const next = "new-secure-pass";
     expect(validateNewPassword(next, auth.user.username)).toBeNull();
     const hashed = await hashPassword(next);
-    const changed = await changeAdminPassword(db, auth.user, DEFAULT_ADMIN_PASSWORD, hashed);
+    const changed = await changeAdminPassword(db, auth.user, current, hashed);
     expect(changed.ok).toBe(true);
 
     expect(await resolveAdminSession(db, login.token)).toBeNull();
 
-    const again = await loginAdmin(db, DEFAULT_ADMIN_USERNAME, next);
+    const again = await loginAdmin(db, "operator", next);
     expect(again.ok).toBe(true);
     if (!again.ok) return;
     expect(again.mustChangePassword).toBe(false);
   });
 
-  it("repairs corrupt default password hash on default login", async () => {
-    const user = await ensureDefaultAdmin(db);
-    // Corrupt stored hash
+  it("leaves a corrupt hash unchanged when the removed auth.ts:3-4 password is submitted", async () => {
+    const historical = credentialsRemovedFromAuthTs();
+    const { id } = await seedAdmin(db, historical.username, "current-operator-secret", 1);
     await db
-      .prepare(
-        `UPDATE admin_users SET password_hash = ?, must_change_password = 1 WHERE id = ?`,
-      )
-      .bind("not-a-valid-hash", user.id)
+      .prepare(`UPDATE admin_users SET password_hash = ?, must_change_password = 1 WHERE id = ?`)
+      .bind("not-a-valid-hash", id)
       .run();
+    const updatesAfterCorrupt = db.userUpdateCount();
 
-    const login = await loginAdmin(db, DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
-    expect(login.ok).toBe(true);
-    if (!login.ok) return;
-    expect(login.mustChangePassword).toBe(true);
+    const login = await loginAdmin(db, historical.username, historical.password);
+    expect(login.ok).toBe(false);
+    const row = await readAdmin(db, historical.username);
+    expect(row?.password_hash).toBe("not-a-valid-hash");
+    expect(db.userUpdateCount()).toBe(updatesAfterCorrupt);
   });
 
+  it("does not mention the removed default in the admin UI", () => {
+    const cwd = (globalThis as unknown as { process: { cwd: () => string } }).process.cwd();
+    const readSource = (rel: string) => {
+      const candidates = [`${cwd}/${rel}`, `${cwd}/apps/property-web-worker/${rel}`];
+      for (const path of candidates) {
+        try {
+          return readFileSync(path, "utf8");
+        } catch {
+          // Try the other cwd layout.
+        }
+      }
+      throw new Error(`unable to read ${rel}`);
+    };
+    const page = readSource("src/routes/AdminPage.tsx");
+    const admin = readSource("src/worker/db/admin.ts");
+    const auth = readSource("src/worker/auth.ts");
+    expect(page).not.toContain("password_is_default");
+    expect(page).not.toMatch(/setCurrentPassword\(\s*["'][^"']+["']/);
+    expect(admin).not.toContain("repairDefaultAdminPassword");
+    expect(admin).not.toContain("DEFAULT_ADMIN_PASSWORD");
+    expect(admin).not.toContain("DEFAULT_ADMIN_USERNAME");
+    expect(auth).not.toContain("DEFAULT_ADMIN_PASSWORD");
+    expect(auth).not.toContain("DEFAULT_ADMIN_USERNAME");
+    expect(auth).not.toContain("password_is_default");
+  });
 });

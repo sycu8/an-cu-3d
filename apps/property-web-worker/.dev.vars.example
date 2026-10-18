@@ -4,5 +4,7 @@ ENGINE_API_SECRET=
 # AI_GATEWAY_ID=
 # AI_GATEWAY_TOKEN=
 # ENGINE_BASE_URL=
-# Admin auth is username/password in D1 (default user bootstrapped on first login).
-# No ADMIN_SECRET — use /admin login, then change the default password.
+# First admin is created only when admin_users is empty. No default password.
+# ADMIN_BOOTSTRAP_TOKEN=
+# ADMIN_BOOTSTRAP_USERNAME=
+# ADMIN_INITIAL_PASSWORD_HASH=
