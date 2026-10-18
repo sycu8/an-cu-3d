@@ -38,8 +38,6 @@ function authErrorMessage(code: string | undefined): string {
       return "Bạn phải đổi mật khẩu trước khi tiếp tục";
     case "password_too_short":
       return "Mật khẩu mới tối thiểu 8 ký tự";
-    case "password_is_default":
-      return "Không được dùng mật khẩu mặc định admin";
     case "password_matches_username":
       return "Mật khẩu không được trùng username";
     case "invalid_current_password":
@@ -230,11 +228,9 @@ export default function AdminPage() {
       }
       setPassword("");
       persistSession(body.token, body.username, Boolean(body.mustChangePassword));
-      if (!body.mustChangePassword) {
-        // load triggered via token effect + restoreSession
-      } else {
-        setCurrentPassword("admin");
-        setStatus("Lần đăng nhập đầu — hãy đổi mật khẩu mặc định.");
+      if (body.mustChangePassword) {
+        setCurrentPassword("");
+        setStatus("Đặt mật khẩu mới trước khi tiếp tục.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -556,7 +552,7 @@ export default function AdminPage() {
         {!authed && !mustChangePassword && (
           <section className="admin-gate">
             <h2>Đăng nhập operator</h2>
-            <p>Chỉ tài khoản admin. Lần đầu dùng mật khẩu mặc định rồi đổi ngay.</p>
+            <p>Chỉ tài khoản operator đã được cấp.</p>
             <form className="admin-stack admin-login-form" onSubmit={(e) => void onLogin(e)}>
               <label htmlFor="admin-username">
                 Username
@@ -595,8 +591,8 @@ export default function AdminPage() {
           <section className="admin-gate">
             <h2>Đổi mật khẩu bắt buộc</h2>
             <p>
-              Tài khoản <strong>{adminUsername}</strong> đang dùng mật khẩu mặc định. Đặt mật khẩu
-              mới (tối thiểu 8 ký tự) trước khi vào bảng điều khiển.
+              Tài khoản <strong>{adminUsername}</strong> phải đặt mật khẩu mới (tối thiểu 8 ký tự,
+              không trùng username) trước khi vào bảng điều khiển.
             </p>
             <form
               className="admin-stack admin-login-form"

@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEFAULT_ADMIN_PASSWORD,
-  DEFAULT_ADMIN_USERNAME,
   createSessionToken,
   extractBearerToken,
   hashPassword,
@@ -22,15 +20,10 @@ describe("admin password + session crypto", () => {
     expect(await verifyPassword("wrong-password", serialized)).toBe(false);
   });
 
-  it("rejects weak / default replacement passwords", () => {
-    expect(validateNewPassword("short", DEFAULT_ADMIN_USERNAME)).toBe("password_too_short");
-    expect(validateNewPassword(DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME)).toBe(
-      "password_is_default",
-    );
-    expect(validateNewPassword(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_USERNAME)).toBe(
-      "password_matches_username",
-    );
-    expect(validateNewPassword("secure-enough", DEFAULT_ADMIN_USERNAME)).toBeNull();
+  it("rejects weak replacement passwords", () => {
+    expect(validateNewPassword("short", "operator")).toBe("password_too_short");
+    expect(validateNewPassword("operator", "operator")).toBe("password_matches_username");
+    expect(validateNewPassword("secure-enough", "operator")).toBeNull();
   });
 
   it("creates opaque session tokens and hashes them", async () => {

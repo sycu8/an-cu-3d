@@ -11,5 +11,20 @@ export interface Env {
   AI_GATEWAY_TOKEN?: string;
   ENGINE_BASE_URL?: string;
   ENGINE_API_SECRET?: string;
+  /**
+   * One-time setup token for POST /api/admin/bootstrap.
+   * Honored only while admin_users is empty. Set with `wrangler secret put`.
+   */
+  ADMIN_BOOTSTRAP_TOKEN?: string;
+  /**
+   * Username inserted only when admin_users is empty.
+   * Pair with ADMIN_INITIAL_PASSWORD_HASH. Never overwrites an existing row.
+   */
+  ADMIN_BOOTSTRAP_USERNAME?: string;
+  /**
+   * Serialized pbkdf2-sha256 hash (algorithm$iterations$salt$hash).
+   * Not a plaintext password. Used once to insert the first admin.
+   */
+  ADMIN_INITIAL_PASSWORD_HASH?: string;
   AI?: Ai;
 }
