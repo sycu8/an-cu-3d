@@ -411,4 +411,123 @@ describe("worker security + health", () => {
     expect(preview.headers.get("x-robots-tag")).toContain("noindex");
   });
 
+  it("returns 404 with noindex for unknown project and blog slugs", async () => {
+    const spa = {
+      STATIC_ASSETS: {
+        fetch: async (request: Request) => {
+          const url = new URL(request.url);
+          if (url.pathname === "/index.html") {
+            return new Response('<!doctype html><div id="root"></div>', {
+              status: 200,
+              headers: { "content-type": "text/html; charset=utf-8" },
+            });
+          }
+          return new Response("missing", { status: 404 });
+        },
+      },
+    } as unknown as Env;
+
+    const unknownProject = await worker.fetch(
+      new Request("https://home.orangecloud.vn/projects/khong-co-du-an"),
+      spa,
+    );
+    expect(unknownProject.status).toBe(404);
+    expect(unknownProject.headers.get("x-robots-tag")).toContain("noindex");
+    expect(await unknownProject.text()).not.toContain('id="root"');
+
+    const unknownNested = await worker.fetch(
+      new Request("https://home.orangecloud.vn/projects/khong-co-du-an/showroom"),
+      spa,
+    );
+    expect(unknownNested.status).toBe(404);
+    expect(unknownNested.headers.get("x-robots-tag")).toContain("noindex");
+
+    const unknownBlog = await worker.fetch(
+      new Request("https://home.orangecloud.vn/blog/khong-co-bai-nay"),
+      spa,
+    );
+    expect(unknownBlog.status).toBe(404);
+    expect(unknownBlog.headers.get("x-robots-tag")).toContain("noindex");
+    expect(await unknownBlog.text()).not.toContain('id="root"');
+
+    const knownProject = await worker.fetch(
+      new Request("https://home.orangecloud.vn/projects/eaton-park"),
+      spa,
+    );
+    expect(knownProject.status).toBe(200);
+    expect(knownProject.headers.get("x-robots-tag")).toBeNull();
+
+    const knownBlog = await worker.fetch(
+      new Request("https://home.orangecloud.vn/blog/nhin-gan-du-an-dang-co-tren-ancu"),
+      spa,
+    );
+    expect(knownBlog.status).toBe(200);
+
+    const catalog = {
+      ...spa,
+      DB: {
+        prepare(sql: string) {
+          let slug = "";
+          const api = {
+            bind(value: unknown) {
+              slug = String(value);
+              return api;
+            },
+            async first() {
+              if (/FROM projects/i.test(sql)) {
+                return slug === "qa-published-only" ? { slug } : null;
+              }
+              if (/FROM blog_posts/i.test(sql)) {
+                if (slug === "bai-luu-tru") return { status: "archived" };
+                if (slug === "bai-dang") return { status: "published" };
+                return null;
+              }
+              return null;
+            },
+          };
+          return api;
+        },
+      },
+    } as unknown as Env;
+
+    const d1Project = await worker.fetch(
+      new Request("https://home.orangecloud.vn/projects/qa-published-only"),
+      catalog,
+    );
+    expect(d1Project.status).toBe(200);
+
+    const archived = await worker.fetch(
+      new Request("https://home.orangecloud.vn/blog/cho-xac-minh-khong-phai-o-trong"),
+      {
+        ...catalog,
+        DB: {
+          prepare(sql: string) {
+            let slug = "";
+            const api = {
+              bind(value: unknown) {
+                slug = String(value);
+                return api;
+              },
+              async first() {
+                if (/FROM blog_posts/i.test(sql) && slug === "cho-xac-minh-khong-phai-o-trong") {
+                  return { status: "archived" };
+                }
+                return null;
+              },
+            };
+            return api;
+          },
+        },
+      } as unknown as Env,
+    );
+    expect(archived.status).toBe(404);
+    expect(archived.headers.get("x-robots-tag")).toContain("noindex");
+
+    const publishedOnly = await worker.fetch(
+      new Request("https://home.orangecloud.vn/blog/bai-dang"),
+      catalog,
+    );
+    expect(publishedOnly.status).toBe(200);
+  });
+
 });

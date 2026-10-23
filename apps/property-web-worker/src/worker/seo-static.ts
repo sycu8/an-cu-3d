@@ -1,5 +1,7 @@
-import type { Env } from "./types";
+import { EDITORIAL_BLOG_POSTS } from "../data/blog-posts";
+import { getProjectBySlug } from "../data/gamuda-projects";
 import { CANONICAL_HOST, CANONICAL_ORIGIN, HUB_ORIGIN } from "../seo/site-copy";
+import type { Env } from "./types";
 
 export { CANONICAL_HOST, CANONICAL_ORIGIN };
 
@@ -92,7 +94,10 @@ function safeSegment(value: string): boolean {
   return value.length > 0 && value !== "." && value !== ".." && !value.includes("\\");
 }
 
-/** Known client routes that should receive index.html. Everything else is a 404. */
+/**
+ * URL shapes that can receive index.html. A /projects/<slug> or /blog/<slug>
+ * shape still 404s when that slug is not public.
+ */
 export function isSpaRoute(pathname: string): boolean {
   const path = normalizePath(pathname);
   if (path === "/") return true;
@@ -115,6 +120,62 @@ export function isSpaRoute(pathname: string): boolean {
   }
   if (parts.length === 4 && parts[0] === "projects" && parts[2] === "apartments") return true;
   return false;
+}
+
+function routeParts(pathname: string): string[] | null {
+  const path = normalizePath(pathname);
+  if (path === "/") return [];
+  const parts = path.split("/").slice(1);
+  if (parts.some((part) => !safeSegment(part))) return null;
+  return parts;
+}
+
+/** Published D1 row, or the seed catalog when D1 has no row. */
+async function publishedProjectExists(env: Env, slug: string): Promise<boolean> {
+  if (env.DB) {
+    try {
+      const row = await env.DB.prepare(
+        `SELECT slug FROM projects WHERE slug = ? AND status = 'published'`,
+      )
+        .bind(slug)
+        .first<{ slug: string }>();
+      if (row) return true;
+    } catch {
+      /* D1 missing — the seed catalog is the public list. */
+    }
+  }
+  return Boolean(getProjectBySlug(slug));
+}
+
+/**
+ * A stored row wins: only `published` is public, so an archived editorial
+ * slug stays hidden. No row falls through to the curated posts.
+ */
+async function publishedBlogExists(env: Env, slug: string): Promise<boolean> {
+  if (env.DB) {
+    try {
+      const row = await env.DB.prepare(`SELECT status FROM blog_posts WHERE slug = ?`)
+        .bind(slug)
+        .first<{ status: string }>();
+      if (row) return row.status === "published";
+    } catch {
+      /* D1 missing — the curated posts are the public list. */
+    }
+  }
+  return EDITORIAL_BLOG_POSTS.some((post) => post.slug === slug && post.status === "published");
+}
+
+async function isPublicSpaRoute(pathname: string, env: Env): Promise<boolean> {
+  if (!isSpaRoute(pathname)) return false;
+  const parts = routeParts(pathname);
+  if (!parts) return false;
+  if (parts[0] === "projects" && parts.length >= 2) {
+    return publishedProjectExists(env, decodeURIComponent(parts[1]!));
+  }
+  if (parts[0] === "blog" && parts.length === 2) {
+    return publishedBlogExists(env, decodeURIComponent(parts[1]!));
+  }
+  return true;
 }
 
 function seoDocument(pathname: string): { body: string; contentType: string } | null {
@@ -174,7 +235,7 @@ export async function publicPageResponse(request: Request, env: Env): Promise<Re
       },
     });
   }
-  if (isSpaRoute(path)) return spaIndexResponse(request, env);
+  if (await isPublicSpaRoute(path, env)) return spaIndexResponse(request, env);
   return notFoundPage(request.method);
 }
 
