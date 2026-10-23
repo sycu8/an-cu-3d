@@ -315,4 +315,100 @@ describe("worker security + health", () => {
     expect(await response.json()).toEqual({ error: "unauthorized" });
   });
 
+  it("serves robots.txt, sitemap.xml and llms.txt instead of the SPA shell", async () => {
+    const spa = {
+      STATIC_ASSETS: {
+        fetch: async () =>
+          new Response('<!doctype html><div id="root"></div>', {
+            status: 200,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          }),
+      },
+    } as unknown as Env;
+
+    const robots = await worker.fetch(new Request("https://home.orangecloud.vn/robots.txt"), spa);
+    expect(robots.status).toBe(200);
+    expect(robots.headers.get("content-type")).toContain("text/plain");
+    const robotsBody = await robots.text();
+    expect(robotsBody).toContain("Sitemap: https://home.orangecloud.vn/sitemap.xml");
+    expect(robotsBody).toContain("Disallow: /admin");
+    expect(robotsBody).not.toContain('id="root"');
+    expect(robots.headers.get("x-robots-tag")).toBeNull();
+
+    const sitemap = await worker.fetch(new Request("https://home.orangecloud.vn/sitemap.xml"), spa);
+    expect(sitemap.status).toBe(200);
+    expect(sitemap.headers.get("content-type")).toContain("xml");
+    const sitemapBody = await sitemap.text();
+    expect(sitemapBody).toContain("https://home.orangecloud.vn/projects");
+    expect(sitemapBody).toContain("https://home.orangecloud.vn/blog/nhin-gan-du-an-dang-co-tren-ancu");
+    expect(sitemapBody).not.toContain("/admin");
+    expect(sitemapBody).not.toContain('id="root"');
+
+    const llms = await worker.fetch(new Request("https://home.orangecloud.vn/llms.txt"), spa);
+    expect(llms.status).toBe(200);
+    const llmsBody = await llms.text();
+    expect(llmsBody).toContain("https://orangecloud.vn/#person");
+    expect(llmsBody).toContain("https://onboarding.orangecloud.vn/");
+    expect(llmsBody).not.toContain('id="root"');
+
+    const head = await worker.fetch(new Request("https://home.orangecloud.vn/llms.txt", { method: "HEAD" }), spa);
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe("");
+
+    const workersDev = await worker.fetch(
+      new Request("https://ancu-property-web.example.workers.dev/robots.txt"),
+      spa,
+    );
+    expect(workersDev.status).toBe(200);
+    expect(workersDev.headers.get("x-robots-tag")).toContain("noindex");
+  });
+
+  it("returns the SPA shell for known routes and 404 for unknown routes", async () => {
+    const spa = {
+      STATIC_ASSETS: {
+        fetch: async (request: Request) => {
+          const url = new URL(request.url);
+          if (url.pathname === "/index.html") {
+            return new Response('<!doctype html><div id="root"></div>', {
+              status: 200,
+              headers: { "content-type": "text/html; charset=utf-8" },
+            });
+          }
+          return new Response("missing", { status: 404, headers: { "content-type": "text/plain" } });
+        },
+      },
+    } as unknown as Env;
+
+    const home = await worker.fetch(new Request("https://home.orangecloud.vn/"), spa);
+    expect(home.status).toBe(200);
+    expect(await home.text()).toContain('id="root"');
+    expect(home.headers.get("content-security-policy")).toBeNull();
+
+    const project = await worker.fetch(
+      new Request("https://home.orangecloud.vn/projects/eaton-park/apartments/1br-b"),
+      spa,
+    );
+    expect(project.status).toBe(200);
+
+    const missing = await worker.fetch(
+      new Request("https://home.orangecloud.vn/khong-co-trang-nay"),
+      spa,
+    );
+    expect(missing.status).toBe(404);
+    const body = await missing.text();
+    expect(body).toContain("Không tìm thấy trang");
+    expect(body).not.toContain('id="root"');
+    expect(missing.headers.get("x-robots-tag")).toContain("noindex");
+
+    const deep = await worker.fetch(
+      new Request("https://home.orangecloud.vn/projects/eaton-park/khong-co"),
+      spa,
+    );
+    expect(deep.status).toBe(404);
+
+    const preview = await worker.fetch(new Request("https://preview.example/projects"), spa);
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("x-robots-tag")).toContain("noindex");
+  });
+
 });

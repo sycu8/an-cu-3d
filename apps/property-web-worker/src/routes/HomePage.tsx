@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { BRAND, TAGLINE } from "@ancu/shared";
+import { FAQ } from "../seo/site-copy";
 import { ProjectCard } from "../components/ProjectCard";
 import { ProjectSearchPanel } from "../components/ProjectSearchPanel";
 import { PageSkeleton } from "../components/PageSkeleton";
@@ -228,6 +229,27 @@ export default function HomePage() {
               Đọc blog
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="home-faq container" id="faq" aria-labelledby="faq-heading">
+        <header className="section-head">
+          <h2 id="faq-heading">Câu hỏi thường gặp</h2>
+          <p className="section-desc">
+            AnCư 3D là một phần của <a href="https://orangecloud.vn/">Orange Cloud</a>.
+            {" "}
+            <span lang="en">Frequently asked questions.</span>
+          </p>
+        </header>
+        <div className="home-faq-list">
+          {FAQ.map((item) => (
+            <article key={item.qVi} className="home-faq-item">
+              <h3>{item.qVi}</h3>
+              <p>{item.aVi}</p>
+              <h3 lang="en">{item.qEn}</h3>
+              <p lang="en">{item.aEn}</p>
+            </article>
+          ))}
         </div>
       </section>
     </div>

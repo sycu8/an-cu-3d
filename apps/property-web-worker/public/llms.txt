@@ -1,0 +1,32 @@
+# AnCư 3D
+
+> Hiểu căn nhà trước khi gọi là nhà. Understand the home before you call it home.
+
+AnCư 3D là ứng dụng xem mặt bằng, không gian 3D và so sánh dự án nhà ở. Trang canonical là https://home.orangecloud.vn. Tác giả và nhà xuất bản là https://orangecloud.vn/#person (Cường Lê Sỹ), trong showcase cá nhân Orange Cloud. Đây không phải sản phẩm của Cloudflare, Inc.
+
+Số liệu chưa có nguồn được ghi là chờ xác minh. Mặt bằng mẫu là minh họa cho đến khi có hồ sơ đã đối chiếu. Trang không bịa thời gian di chuyển.
+
+## Tiếng Việt
+
+- [Trang chủ](https://home.orangecloud.vn/): Tìm theo khu vực, công cụ vay, bản đồ và dự án nổi bật.
+- [Dự án](https://home.orangecloud.vn/projects): Danh sách dự án kèm nguồn dữ liệu.
+- [So sánh](https://home.orangecloud.vn/compare): Đối chiếu tối đa ba dự án theo trọng số của bạn.
+- [Bản đồ](https://home.orangecloud.vn/map): Tiện ích xung quanh, khoảng cách thẳng, không có ETA bịa.
+- [Công cụ](https://home.orangecloud.vn/tools): Ước tính khoản vay và mức phù hợp.
+- [Blog](https://home.orangecloud.vn/blog): Cách đọc mặt bằng và dữ liệu.
+
+## English
+
+- [Home](https://home.orangecloud.vn/): Search by area, loan tools, a map, and featured projects.
+- [Projects](https://home.orangecloud.vn/projects): Project list with sourced data.
+- [Compare](https://home.orangecloud.vn/compare): Compare up to three projects using your own weights.
+- [Map](https://home.orangecloud.vn/map): Nearby amenities and straight-line distance, with no invented travel time.
+- [Tools](https://home.orangecloud.vn/tools): Loan estimate and fit tools.
+- [Blog](https://home.orangecloud.vn/blog): Notes on reading floor plans and data.
+
+## Orange Cloud
+
+- [Orange Cloud](https://orangecloud.vn/): Hub của các dự án cá nhân.
+- [Onboarding](https://onboarding.orangecloud.vn/): Lộ trình học Cloudflare.
+- [CF Ready](https://ready.orangecloud.vn/): Kiểm tra sẵn sàng trước khi deploy.
+- [Insights](https://blog.orangecloud.vn/): Ghi chú kỹ thuật.

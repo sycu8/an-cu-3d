@@ -41,6 +41,7 @@ import {
 import { runProjectBuild } from "./project-build";
 import { serveMedia, withMediaUrl } from "./media";
 import { toPublicDetail, toPublicSummary } from "./public-project";
+import { CANONICAL_HOST, publicPageResponse, withNoindex } from "./seo-static";
 import type { Env } from "./types";
 
 function securityHeaders(requestId: string): Record<string, string> {
@@ -57,7 +58,12 @@ function securityHeaders(requestId: string): Record<string, string> {
 
 function withSecurityHeaders(response: Response, requestId: string): Response {
   const headers = new Headers(response.headers);
+  const contentType = (headers.get("content-type") ?? "").toLowerCase();
+  // HTML documents are the SPA shell. The asset platform does not attach this
+  // API CSP to pages, and Vite's dev preamble needs to keep loading.
+  const isDocument = contentType.includes("text/html");
   for (const [key, value] of Object.entries(securityHeaders(requestId))) {
+    if (isDocument && key === "Content-Security-Policy") continue;
     headers.set(key, value);
   }
   return new Response(response.body, {
@@ -750,13 +756,17 @@ export default {
     } else if (request.method !== "GET" && request.method !== "HEAD") {
       response = new Response("Method Not Allowed", { status: 405 });
     } else {
-      // SPA routes stay on the asset platform (not_found_handling: single-page-application).
-      // This branch runs only when the Worker is invoked for a page route.
-      response = new Response("Not Found", { status: 404 });
+      // robots.txt, sitemap.xml and llms.txt are answered here, before any
+      // index.html fallback. Known app routes get the SPA shell. Other paths 404.
+      response = await publicPageResponse(request, env);
     }
 
     if (!path.startsWith("/api/") || response.headers.get("X-Request-Id") === null) {
       response = withSecurityHeaders(response, requestId);
+    }
+
+    if (url.hostname !== CANONICAL_HOST) {
+      response = withNoindex(response);
     }
 
     logRequest(requestId, request.method, path, response.status, Date.now() - start);

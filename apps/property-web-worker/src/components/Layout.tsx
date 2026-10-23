@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 import { BRAND, TAGLINE } from "@ancu/shared";
+import { HUB_LINKS } from "../seo/site-copy";
 import "./Layout.css";
 
 export function Layout() {
@@ -79,7 +80,7 @@ export function Layout() {
             <p className="footer-brand">{BRAND}</p>
             <p className="footer-tagline">{TAGLINE}</p>
           </div>
-          <div className="footer-links">
+          <nav className="footer-links" aria-label="Trang trong AnCư">
             <Link to="/projects">Dự án</Link>
             <Link to="/map">Bản đồ</Link>
             <Link to="/tools">Công cụ</Link>
@@ -87,10 +88,21 @@ export function Layout() {
             <Link to="/admin" className="footer-admin">
               Admin
             </Link>
+          </nav>
+          <div>
+            <p className="footer-kicker">Orange Cloud</p>
+            <nav className="footer-links" aria-label="Các dự án Orange Cloud">
+              {HUB_LINKS.map((link) => (
+                <a key={link.href} href={link.href}>
+                  {link.label}
+                </a>
+              ))}
+            </nav>
           </div>
           <p className="footer-note">
             Explore. Compare. Decide. — Dữ liệu chưa xác minh được ghi rõ hoặc ẩn; không
-            trình bày placeholder như sự thật.
+            trình bày placeholder như sự thật. AnCư 3D là một phần của Orange Cloud, dự án
+            cá nhân, không phải sản phẩm của Cloudflare, Inc.
           </p>
         </div>
       </footer>
