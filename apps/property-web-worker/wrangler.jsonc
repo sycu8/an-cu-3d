@@ -2,6 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ancu-property-web",
   "main": "src/worker/index.ts",
+  // Canonical host is https://home.orangecloud.vn. Do not also publish workers.dev.
+  "workers_dev": false,
   "compatibility_date": "2026-09-05",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -23,11 +25,27 @@
     "directory": "./dist",
     // R2 already binds as ASSETS. This name is the static-asset Fetcher.
     "binding": "STATIC_ASSETS",
-    "not_found_handling": "single-page-application",
-    // API and hashed chunks hit the Worker. Other routes stay on the asset platform,
-    // which still returns index.html for SPA navigations.
-    // Unknown /assets/* must 404: the platform would otherwise serve index.html.
-    "run_worker_first": ["/api/*", "/assets/*"]
+    "not_found_handling": "none",
+    // The Worker serves real robots/sitemap/llms and index.html for known app
+    // routes. Unknown paths 404 here and on the asset platform.
+    // Unknown /assets/* must 404: a missing chunk must not become index.html.
+    "run_worker_first": [
+      "/api/*",
+      "/assets/*",
+      "/robots.txt",
+      "/sitemap.xml",
+      "/llms.txt",
+      "/",
+      "/projects",
+      "/projects/*",
+      "/map",
+      "/compare",
+      "/tools",
+      "/tools/*",
+      "/blog",
+      "/blog/*",
+      "/admin"
+    ]
   },
   "d1_databases": [
     {
@@ -84,6 +102,7 @@
     },
     "production": {
       "name": "ancu-property-web",
+      "workers_dev": false,
       "vars": {
         "ENGINE_BASE_URL": "https://ancu-floorplan-engine.sycu-lee.workers.dev"
       },
