@@ -3,11 +3,23 @@ import htmlSource from "../../index.html?raw";
 import llmsTxt from "../../public/llms.txt?raw";
 import robotsTxt from "../../public/robots.txt?raw";
 import sitemapXml from "../../public/sitemap.xml?raw";
+// @ts-expect-error node builtin is available under vitest
+import { readFileSync } from "node:fs";
 import layoutSource from "../components/Layout.tsx?raw";
-import visualsSource from "../lib/projectVisuals.ts?raw";
 import homeSource from "../routes/HomePage.tsx?raw";
 import { llmsTxtBody, robotsTxtBody, sitemapXmlBody } from "../worker/seo-static";
-import { FAQ, H1, HUB_LINKS, PERSON_ID, SITE_DESCRIPTION, SITE_TITLE } from "./site-copy";
+import {
+  FAQ,
+  H1,
+  HUB_LINKS,
+  OG_IMAGE_ALT,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_URL,
+  OG_IMAGE_WIDTH,
+  PERSON_ID,
+  SITE_DESCRIPTION,
+  SITE_TITLE,
+} from "./site-copy";
 
 function flat(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -23,12 +35,6 @@ describe("static head", () => {
     expect(html).toContain('property="og:title"');
     expect(html).toContain('property="og:description"');
     expect(html).toContain('property="og:url" content="https://home.orangecloud.vn/"');
-    const hero = visualsSource.match(/HERO_IMAGE =\s*"([^"]+)"/);
-    expect(hero?.[1]).toBeTruthy();
-    expect(html).toContain(`property="og:image" content="${hero![1]}"`);
-    expect(htmlSource).toContain('property="og:image:alt" content="Không gian nhà mẫu hiện đại"');
-    expect(htmlSource).toContain('property="og:image:width" content="2048"');
-    expect(htmlSource).toContain('property="og:image:height" content="1152"');
     expect(html).toContain(`<h1>${H1}</h1>`);
     expect(html).toContain('"@type": "WebApplication"');
     expect(html).toContain(`"author": { "@id": "${PERSON_ID}" }`);
@@ -42,6 +48,34 @@ describe("static head", () => {
       "WebApplication",
       "FAQPage",
     ]);
+  });
+
+  it("serves og:image from our own host", () => {
+    const ownHost = "home.orangecloud.vn";
+    expect(new URL(OG_IMAGE_URL).host).toBe(ownHost);
+    expect(html).toContain(`property="og:image" content="${OG_IMAGE_URL}"`);
+    expect(html).toContain(`name="twitter:image" content="${OG_IMAGE_URL}"`);
+    expect(htmlSource).toContain(`property="og:image:alt" content="${OG_IMAGE_ALT}"`);
+    expect(htmlSource).toContain(`property="og:image:width" content="${OG_IMAGE_WIDTH}"`);
+    expect(htmlSource).toContain(`property="og:image:height" content="${OG_IMAGE_HEIGHT}"`);
+
+    const imageUrls: string[] = [];
+    for (const tag of htmlSource.match(/<meta\b[^>]*>/gis) ?? []) {
+      const content = tag.match(/\bcontent="([^"]*)"/i)?.[1] ?? "";
+      expect(content).not.toMatch(/celadoncityhcm\.com/i);
+      if (/^https?:\/\//i.test(content) && /\.(?:png|jpe?g|webp|gif|svg)(?:$|\?)/i.test(content)) {
+        imageUrls.push(content);
+        const url = new URL(content);
+        expect(url.protocol).toBe("https:");
+        expect(url.host).toBe(ownHost);
+      }
+    }
+    expect(imageUrls).toEqual([OG_IMAGE_URL, OG_IMAGE_URL]);
+
+    const png = readFileSync(new URL("../../public/og-image.png", import.meta.url));
+    expect(png.subarray(12, 16).toString("ascii")).toBe("IHDR");
+    expect(png.readUInt32BE(16)).toBe(OG_IMAGE_WIDTH);
+    expect(png.readUInt32BE(20)).toBe(OG_IMAGE_HEIGHT);
   });
 
   it("includes the Vietnamese and English FAQ with FAQPage JSON-LD", () => {
