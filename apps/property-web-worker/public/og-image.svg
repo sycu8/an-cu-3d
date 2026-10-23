@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d9e2d0"/>
+      <stop offset="100%" stop-color="#b7c4b0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect x="48" y="48" width="1104" height="534" rx="28" fill="#fcfaf6"/>
+  <rect x="48" y="48" width="8" height="534" fill="#c9825b"/>
+  <text x="96" y="250" fill="#285a52" font-family="Noto Serif, Georgia, serif" font-size="64" font-weight="700">AnCư 3D</text>
+  <text x="96" y="312" fill="#3f4a3a" font-family="Noto Serif, Georgia, serif" font-size="28">Hiểu căn nhà trước khi gọi là nhà.</text>
+  <text x="96" y="356" fill="#65716d" font-family="Noto Sans, sans-serif" font-size="20">Understand the home before you call it home.</text>
+  <text x="96" y="500" fill="#65716d" font-family="Noto Sans, sans-serif" font-size="16">Mặt bằng minh họa · không phải hồ sơ đã đối chiếu</text>
+  <g fill="#efe9dd" stroke="none">
+    <polygon points="710,339 890,339 890,159 710,159"/>
+  </g>
+  <g fill="#d4ebe8">
+    <polygon points="970,319 1130,319 1130,159 970,159"/>
+  </g>
+  <g fill="#e7efe4">
+    <polygon points="970,471 1130,471 1130,319 970,319"/>
+  </g>
+  <g fill="#f7f3ea">
+    <polygon points="710,471 970,471 970,339 710,339"/>
+  </g>
+  <g fill="#f0e4d8">
+    <polygon points="890,259 970,259 970,159 890,159"/>
+    <polygon points="970,239 1050,239 1050,159 970,159"/>
+  </g>
+  <g fill="none" stroke="#285a52" stroke-width="4" stroke-linejoin="miter">
+    <polygon points="710,159 1130,159 1130,471 710,471"/>
+    <line x1="970" y1="159" x2="970" y2="319"/>
+    <line x1="970" y1="319" x2="1130" y2="319"/>
+    <line x1="710" y1="339" x2="970" y2="339"/>
+    <line x1="890" y1="159" x2="890" y2="259"/>
+  </g>
+</svg>

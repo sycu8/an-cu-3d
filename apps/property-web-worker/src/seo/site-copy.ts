@@ -10,6 +10,13 @@ export const SITE_DESCRIPTION =
   "Hiểu căn nhà trước khi gọi là nhà — mặt bằng có nhãn tin cậy, không gian 3D và so sánh theo tiêu chí của bạn. Understand the home before you call it home.";
 export const H1 = "Hiểu căn nhà trước khi gọi là nhà.";
 
+/** Social card in public/, drawn from the local cover SVG and the seed floor plan. */
+export const OG_IMAGE_PATH = "/og-image.png";
+export const OG_IMAGE_URL = `${CANONICAL_ORIGIN}${OG_IMAGE_PATH}`;
+export const OG_IMAGE_ALT = "AnCư 3D — mặt bằng minh họa. Hiểu căn nhà trước khi gọi là nhà.";
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
+
 export const HUB_LINKS = [
   { href: "https://orangecloud.vn/", label: "Trang chủ Orange Cloud" },
   { href: "https://onboarding.orangecloud.vn/", label: "Onboarding" },
